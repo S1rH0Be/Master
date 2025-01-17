@@ -279,8 +279,8 @@ def main():
 
 
     # by_intervall(acc_df)
-    # acc_df.to_excel(f'/Users/fritz/Downloads/ZIB/Master/ZwischenPräsi_Januar/Predictions/NonCmp/AccuraciesNonCmp/komplett_scaling_byhand_acc_unfiltered_point_five_is_zero_{date_string}.xlsx',
-    #     index=False)
+    acc_df.to_excel(f'/Users/fritz/Downloads/ZIB/Master/ZwischenPräsi_Januar/Predictions/NonCmp/AccuraciesNonCmp/komplett_scaling_byhand_acc_unfiltered_point_five_is_zero_{date_string}.xlsx',
+        index=False)
     # acc_df.to_excel(f'/Users/fritz/Downloads/ZIB/Master/ZwischenPräsi_Januar/Accuracies/acc_filtered_point_five_is_zero_{date_string}.xlsx',
     #     index=False)
 

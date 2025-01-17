@@ -180,5 +180,3 @@ fin_time_df = df[['Final_solution_time_(cumulative)_Mixed', 'Final_solution_time
 shifted_times = []
 for i in ['Final_solution_time_(cumulative)_Mixed', 'Final_solution_time_(cumulative)_Int']:
     shifted_times.append(shifted_geometric_mean(df[i], 0.5))
-print(shifted_times)
-print(137.98/130.86)

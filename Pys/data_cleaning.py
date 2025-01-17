@@ -69,7 +69,9 @@ clean_df.loc[:, 'Virtual Best'] = [min(row['Final solution time (cumulative) Mix
 
 #betrachte abs(timemixed-timeint)<=0.5 as 0
 pointfive_is_zero_df = clean_df.copy()
-for index, row in clean_df.iterrows():
+# divide label by 100 to get factor instead of percent
+pointfive_is_zero_df['Cmp Final solution time (cumulative)'] = pointfive_is_zero_df['Cmp Final solution time (cumulative)']/100
+for index, row in pointfive_is_zero_df.iterrows():
     if abs(row['Final solution time (cumulative) Mixed']-row['Final solution time (cumulative) Int'])<=0.5:
         pointfive_is_zero_df.loc[index, 'Cmp Final solution time (cumulative)'] = 0.0
     if abs(row['Cmp Final solution time (cumulative)'])<=0.01:
@@ -82,32 +84,30 @@ current_date = datetime.now()
 date_string = current_date.strftime("%d_%m")
 
 pointfive_is_zero_df.to_excel(
-        f'/Users/fritz/Downloads/ZIB/Master/ZwischenPräsi_Januar/Data/WholeDataSet/clean_data_og_cmp_{date_string}.xlsx',
+        f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/clean_data_final_{date_string}.xlsx',
         index=False)
 
+# print(feature_candidates.columns)
+features = ['Matrix Equality Constraints', 'Matrix Quadratic Elements',
+       'Matrix NLP Formula', 'Presolve Columns', 'Presolve Global Entities',
+       '#nodes in DAG', '#integer violations at root',
+       '#nonlinear violations at root', '% vars in DAG (out of all vars)',
+       '% vars in DAG unbounded (out of vars in DAG)',
+       '% vars in DAG integer (out of vars in DAG)',
+       '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
+       'Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
+       'Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
+       'Avg relative bound change for solving strong branching LPs for spatial branchings (not including infeasible ones) Mixed',
+       'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
+       'Cmp #spatial branching entities fixed (at the root)',
+       'Cmp Avg coefficient spread for convexification cuts']
 
-feature_candidates = pointfive_is_zero_df.drop(['Matrix Name', 'Status Mixed', 'Status Int', 'Final Objective Mixed', 'Final Objective Int',
-             'Final solution time (cumulative) Mixed', 'Final solution time (cumulative) Int',
-             'permutation seed', 'Pot Time Save', '#non-spatial branch entities fixed (at the root) Mixed',
-             '#non-spatial branch entities fixed (at the root) Int',
-             'Avg ticks for propagation + cutting / entity / rootLPticks Mixed',
-             'Avg ticks for propagation + cutting / entity / rootLPticks Int'], axis=1)
+feature_df = pointfive_is_zero_df[features]
 
-X = feature_candidates.drop(columns=[col for col in feature_candidates.columns if 'Cmp' in col])
-X = X.drop(columns=['Virtual Best'])
-#right now not relevant but maybe with different data
-X = X.replace(-1, np.nan)
-# X.to_excel(f'/Users/fritz/Downloads/ZIB/Master/CSV/SecondIteration/Jetzt Ernst/CSVs/CleanedData/Feature/features_pointfive_is_zero_df_{date_string}.xlsx', index=False)
+feature_df.to_excel(
+        f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/final_features_{date_string}.xlsx',
+        index=False)
 
-"""TO-DO:"""
-    #1. Df mit gelöschten Instanzen erstellen.
-    #2. Ticks zu eins aufsummieren?(wäre schon aussiebend)
-       #2.1 Bei Ticks -1 zu 0 machen?
-    #4. Cmp neu berechnen/aktualisieren
-    #3.
-        #--> Dafür: gucken bei welchen eh alle in selber magnitude=> nicht +100
-        #3.1 Final objective +/-100
-        #3.2 Was sind die -1 Werte---> Vll einfach auf null??
 """
     2. Add reason column to deleted_df
     3. Scaling: #Aka auf alle Cmprelevanten Spalten +100 oder so
