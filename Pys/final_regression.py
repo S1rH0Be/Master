@@ -73,19 +73,20 @@ def feature_histo(df, columns: list, number_bins=10):
 def impute(dataframe, columns_to_impute: list, imputation):
     df = dataframe.copy()
     for col in columns_to_impute:
-        if imputation == 'Median':
-            # Calculate the median ignoring -1
-            median_value = df.loc[df[col] != -1, col].median()
-            # Replace -1 with the calculated median
-            df[col] = df[col].apply(lambda x: median_value if x == -1 else x)
-        elif imputation == 'Mean':
-            # Calculate the mean ignoring -1
-            mean_value = df.loc[df[col] != -1, col].mean()
-            # Replace -1 with the calculated mean
-            df[col] = df[col].apply(lambda x: mean_value if x == -1 else x)
-        else:
-            # if concrete numeric value is given as imputation value  use it
-            df[col] = df[col].apply(lambda x: imputation if x == -1 else x)
+        if col in df.columns:
+            if imputation == 'Median':
+                # Calculate the median ignoring -1
+                median_value = df.loc[df[col] != -1, col].median()
+                # Replace -1 with the calculated median
+                df[col] = df[col].apply(lambda x: median_value if x == -1 else x)
+            elif imputation == 'Mean':
+                # Calculate the mean ignoring -1
+                mean_value = df.loc[df[col] != -1, col].mean()
+                # Replace -1 with the calculated mean
+                df[col] = df[col].apply(lambda x: mean_value if x == -1 else x)
+            else:
+                # if concrete numeric value is given as imputation value  use it
+                df[col] = df[col].apply(lambda x: imputation if x == -1 else x)
     return df
 
 def yeo_johnson(df, histo=False):
@@ -107,6 +108,9 @@ def box_cox(df, histo= False):
     box_cox_df = box_cox_df.apply(lambda x: x / abs(x).max())
     if histo:
         feature_histo(box_cox_df, box_cox_df.columns)
+
+def filter_existing_columns(column_list, df):
+    return [col for col in column_list if col in df.columns]
 
 def scaling_by_hand(feature):
     feature = feature.astype('float')
@@ -141,6 +145,15 @@ def scaling_by_hand(feature):
 
     cols_cbrt += non_pos
     cols_cbrt += neg_pos
+
+    # Filter each list of columns to include only those present in X_scaled
+    log_then_root = filter_existing_columns(log_then_root, feature)
+    cols_log_plus_one = filter_existing_columns(cols_log_plus_one, feature)
+    cols_sqrt = filter_existing_columns(cols_sqrt, feature)
+    cols_cbrt = filter_existing_columns(cols_cbrt, feature)
+    cols_to_4throot_scale = filter_existing_columns(cols_to_4throot_scale, feature)
+    cols_to_8root_scale = filter_existing_columns(cols_to_8root_scale, feature)
+    cols_to_10root_scale = filter_existing_columns(cols_to_10root_scale, feature)
     # adding 1 before logging results in 0 being zero and the rest greater than zero, because log(1)=0
     feature.loc[:, cols_log_plus_one] = feature.loc[:, cols_log_plus_one] + 1
     feature.loc[:, cols_log_plus_one] = feature.loc[:, cols_log_plus_one].map(lambda x: np.log(x) if x > 10 ** (-6) else 0)
@@ -174,19 +187,23 @@ def predicted_time(time_df, prediction_df):
 
 def accuracy(prediction_df):
     # instances where one rule is by a factor of more then 0.5 faster are considered "extreme"
+    extreme_extreme_cases_df = prediction_df[np.abs(prediction_df['Actual']) >= 2]
     extreme_cases_df = prediction_df[np.abs(prediction_df['Actual']) >= 0.5]
     mid_cases_df = prediction_df.loc[~prediction_df.index.isin(extreme_cases_df.index)]
+
     # number of cases
     number_of_relevant_cases = len(prediction_df.index)
     number_of_mid_cases = len(mid_cases_df)
     number_of_extreme_cases = len(extreme_cases_df)
+    number_of_extreme_extreme_cases = len(extreme_extreme_cases_df)
     # accuracy of model differentiated by cases
     total_accuracy = np.round((prediction_df['Right or Wrong'].sum() / number_of_relevant_cases) * 100, 2)
     mid_accuracy = np.round((mid_cases_df['Right or Wrong'].sum() / number_of_mid_cases) * 100, 2)
     extreme_accuracy = np.round((extreme_cases_df['Right or Wrong'].sum() / number_of_extreme_cases) * 100, 2)
+    extreme_extreme_accuracy = np.round((extreme_extreme_cases_df['Right or Wrong'].sum() / number_of_extreme_extreme_cases) * 100, 2)
     # create a df which contains the accuracies of the different intervalls
-    acc_df = pd.DataFrame({'Intervall': ['Complete', '(0,0.5)', '[0.5, inf)'],
-                           'Accuracy': [total_accuracy, mid_accuracy, extreme_accuracy]})
+    acc_df = pd.DataFrame({'Intervall': ['Complete', '(0,0.5)', '[0.5, inf)', '[2, inf)'],
+                           'Accuracy': [total_accuracy, mid_accuracy, extreme_accuracy, extreme_extreme_accuracy]})
     return acc_df
 
 def forest_regression(features:DataFrame, label:DataFrame, seed, title_idea:str,  show_accuracy=False):
@@ -262,6 +279,9 @@ def linear_regression(features:DataFrame, label:DataFrame, seed, title_idea:str,
 
 def main(rand_seeds, acc_to_ex=False, sgm_to_excel=False):
     full_data, feature_df, label_series = read_data()
+    # feature_df = feature_df[['Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
+    #                         '% vars in DAG integer (out of vars in DAG)', '% vars in DAG unbounded (out of vars in DAG)',
+    #                         'Presolve Global Entities']]
 
     time_mixed_int_vbs = full_data[['Final solution time (cumulative) Mixed', 'Final solution time (cumulative) Int', 'Virtual Best']].copy()
 
@@ -284,8 +304,6 @@ def main(rand_seeds, acc_to_ex=False, sgm_to_excel=False):
     # loop over all combinations of imputation, scaling and regressor
     count = 0
     for rand_seed in rand_seeds:
-        count += 1
-        print(count)
         for imputation in imputations:
             imputed_data = impute(feature_df, columns_to_be_imputed, imputation)
             for scaling in scaler:
@@ -297,7 +315,7 @@ def main(rand_seeds, acc_to_ex=False, sgm_to_excel=False):
                             mean_to_mixed = predicted_time(time_mixed_int_vbs, p)
                             mean_to_mixed.extend(a['Accuracy'].values)
                             count += 1
-                            columns_for_collected_sgm[str(count)] = mean_to_mixed
+                            columns_for_collected_sgm['Linear: '+str(count)] = mean_to_mixed
                             for i in range(len(importance)):
                                 feat_importance_lin[importance['Feature'].iloc[i]] += i
                         elif regressor == 'RandomForestRegression':
@@ -305,7 +323,7 @@ def main(rand_seeds, acc_to_ex=False, sgm_to_excel=False):
                             mean_to_mixed = predicted_time(time_mixed_int_vbs, p)
                             mean_to_mixed.extend(a['Accuracy'].values)
                             count += 1
-                            columns_for_collected_sgm[str(count)] = mean_to_mixed
+                            columns_for_collected_sgm['Forest: '+str(count)] = mean_to_mixed
                             for i in range(len(importance)):
                                 feat_importance_for[importance['Feature'].iloc[i]] += i
                         else:
@@ -321,7 +339,7 @@ def main(rand_seeds, acc_to_ex=False, sgm_to_excel=False):
                             mean_to_mixed = predicted_time(time_mixed_int_vbs, p)
                             mean_to_mixed.extend(a['Accuracy'].values)
                             count += 1
-                            columns_for_collected_sgm[str(count)] = mean_to_mixed
+                            columns_for_collected_sgm['Linear: '+str(count)] = mean_to_mixed
                             for i in range(len(importance)):
                                 feat_importance_lin[importance['Feature'].iloc[i]] += i
                         elif regressor == 'RandomForestRegression':
@@ -329,7 +347,7 @@ def main(rand_seeds, acc_to_ex=False, sgm_to_excel=False):
                             mean_to_mixed = predicted_time(time_mixed_int_vbs, p)
                             mean_to_mixed.extend(a['Accuracy'].values)
                             count += 1
-                            columns_for_collected_sgm[str(count)] = mean_to_mixed
+                            columns_for_collected_sgm['Forest: '+str(count)] = mean_to_mixed
                             for i in range(len(importance)):
                                 feat_importance_for[importance['Feature'].iloc[i]] += i
                         else:
@@ -345,7 +363,7 @@ def main(rand_seeds, acc_to_ex=False, sgm_to_excel=False):
                             mean_to_mixed = predicted_time(time_mixed_int_vbs, p)
                             mean_to_mixed.extend(a['Accuracy'].values)
                             count += 1
-                            columns_for_collected_sgm[str(count)] = mean_to_mixed
+                            columns_for_collected_sgm['Linear: '+str(count)] = mean_to_mixed
                             for i in range(len(importance)):
                                 feat_importance_lin[importance['Feature'].iloc[i]] += i
                         elif regressor == 'RandomForestRegression':
@@ -353,7 +371,7 @@ def main(rand_seeds, acc_to_ex=False, sgm_to_excel=False):
                             mean_to_mixed = predicted_time(time_mixed_int_vbs, p)
                             mean_to_mixed.extend(a['Accuracy'].values)
                             count += 1
-                            columns_for_collected_sgm[str(count)] = mean_to_mixed
+                            columns_for_collected_sgm['Forest: '+str(count)] = mean_to_mixed
                             for i in range(len(importance)):
                                 feat_importance_for[importance['Feature'].iloc[i]] += i
                         else:
@@ -365,13 +383,13 @@ def main(rand_seeds, acc_to_ex=False, sgm_to_excel=False):
                     print('Not a valid scaler.')
                     return 1
 
-    collected_sgm_df = pd.DataFrame({'TimeShiftedGeoMean': ['Mixed', 'Predicted', 'Virtual Best', 'Complete', '(0-0.5)', '[0.5,inf)']})
+    collected_sgm_df = pd.DataFrame({'TimeShiftedGeoMean': ['Mixed', 'Predicted', 'Virtual Best', 'Complete', '(0-0.5)', '[0.5,inf)', '[2,inf)']})
     sgm_with_accuracies_df = pd.concat([collected_sgm_df, pd.DataFrame(columns_for_collected_sgm)], axis=1)
     if acc_to_ex:
         collected_accuracies_df.to_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/collected_accuracies_{date_string}.xlsx',
                       index=False)
     if sgm_to_excel:
-        sgm_with_accuracies_df.to_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/100_collected_shifted_geo_means_with_accuracies_{date_string}.xlsx',
+        sgm_with_accuracies_df.to_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/50_collected_shifted_geo_means_with_accuracies_{date_string}.xlsx',
                   index=False)
     combined_importance = {key: feat_importance_lin[key] + feat_importance_for[key] for key in feat_importance_lin}
     return feat_importance_lin, feat_importance_for, combined_importance, collected_accuracies_df
@@ -390,8 +408,10 @@ def get_importances(importance_dict, to_excel=False):
 
 hundred_seeds = [2207168494, 288314836, 1280346069, 1968903417, 1417846724, 2942245439, 2177268096, 571870743, 1396620602, 3691808733, 4033267948, 3898118442, 24464804, 882010483, 2324915710, 316013333, 3516440788, 535561664, 1398432260, 572356937, 398674085, 4189070509, 429011752, 2112194978, 3234121722, 2237947797, 738323230, 3626048517, 733189883, 4126737387, 2399898734, 1856620775, 829894663, 3495225726, 1844165574, 1282240360, 2872252636, 1134263538, 1174739769, 2128738069, 1900004914, 3146722243, 3308693507, 4218641677, 563163990, 568995048, 263097927, 1693665289, 1341861657, 1387819803, 157390416, 2921975935, 1640670982, 4226248960, 698121968, 1750369715, 3843330071, 2093310729, 1822225600, 958203997, 2478344316, 3925818254, 2912980295, 1684864875, 362704412, 859117595, 2625349598, 3108382227, 1891799436, 1512739996, 1533327828, 1210988828, 3504138071, 1665201999, 1023133507, 4024648401, 1024137296, 3118826909, 4052173232, 3143265894, 1584118652, 1023587314, 666405231, 2782652704, 744281271, 3094311947, 3882962880, 325283101, 923999093, 4013370079, 2033245880, 289901203, 3049281880, 1507732364, 698625891, 1203175353, 1784663289, 2270465462, 537517556, 2411126429]
 one_seed = hundred_seeds[46:47]
-x_seeds = random.sample(hundred_seeds, 1)
-impo_lin, impo_for, combined_impo, accs = main(hundred_seeds, acc_to_ex=False, sgm_to_excel=False)
+ten_seeds = [1024137296, 4024648401, 2912980295, 568995048, 362704412, 1684864875, 1282240360, 829894663, 1341861657, 3626048517]
+twenty_seeds = [1507732364, 666405231, 1024137296, 4218641677, 1684864875, 362704412, 4013370079, 3143265894, 2324915710, 1387819803, 3118826909, 1341861657, 1210988828, 2270465462, 1640670982, 537517556, 2237947797, 2942245439, 882010483, 744281271]
+fifty_seeds = [563163990, 3495225726, 1684864875, 263097927, 829894663, 958203997, 1396620602, 4218641677, 3308693507, 362704412, 738323230, 537517556, 3049281880, 2093310729, 1784663289, 4052173232, 1280346069, 1210988828, 2207168494, 1174739769, 429011752, 1693665289, 698121968, 4033267948, 325283101, 744281271, 1417846724, 2478344316, 2033245880, 3118826909, 1203175353, 1024137296, 1665201999, 1891799436, 3691808733, 2872252636, 3094311947, 1387819803, 289901203, 2112194978, 1023587314, 1341861657, 923999093, 2942245439, 3898118442, 1023133507, 572356937, 1398432260, 3925818254, 2912980295]
+impo_lin, impo_for, combined_impo, accs = main(fifty_seeds, acc_to_ex=False, sgm_to_excel=True)
 
 
 
