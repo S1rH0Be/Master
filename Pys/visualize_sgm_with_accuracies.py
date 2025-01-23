@@ -36,27 +36,30 @@ def plot_sgms(df, labels, title: str) -> None:
     plt.show()
     plt.close()
 
-accs_and_sgm = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/50_collected_shifted_geo_means_with_accuracies_17_01.xlsx')
+accs_and_sgm = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/50_collected_shifted_geo_means_with_accuracies_extreme_extreme_stanni_yeo_20_01.xlsx')
+accs_and_sgm = accs_and_sgm.iloc[:-1,:] # last row is empty
+
+
 
 sgms = [shifted_geometric_mean(row.iloc[1:], 0.001) for index, row in accs_and_sgm.iterrows()]
 # accuracies in prozent-> divide by 100 to have same scale as relative sgms
-sgms[3:7] = [np.round(sgms[i]/100,6) for i in range(3,7)]
+sgms[3:6] = [np.round(sgms[i]/100,6) for i in range(3,6)]
 global_sgms = pd.DataFrame({'Origin': accs_and_sgm.iloc[:,0], 'SGMs':sgms})
-plot_sgms(global_sgms, global_sgms['Origin'],'Global SGMs on Top4global')
+plot_sgms(global_sgms, global_sgms['Origin'],'Global SGMs on AllFeats only Stanni/Yeo')
 
 linear_columns = [col for col in accs_and_sgm.columns if 'Linear' in col]
 linear_accs_and_sgms = accs_and_sgm[linear_columns].copy()
 linear_sgms = [shifted_geometric_mean(row.iloc[1:], 0.001) for index, row in linear_accs_and_sgms.iterrows()]
-linear_sgms[3:7] = [np.round(linear_sgms[i]/100,6) for i in range(3,7)]
+linear_sgms[3:6] = [np.round(linear_sgms[i]/100,6) for i in range(3,6)]
 linear_sgms_df = pd.DataFrame({'Origin': accs_and_sgm.iloc[:,0], 'SGMs':linear_sgms})
-plot_sgms(linear_sgms_df, linear_sgms_df['Origin'],'Linear SGMs')
+plot_sgms(linear_sgms_df, linear_sgms_df['Origin'],'Linear SGMs on AllFeats only Stanni/Yeo')
 
 
 forest_columns = [col for col in accs_and_sgm.columns if 'Forest' in col]
 forest_accs_and_sgms = accs_and_sgm[forest_columns].copy()
 forest_accs_and_sgms = forest_accs_and_sgms
 forest_sgms = [shifted_geometric_mean(row.iloc[1:], 0.001) for index, row in forest_accs_and_sgms.iterrows()]
-forest_sgms[3:7] = [np.round(forest_sgms[i]/100,6) for i in range(3,7)]
+forest_sgms[3:6] = [np.round(forest_sgms[i]/100,6) for i in range(3,6)]
 forest_sgms_df = pd.DataFrame({'Origin': accs_and_sgm.iloc[:,0], 'SGMs':forest_sgms})
 plot_sgms(forest_sgms_df, forest_sgms_df['Origin'],'Forest SGMs')
 

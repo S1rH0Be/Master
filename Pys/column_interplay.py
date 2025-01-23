@@ -2,7 +2,6 @@ from typing import List
 import string
 import pandas as pd
 import numpy as np
-from aiohttp.web_routedef import static
 
 
 def delete_instances(df, instances, reason):
