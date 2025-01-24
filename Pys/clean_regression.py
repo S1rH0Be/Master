@@ -1,31 +1,26 @@
-from itertools import count
-
 import numpy as np
 import pandas as pd
 from pandas import Series
 import time
 from datetime import datetime
-from pandas.core.interchange.dataframe_protocol import DataFrame
 # scikitlearn
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import StandardScaler, PowerTransformer
+from sklearn.preprocessing import QuantileTransformer, PowerTransformer
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split, cross_val_score, KFold
 from sklearn.metrics import r2_score
-# plotting
-import matplotlib.pyplot as plt
-from feature_distribution import feature_histo
+
 
 # Get the current date
 current_date = datetime.now()
 # Format it as a string
 date_string = current_date.strftime("%d_%m")
 
-def read_data(version='23_01'):
-    data = pd.read_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/clean_data_final_{version}.xlsx').drop(columns='Matrix Name')
-    feats = pd.read_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/final_features_{version}.xlsx')
+def read_data():
+    data = pd.read_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/base_data_24_01.xlsx').drop(columns='Matrix Name')
+    feats = pd.read_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/base_feats_no_cmp_24_01.xlsx')
     label = data['Cmp Final solution time (cumulative)']
     return data, feats, label
 
@@ -42,16 +37,6 @@ def scale_label(label):
     y_neg_log = np.log(abs(y_neg) + 1) * -1
     y_log = pd.concat([y_pos_log, y_neg_log])
     return y_log
-
-def box_plot(values:Series, title:str):
-    plt.boxplot(values, vert=True, patch_artist=True)
-    plt.title(title)
-    plt.ylabel("Values")
-    plt.show()
-    plt.close()
-
-def bar_plot(values:Series, title:str):
-    return 0
 
 def get_accuracy(prediction, actual):
     # Filter for nonzero labels
@@ -89,11 +74,16 @@ def get_info(values:Series):
 def regression(features, label, random_seeds, cross_val=False):
 
     imputations = ['constant', 'median', 'mean']
-    scalers = [None, PowerTransformer('yeo-johnson'), StandardScaler()] #'byHand',
+    scalers = [None, PowerTransformer('yeo-johnson'),
+               QuantileTransformer(n_quantiles=100,output_distribution="normal",random_state=42)] #'byHand',
     models = {"LinearRegression": LinearRegression(),
-              "RandomForest": RandomForestRegressor()}
+              "RandomForest": RandomForestRegressor(n_estimators=100, random_state=729154)}
 
     results = []
+
+    # Initialize dictionaries to collect feature importance data
+    linear_feature_importance_data = {}
+    forest_feature_importance_data = {}
 
     linear_feature_importance_df = pd.DataFrame({'Feature': ['Matrix Equality Constraints', 'Matrix Quadratic Elements',
                                                              'Matrix NLP Formula', 'Presolve Columns',
@@ -148,10 +138,13 @@ def regression(features, label, random_seeds, cross_val=False):
                     # feature importance
                     if model_name == "LinearRegression":
                         coefficients = model.coef_
-                        linear_feature_importance_df[str(model_name)+str(imputation)+str(scaler)+str(count)] = coefficients
+                        # linear_feature_importance_df[str(model_name)+str(imputation)+str(scaler)+str(count)] = coefficients
+                        linear_feature_importance_data[f"{model_name}_{imputation}_{scaler}_{count}"] = coefficients
                     elif model_name == "RandomForest":
                         importance = model.feature_importances_
-                        forest_feature_importance_df[str(model_name)+str(imputation)+str(scaler)+str(count)] = importance
+                        # Collect data in the dictionary
+                        forest_feature_importance_data[f"{model_name}_{imputation}_{scaler}_{count}"] = importance
+                        # forest_feature_importance_df[str(model_name)+str(imputation)+str(scaler)+str(count)] = importance
 
                     if cross_val:
                         # Perform cross-validation
@@ -183,11 +176,13 @@ def regression(features, label, random_seeds, cross_val=False):
 
     # Convert results to a DataFrame
     results_df = pd.DataFrame(results)
-
+    # Convert the dictionaries into DataFrames after the loop
+    linear_feature_importance_df = pd.concat([linear_feature_importance_df, pd.DataFrame.from_dict(linear_feature_importance_data, orient='columns')], axis=1)
+    forest_feature_importance_df = pd.concat([forest_feature_importance_df, pd.DataFrame.from_dict(forest_feature_importance_data, orient='columns')], axis=1)
     print(f"Execution time: {elapsed_time:.2f} seconds")
     return results_df, linear_feature_importance_df, forest_feature_importance_df
 
-def regress_on_different_sets_based_on_label_magnitude(log_label=False):
+def regress_on_different_sets_based_on_label_magnitude(number_of_seeds:str, log_label=False, to_excel=False):
     d, feat, target = read_data()
 
     hundred_seeds = [2207168494, 288314836, 1280346069, 1968903417, 1417846724, 2942245439, 2177268096, 571870743,
@@ -218,74 +213,83 @@ def regress_on_different_sets_based_on_label_magnitude(log_label=False):
                    1891799436, 3691808733, 2872252636, 3094311947, 1387819803, 289901203, 2112194978, 1023587314,
                    1341861657, 923999093, 2942245439, 3898118442, 1023133507, 572356937, 1398432260, 3925818254,
                    2912980295]
+    seed_dict = {'one': one_seed, 'ten': ten_seeds, 'twenty': twenty_seeds, 'fifty': fifty_seeds,
+                 'hundred': hundred_seeds}
 
     if log_label:
         feat_below_thousand, target_below_thousand = kick_outlier(feat, target, 1000)
         target_below_thousand = scale_label(target_below_thousand)
-        result_below_thousand_df, linear_importance, forest_importance = regression(feat_below_thousand, target_below_thousand, random_seeds=fifty_seeds)
-        result_below_thousand_df.to_excel(
-            f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/TestCombinations/label_logged_below_1000_50s_v1601_{date_string}.xlsx',
-            index=False)
-        return linear_importance, forest_importance
+        result_below_thousand_df, linear_importance, forest_importance = regression(feat_below_thousand, target_below_thousand, random_seeds=seed_dict[number_of_seeds])
+
+        if to_excel:
+            result_below_thousand_df.to_excel(
+                f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/results_logged_label/label_logged_below_1000_{number_of_seeds}_seeds_{date_string}.xlsx',
+                index=False)
+            linear_importance.to_excel(
+                f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/results_logged_label/linear_importance_label_logged_below_1000_{number_of_seeds}_seeds_{date_string}.xlsx',
+                index=False)
+            forest_importance.to_excel(
+                f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/results_logged_label/forest_importance_label_logged_below_1000_{number_of_seeds}_seeds_{date_string}.xlsx',
+                index=False)
 
     else:
-        result_df = regression(feat, target, random_seeds=ten_seeds)
-        result_df.to_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/TestCombinations/10s_v1601_{date_string}.xlsx', index=False)
+        result_df, lin_impo, for_impo = regression(feat, target, random_seeds=seed_dict[number_of_seeds])
 
         feat_below_thousand, target_below_thousand = kick_outlier(feat, target, 1000)
-        result_below_thousand_df = regression(feat_below_thousand, target_below_thousand, random_seeds=ten_seeds)
-        result_below_thousand_df.to_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/TestCombinations/below_1000_10s_v1601_{date_string}.xlsx', index=False)
+        result_below_thousand_df, linear_importance_1000, forest_importance_1000 = regression(feat_below_thousand, target_below_thousand, random_seeds=seed_dict[number_of_seeds])
 
         feat_below_twohundred, target_below_twohundred = kick_outlier(feat, target, 200)
-        result_below_twohundred_df = regression(feat_below_twohundred, target_below_twohundred, random_seeds=ten_seeds)
-        result_below_twohundred_df.to_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/TestCombinations/below_200_10s_v1601_{date_string}.xlsx', index=False)
+        result_below_twohundred_df, linear_importance_200, forest_importance_200 = regression(feat_below_twohundred, target_below_twohundred, random_seeds=seed_dict[number_of_seeds])
 
-extreme_all = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/TestCombinations/10s_v1601.xlsx')
-extreme_thousand = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/TestCombinations/label_below_1000_10s_v1601.xlsx')
-extreme_twohundred = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/TestCombinations/label_below_200_10s_v1601.xlsx')
+        if to_excel:
+            result_df.to_excel(
+                f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/results_unscaled_label/all/{number_of_seeds}_seeds_{date_string}.xlsx',
+                index=False)
+            lin_impo.to_excel(
+                f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/results_unscaled_label/all/linear_importance_combined_{number_of_seeds}_seeds_{date_string}.xlsx',
+                index=False)
+            for_impo.to_excel(
+                f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/results_unscaled_label/all/forest_importance_combined_{number_of_seeds}_seeds_{date_string}.xlsx',
+                index=False)
 
-data_sets = [extreme_all, extreme_thousand, extreme_twohundred]
-linear_data_sets = [df[df['Model'] == 'LinearRegression'] for df in data_sets]
-forest_data_sets = [df[df['Model'] == 'RandomForest'] for df in data_sets]
+            result_below_thousand_df.to_excel(
+                f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/results_unscaled_label/below_thousand/below_1000_{number_of_seeds}_seeds_{date_string}.xlsx',
+                index=False)
+            linear_importance_1000.to_excel(
+                f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/results_unscaled_label/below_thousand/linear_importance_below_1000_{number_of_seeds}_seeds_{date_string}.xlsx',
+                index=False)
+            forest_importance_1000.to_excel(
+                f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/results_unscaled_label/below_thousand/forest_importance_below_1000_{number_of_seeds}_seeds_{date_string}.xlsx',
+                index=False)
+
+            result_below_twohundred_df.to_excel(
+                f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/results_unscaled_label/below_twohundred/below_200_{number_of_seeds}_seeds_{date_string}.xlsx',
+                index=False)
+            linear_importance_200.to_excel(
+                f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/results_unscaled_label/below_twohundred/linear_importance_below_200_{number_of_seeds}_seeds_{date_string}.xlsx',
+                index=False)
+            forest_importance_200.to_excel(
+                f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/results_unscaled_label/below_twohundred/forest_importance_below_200_{number_of_seeds}_seeds_{date_string}.xlsx',
+                index=False)
+
+# regress_on_different_sets_based_on_label_magnitude('hundred', log_label=False, to_excel=True)
+# regress_on_different_sets_based_on_label_magnitude('hundred', log_label=True, to_excel=True)
 
 
-# lin_impo, for_impo = regress_on_different_sets_based_on_label_magnitude(log_label=True)
-# lin_impo.to_excel(
-#     f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/TestCombinations/lin_importance_label_logged_below_1000_50s_v1601_{date_string}.xlsx',
-#     index=False)
-# for_impo.to_excel(
-#     f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/TestCombinations/for_importance_label_logged_below_1000_50s_v1601_{date_string}.xlsx',
-#     index=False)
+logged_accuracies = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/log_vs_unscaled/Accuracies/logged.xlsx')
+unscaled_accuracies = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/log_vs_unscaled/Accuracies/unscaled.xlsx')
+unscaled_below_200 = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/log_vs_unscaled/Accuracies/unscaled_below_200.xlsx')
 
-from scipy.stats import gmean
-def plot_column_variance(df, model_name:str):
-    """
-    Calculates the variance of each column in a DataFrame and plots it in a bar graph.
+# print('All:\n', logged_accuracies[['Accuracy', 'Extreme Accuracy']].mean())
+# print('None:\n', logged_accuracies[['Accuracy', 'Extreme Accuracy']][(logged_accuracies['Scaling']!='QuantileTransformer')&(logged_accuracies['Scaling']!='PowerTransformer')].mean())
+# print('Quantile:\n', logged_accuracies[['Accuracy', 'Extreme Accuracy']][logged_accuracies['Scaling']=='QuantileTransformer'].mean())
+# print('Power:\n', logged_accuracies[['Accuracy', 'Extreme Accuracy']][logged_accuracies['Scaling']=='PowerTransformer'].mean())
 
-    Parameters:
-    df (pd.DataFrame): Input DataFrame
+# print('All:\n', unscaled_accuracies[['Accuracy', 'Extreme Accuracy']].mean())
+# print('Linear:\n', unscaled_accuracies[['Accuracy', 'Extreme Accuracy']][unscaled_accuracies['Model']=='LinearRegression'].mean())
+# print('Forest:\n', unscaled_accuracies[['Accuracy', 'Extreme Accuracy']][unscaled_accuracies['Model']=='RandomForest'].mean())
+#
+# print('All:\n', unscaled_below_200[['Accuracy', 'Extreme Accuracy']].mean())
+# print('Linear:\n', unscaled_below_200[['Accuracy', 'Extreme Accuracy']][unscaled_below_200['Model']=='LinearRegression'].mean())
+# print('Forest:\n', unscaled_below_200[['Accuracy', 'Extreme Accuracy']][unscaled_below_200['Model']=='RandomForest'].mean())
 
-    Returns:
-    None
-    """
-    # Calculate geometric mean for each column
-    geometric_means = df.apply(lambda col: gmean(col[col > 0]), axis=0)
-
-    # Plot the variance as a bar graph
-    plt.figure(figsize=(10, 6))
-    plt.bar(geometric_means.index, geometric_means.values, color='skyblue')
-
-    # Add labels and title
-    plt.xlabel('Runs')
-    plt.ylabel('Variance')
-    plt.title(f'GeoMean of Feature Importance for each {model_name} run')
-    plt.tight_layout()
-    # Remove x-axis ticks
-    plt.xticks([])
-    # Show the plot
-    plt.show()
-
-# lin = pd.read_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/TestCombinations/lin_importance_label_logged_below_1000_50s_v1601_{date_string}.xlsx').drop('Feature', axis=1)
-# forest = pd.read_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/TestCombinations/for_importance_label_logged_below_1000_50s_v1601_{date_string}.xlsx').drop('Feature', axis=1)
-# plot_column_variance(abs(lin), 'Linear')
-# plot_column_variance(forest, 'Forest')

@@ -3,7 +3,7 @@ different features. Once for Mixed and once for Int"""
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.preprocessing import PowerTransformer, StandardScaler
+from sklearn.preprocessing import PowerTransformer, QuantileTransformer
 
 
 def feature_histo(df, columns: list, number_bins=10):
@@ -145,9 +145,17 @@ def scale_cmp_df(cmp_feat_df):
 # yeo_johnson(data[nonneg_cols], histo=True)
 # box_cox(data[nonneg_cols], histo=True)
 
+data = pd.read_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/base_data_24_01.xlsx').drop(columns='Matrix Name')
+feats = pd.read_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/base_feats_no_cmp_24_01.xlsx')
+label = data['Cmp Final solution time (cumulative)']
 
-
-
+normalized_feats = feats / feats.max(axis=0)
+# Create a StandardScaler instance
+scaler = QuantileTransformer(n_quantiles=100,output_distribution="normal", random_state=42)
+# Fit the scaler and transform the data
+scaled_data = scaler.fit_transform(feats)
+scaled_df = pd.DataFrame(scaled_data, columns=feats.columns, index=feats.index)
+feature_histo(scaled_df, feats.columns)
 
 
 """Detect outlier"""
