@@ -9,9 +9,9 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import QuantileTransformer, PowerTransformer
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import train_test_split, cross_val_score, KFold
-from sklearn.metrics import r2_score
-
+from sklearn.model_selection import train_test_split
+# plotting
+from visualize_erfolg import shifted_geometric_mean
 
 # Get the current date
 current_date = datetime.now()
@@ -21,6 +21,10 @@ date_string = current_date.strftime("%d_%m")
 def read_data():
     data = pd.read_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/base_data_24_01.xlsx').drop(columns='Matrix Name')
     feats = pd.read_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/base_feats_no_cmp_24_01.xlsx')
+    # feats = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/max_scaling/yeo_johnson.xlsx')
+    # feats = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/max_scaling/quantile.xlsx')
+
+    # feats = feats/feats.max()
     label = data['Cmp Final solution time (cumulative)']
     return data, feats, label
 
@@ -35,10 +39,10 @@ def scale_label(label):
     y_neg = label[label < 0]
     y_pos_log = np.log(y_pos + 1)
     y_neg_log = np.log(abs(y_neg) + 1) * -1
-    y_log = pd.concat([y_pos_log, y_neg_log])
+    y_log = pd.concat([y_pos_log, y_neg_log]).sort_index()
     return y_log
 
-def get_accuracy(prediction, actual):
+def get_accuracy(prediction, actual, extreme_value):
     # Filter for nonzero labels
     nonzero_indices = actual != 0
     y_test_nonzero = actual[nonzero_indices]
@@ -49,8 +53,11 @@ def get_accuracy(prediction, actual):
     percent_correct_signs = correct_signs / len(y_test_nonzero) * 100 if len(y_test_nonzero) > 0 else np.nan
 
     # Filter for extreme labels
-    extreme_indices = abs(actual) >= 1.5
+    extreme_indices = abs(actual) >= extreme_value
+
+
     y_test_extreme = actual[extreme_indices]
+    number_extreme_signs = (len(y_test_extreme), len(y_test_nonzero))
     y_pred_extreme = prediction[extreme_indices]
 
     # Calculate percentage of correctly predicted signs
@@ -58,7 +65,7 @@ def get_accuracy(prediction, actual):
     percent_correct_extreme_signs = correct_extreme_signs / len(y_test_extreme) * 100 if len(
         y_test_extreme) > 0 else np.nan
 
-    return percent_correct_signs, percent_correct_extreme_signs
+    return percent_correct_signs, percent_correct_extreme_signs, number_extreme_signs
 
 def get_info(values:Series):
 
@@ -71,13 +78,25 @@ def get_info(values:Series):
     print('Variance: ', values.var())
     print('Negative r2: ', len(values[values<0]))
 
-def regression(features, label, random_seeds, cross_val=False):
+def predicted_time(time_df, prediction_df):
+    pred_index = prediction_df.index
+    pred_df = time_df.loc[pred_index,:].copy()
 
-    imputations = ['constant', 'median', 'mean']
-    scalers = [None, PowerTransformer('yeo-johnson'),
-               QuantileTransformer(n_quantiles=100,output_distribution="normal",random_state=42)] #'byHand',
-    models = {"LinearRegression": LinearRegression(),
-              "RandomForest": RandomForestRegressor(n_estimators=100, random_state=729154)}
+    pred_df['Predicted Time'] = pred_df['Virtual Best']
+
+    for index, row in prediction_df.iterrows():
+        if row['Right or Wrong'] != 1:
+            pred_df.loc[index, 'Predicted Time'] = max(pred_df.loc[index, 'Final solution time (cumulative) Mixed'],
+                                                       pred_df.loc[index, 'Final solution time (cumulative) Int'])
+    pred_df['Time Save/Loss'] = abs(pred_df['Predicted Time'] - pred_df['Virtual Best'])
+
+    mixed_mean = shifted_geometric_mean(pred_df['Final solution time (cumulative) Mixed'], 0.5)
+    predicted_time_mean = shifted_geometric_mean(pred_df['Predicted Time'], 0.5)
+    vbs_mean = shifted_geometric_mean(pred_df['Virtual Best'], 0.5)
+    relative_to_mixed_mean = [1.0, predicted_time_mean/mixed_mean, vbs_mean/mixed_mean]
+    return relative_to_mixed_mean
+
+def regression(full_data, features, label, scalers, imputations, models, random_seeds, extreme_threshold=4.0):
 
     results = []
 
@@ -85,22 +104,11 @@ def regression(features, label, random_seeds, cross_val=False):
     linear_feature_importance_data = {}
     forest_feature_importance_data = {}
 
-    linear_feature_importance_df = pd.DataFrame({'Feature': ['Matrix Equality Constraints', 'Matrix Quadratic Elements',
-                                                             'Matrix NLP Formula', 'Presolve Columns',
-                                                             'Presolve Global Entities',
-                                                             '#nodes in DAG', '#integer violations at root',
-                                                             '#nonlinear violations at root',
-                                                             '% vars in DAG (out of all vars)',
-                                                             '% vars in DAG unbounded (out of vars in DAG)',
-                                                             '% vars in DAG integer (out of vars in DAG)',
-                                                             '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
-                                                             'Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
-                                                             'Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
-                                                             'Avg relative bound change for solving strong branching LPs for spatial branchings (not including infeasible ones) Mixed',
-                                                             'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
-                                                             'Cmp #spatial branching entities fixed (at the root)',
-                                                             'Cmp Avg coefficient spread for convexification cuts']})
+    linear_feature_importance_df = pd.DataFrame({'Feature': features.columns})
     forest_feature_importance_df = linear_feature_importance_df.copy()
+
+    time_mixed_int_vbs = full_data[['Final solution time (cumulative) Mixed', 'Final solution time (cumulative) Int', 'Virtual Best']].copy()
+    columns_for_collected_sgm = {}
 
     count=0
     start_time = time.time()
@@ -109,7 +117,7 @@ def regression(features, label, random_seeds, cross_val=False):
             for scaler in scalers:
                 for seed in random_seeds:
                     count+=1
-                    X_train, X_test, y_train, y_test = train_test_split(features, label, test_size=0.3,random_state=seed)
+                    X_train, X_test, y_train, y_test = train_test_split(features, label, test_size=0.2,random_state=seed)
                     # Build pipeline
                     steps = []
                     # Add imputation
@@ -119,57 +127,51 @@ def regression(features, label, random_seeds, cross_val=False):
                         steps.append(('scaler', scaler))
                     # Add model
                     steps.append(('model', model))
-
                     # Create pipeline
                     pipeline = Pipeline(steps)
-
                     # Update model-specific parameters
                     if model_name == "RandomForest":
                         model.random_state = seed
-
                     # Train the pipeline
                     pipeline.fit(X_train, y_train)
-
                     # Evaluate on the test set
-                    y_pred = pipeline.predict(X_test)
-                    r2 = r2_score(y_test, y_pred)
+                    relevant_indices = y_test[y_test != 0].index
+                    y_test_relevant = y_test.loc[relevant_indices]
+
+                    y_pred_relevant = pipeline.predict(X_test.loc[relevant_indices, :])
                     # get the accuracy of predicted signs
-                    total_accuracy, extreme_accuracy = get_accuracy(y_pred, y_test)
+                    total_accuracy, extreme_accuracy, number_ex_instances = get_accuracy(y_pred_relevant, y_test.loc[relevant_indices], extreme_threshold)
+                    # sgm of predicted time
+                    pred_df = pd.DataFrame({'Prediction': y_pred_relevant, 'Actual': y_test_relevant},
+                                           index=relevant_indices)
+                    pred_df['Right or Wrong'] = (np.sign(pred_df['Prediction']) == np.sign(pred_df['Actual'])).astype(int)
+                    # add column containing the absolute difference in prediction and actual
+                    pred_df['Abs Time Diff'] = abs(pred_df['Prediction'] - pred_df['Actual'])
+
                     # feature importance
                     if model_name == "LinearRegression":
                         coefficients = model.coef_
                         # linear_feature_importance_df[str(model_name)+str(imputation)+str(scaler)+str(count)] = coefficients
                         linear_feature_importance_data[f"{model_name}_{imputation}_{scaler}_{count}"] = coefficients
+                        mean_to_mixed = predicted_time(time_mixed_int_vbs, pred_df)
+                        columns_for_collected_sgm['Linear: ' + str(count)] = mean_to_mixed
+
                     elif model_name == "RandomForest":
                         importance = model.feature_importances_
                         # Collect data in the dictionary
                         forest_feature_importance_data[f"{model_name}_{imputation}_{scaler}_{count}"] = importance
                         # forest_feature_importance_df[str(model_name)+str(imputation)+str(scaler)+str(count)] = importance
+                        mean_to_mixed = predicted_time(time_mixed_int_vbs, pred_df)
+                        columns_for_collected_sgm['Forest: ' + str(count)] = mean_to_mixed
 
-                    if cross_val:
-                        # Perform cross-validation
-                        cv = KFold(n_splits=5, shuffle=True, random_state=seed)
-                        cv_scores = cross_val_score(pipeline, X_train, y_train, cv=cv, scoring='r2')
-                        # Store results
-                        results.append({
-                            "Model": model_name,
-                            "Imputation": imputation,
-                            "Scaling": scaler.__class__.__name__ if scaler else None,
-                            "CV Mean R2": cv_scores.mean(),
-                            "CV Std R2": cv_scores.std(),
-                            "Test R2": r2,
-                            "Accuracy": total_accuracy,
-                            "Extreme Accuracy": extreme_accuracy
-                        })
-                    else:
-                        results.append({
-                            "Model": model_name,
-                            "Imputation": imputation,
-                            "Scaling": scaler.__class__.__name__ if scaler else None,
-                            "r2": r2,
-                            "Accuracy": total_accuracy,
-                            "Extreme Accuracy": extreme_accuracy
-                        })
+                    results.append({
+                        "Model": model_name,
+                        "Imputation": imputation,
+                        "Scaling": scaler.__class__.__name__ if scaler else None,
+                        "Accuracy": total_accuracy,
+                        "Extreme Accuracy": extreme_accuracy,
+                        "Number Extreme Instances": number_ex_instances
+                    })
 
     # Calculate elapsed time
     elapsed_time = time.time() - start_time
@@ -179,11 +181,23 @@ def regression(features, label, random_seeds, cross_val=False):
     # Convert the dictionaries into DataFrames after the loop
     linear_feature_importance_df = pd.concat([linear_feature_importance_df, pd.DataFrame.from_dict(linear_feature_importance_data, orient='columns')], axis=1)
     forest_feature_importance_df = pd.concat([forest_feature_importance_df, pd.DataFrame.from_dict(forest_feature_importance_data, orient='columns')], axis=1)
+    collected_sgm_df = pd.DataFrame({'TimeShiftedGeoMean': ['Mixed', 'Predicted', 'Virtual Best']})
+    sgm_run_time_df = pd.concat([collected_sgm_df, pd.DataFrame(columns_for_collected_sgm)], axis=1)
     print(f"Execution time: {elapsed_time:.2f} seconds")
-    return results_df, linear_feature_importance_df, forest_feature_importance_df
+    return results_df, linear_feature_importance_df, forest_feature_importance_df, sgm_run_time_df
 
-def regress_on_different_sets_based_on_label_magnitude(number_of_seeds:str, log_label=False, to_excel=False):
+def regress_on_different_sets_based_on_label_magnitude(number_of_seeds:str, regressors, scalers, imputations, feature_names,
+                                                       outlier_threshold=1000,  log_label=False, to_excel=False, sgm=False,
+                                                       directory_for_excels='/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/Tester/'):
     d, feat, target = read_data()
+    feat = feat[feature_names]
+    if len(regressors) == 2:
+        regressor_names_for_excel = 'both'
+    elif len(regressors) == 1:
+        regressor_names_for_excel = next(iter(regressors.keys()))
+    else:
+        print('Either no or too many regressors selected')
+        return 1
 
     hundred_seeds = [2207168494, 288314836, 1280346069, 1968903417, 1417846724, 2942245439, 2177268096, 571870743,
                      1396620602, 3691808733, 4033267948, 3898118442, 24464804, 882010483, 2324915710, 316013333,
@@ -217,79 +231,136 @@ def regress_on_different_sets_based_on_label_magnitude(number_of_seeds:str, log_
                  'hundred': hundred_seeds}
 
     if log_label:
-        feat_below_thousand, target_below_thousand = kick_outlier(feat, target, 1000)
-        target_below_thousand = scale_label(target_below_thousand)
-        result_below_thousand_df, linear_importance, forest_importance = regression(feat_below_thousand, target_below_thousand, random_seeds=seed_dict[number_of_seeds])
+        feat_below_threshold, target_below_threshold = kick_outlier(feat, target, outlier_threshold)
+        target_below_threshold = scale_label(target_below_threshold)
+        result_below_threshold_df, linear_importance, forest_importance, sgm_df = regression(d, feat_below_threshold, target_below_threshold, scalers, imputations, regressors, random_seeds=seed_dict[number_of_seeds], extreme_threshold=1.6)
+        if sgm:
+            sgm_df.to_excel(directory_for_excels+f'/Logged/SGM/sgm_logged_t{len(feature_names)}_{regressor_names_for_excel}_below_{outlier_threshold}_{number_of_seeds}_seeds_{date_string}.xlsx', index=False)
 
         if to_excel:
-            result_below_thousand_df.to_excel(
-                f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/results_logged_label/label_logged_below_1000_{number_of_seeds}_seeds_{date_string}.xlsx',
+            result_below_threshold_df.to_excel(
+                directory_for_excels + f'/Logged/Accuracy/logged_t{len(feature_names)}_{regressor_names_for_excel}_below_{outlier_threshold}_{number_of_seeds}_seeds_{date_string}.xlsx',
                 index=False)
             linear_importance.to_excel(
-                f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/results_logged_label/linear_importance_label_logged_below_1000_{number_of_seeds}_seeds_{date_string}.xlsx',
+                directory_for_excels + f'/Logged/Importance/logged_lin_impo_t{len(feature_names)}_below_{outlier_threshold}_{number_of_seeds}_seeds_{date_string}.xlsx',
                 index=False)
             forest_importance.to_excel(
-                f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/results_logged_label/forest_importance_label_logged_below_1000_{number_of_seeds}_seeds_{date_string}.xlsx',
+                directory_for_excels + f'/Logged/Importance/logged_forest_impo_t{len(feature_names)}_below_{outlier_threshold}_{number_of_seeds}_seeds_{date_string}.xlsx',
                 index=False)
 
     else:
-        result_df, lin_impo, for_impo = regression(feat, target, random_seeds=seed_dict[number_of_seeds])
-
-        feat_below_thousand, target_below_thousand = kick_outlier(feat, target, 1000)
-        result_below_thousand_df, linear_importance_1000, forest_importance_1000 = regression(feat_below_thousand, target_below_thousand, random_seeds=seed_dict[number_of_seeds])
-
-        feat_below_twohundred, target_below_twohundred = kick_outlier(feat, target, 200)
-        result_below_twohundred_df, linear_importance_200, forest_importance_200 = regression(feat_below_twohundred, target_below_twohundred, random_seeds=seed_dict[number_of_seeds])
+        feat_below_threshold, target_below_threshold = kick_outlier(feat, target, outlier_threshold)
+        result_below_threshold_df, linear_importance, forest_importance, sgm_df = regression(d, feat_below_threshold, target_below_threshold, scalers, imputations, regressors, random_seeds=seed_dict[number_of_seeds])
+        if sgm:
+            # sgm_unscaled.to_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/PräsiTristan/Präsi/CSV/t3_unscaled_sgm.xlsx', index=False)
+            sgm_df.to_excel(directory_for_excels+'/Unscaled/SGM/sgm_unscaled'+f'_t{len(feature_names)}_{regressor_names_for_excel}_below_{outlier_threshold}_{number_of_seeds}_seeds_{date_string}.xlsx', index=False)
 
         if to_excel:
-            result_df.to_excel(
-                f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/results_unscaled_label/all/{number_of_seeds}_seeds_{date_string}.xlsx',
+            result_below_threshold_df.to_excel(
+                directory_for_excels+f'/Unscaled/Accuracy/unscaled_t{len(feature_names)}_{regressor_names_for_excel}_below_{outlier_threshold}_{number_of_seeds}_seeds_{date_string}.xlsx',
                 index=False)
-            lin_impo.to_excel(
-                f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/results_unscaled_label/all/linear_importance_combined_{number_of_seeds}_seeds_{date_string}.xlsx',
+            linear_importance.to_excel(
+                directory_for_excels+f'/Unscaled/Importance/Linear/unscaled_lin_impo_t{len(feature_names)}_below_{outlier_threshold}_{number_of_seeds}_seeds_{date_string}.xlsx',
                 index=False)
-            for_impo.to_excel(
-                f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/results_unscaled_label/all/forest_importance_combined_{number_of_seeds}_seeds_{date_string}.xlsx',
-                index=False)
-
-            result_below_thousand_df.to_excel(
-                f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/results_unscaled_label/below_thousand/below_1000_{number_of_seeds}_seeds_{date_string}.xlsx',
-                index=False)
-            linear_importance_1000.to_excel(
-                f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/results_unscaled_label/below_thousand/linear_importance_below_1000_{number_of_seeds}_seeds_{date_string}.xlsx',
-                index=False)
-            forest_importance_1000.to_excel(
-                f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/results_unscaled_label/below_thousand/forest_importance_below_1000_{number_of_seeds}_seeds_{date_string}.xlsx',
+            forest_importance.to_excel(
+                directory_for_excels+f'/Unscaled/Importance/Forest/unscaled_forest_impo_t{len(feature_names)}_below_{outlier_threshold}_{number_of_seeds}_seeds_{date_string}.xlsx',
                 index=False)
 
-            result_below_twohundred_df.to_excel(
-                f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/results_unscaled_label/below_twohundred/below_200_{number_of_seeds}_seeds_{date_string}.xlsx',
-                index=False)
-            linear_importance_200.to_excel(
-                f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/results_unscaled_label/below_twohundred/linear_importance_below_200_{number_of_seeds}_seeds_{date_string}.xlsx',
-                index=False)
-            forest_importance_200.to_excel(
-                f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/results_unscaled_label/below_twohundred/forest_importance_below_200_{number_of_seeds}_seeds_{date_string}.xlsx',
-                index=False)
 
-# regress_on_different_sets_based_on_label_magnitude('hundred', log_label=False, to_excel=True)
-# regress_on_different_sets_based_on_label_magnitude('hundred', log_label=True, to_excel=True)
+imputators = ['constant', 'median', 'mean']
+scaling = [None, PowerTransformer('yeo-johnson'),
+           QuantileTransformer(n_quantiles=100,output_distribution="normal",random_state=42)] #'byHand',
+regression_models = {"LinearRegression": LinearRegression(), "RandomForest": RandomForestRegressor(n_estimators=100, random_state=729154)}
+
+all_features = ['Matrix Equality Constraints', 'Matrix Quadratic Elements',
+       'Matrix NLP Formula', 'Presolve Columns', 'Presolve Global Entities',
+       '#nodes in DAG', '#integer violations at root',
+       '#nonlinear violations at root', '% vars in DAG (out of all vars)',
+       '% vars in DAG unbounded (out of vars in DAG)',
+       '% vars in DAG integer (out of vars in DAG)',
+       '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
+       'Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
+       'Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
+       'Avg relative bound change for solving strong branching LPs for spatial branchings (not including infeasible ones) Mixed',
+       'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
+       '#spatial branching entities fixed (at the root) Mixed',
+       'Avg coefficient spread for convexification cuts Mixed']
+
+integer_feature = ['Matrix Equality Constraints', 'Matrix Quadratic Elements',
+       'Matrix NLP Formula', 'Presolve Columns', 'Presolve Global Entities',
+       '#nodes in DAG', '#integer violations at root',
+       '#nonlinear violations at root', '#spatial branching entities fixed (at the root) Mixed']
+
+float_feature = ['% vars in DAG (out of all vars)',
+       '% vars in DAG unbounded (out of vars in DAG)',
+       '% vars in DAG integer (out of vars in DAG)',
+       '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
+       'Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
+       'Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
+       'Avg relative bound change for solving strong branching LPs for spatial branchings (not including infeasible ones) Mixed',
+       'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
+       'Avg coefficient spread for convexification cuts Mixed']
+
+t3_feats_combined = ['Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
+            '#nodes in DAG',
+            'Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed']
+
+t6_linear = ['Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
+             '#nodes in DAG',
+             '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
+             '% vars in DAG integer (out of vars in DAG)',
+             'Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
+             'Presolve Columns']
+
+t4_linear = ['Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
+             '#nodes in DAG',
+             '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
+             '% vars in DAG integer (out of vars in DAG)']
+
+t1_forest = ['#integer violations at root']
+t3_forest = ['#integer violations at root',
+             'Presolve Global Entities',
+             'Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed']
 
 
-logged_accuracies = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/log_vs_unscaled/Accuracies/logged.xlsx')
-unscaled_accuracies = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/log_vs_unscaled/Accuracies/unscaled.xlsx')
-unscaled_below_200 = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/log_vs_unscaled/Accuracies/unscaled_below_200.xlsx')
+df, feat, label  = read_data()
 
-# print('All:\n', logged_accuracies[['Accuracy', 'Extreme Accuracy']].mean())
-# print('None:\n', logged_accuracies[['Accuracy', 'Extreme Accuracy']][(logged_accuracies['Scaling']!='QuantileTransformer')&(logged_accuracies['Scaling']!='PowerTransformer')].mean())
-# print('Quantile:\n', logged_accuracies[['Accuracy', 'Extreme Accuracy']][logged_accuracies['Scaling']=='QuantileTransformer'].mean())
-# print('Power:\n', logged_accuracies[['Accuracy', 'Extreme Accuracy']][logged_accuracies['Scaling']=='PowerTransformer'].mean())
+preset_already_scaled = ['hundred', regression_models, [None], imputators, all_features, 1000]
 
-# print('All:\n', unscaled_accuracies[['Accuracy', 'Extreme Accuracy']].mean())
-# print('Linear:\n', unscaled_accuracies[['Accuracy', 'Extreme Accuracy']][unscaled_accuracies['Model']=='LinearRegression'].mean())
-# print('Forest:\n', unscaled_accuracies[['Accuracy', 'Extreme Accuracy']][unscaled_accuracies['Model']=='RandomForest'].mean())
-#
-# print('All:\n', unscaled_below_200[['Accuracy', 'Extreme Accuracy']].mean())
-# print('Linear:\n', unscaled_below_200[['Accuracy', 'Extreme Accuracy']][unscaled_below_200['Model']=='LinearRegression'].mean())
-# print('Forest:\n', unscaled_below_200[['Accuracy', 'Extreme Accuracy']][unscaled_below_200['Model']=='RandomForest'].mean())
+preset_everything = ['hundred', regression_models, scaling, imputators, all_features, 1000]
+preset_everything_200 = ['hundred', regression_models, scaling, imputators, all_features, 200]
+
+preset_only_scaled = ['hundred', regression_models, [PowerTransformer('yeo-johnson'),
+                      QuantileTransformer(n_quantiles=100,output_distribution="normal",random_state=42)],
+                      imputators, all_features, 1000]
+
+preset_only_quantile = ['hundred', regression_models,
+                        [QuantileTransformer(n_quantiles=100,output_distribution="normal",random_state=42)],
+                        imputators, all_features, 1000]
+
+preset_combined_t3_quantile = ['hundred', regression_models,
+                              [QuantileTransformer(n_quantiles=100,output_distribution="normal",random_state=42)],
+                              imputators, t3_feats_combined, 1000]
+preset_combined_t3 = ['hundred', regression_models, scaling, imputators, t3_feats_combined, 1000]
+preset_both_lin_t6 = ['hundred', regression_models, scaling, imputators, t6_linear, 1000]
+preset_both_lin_t4 = ['hundred', regression_models, scaling, imputators, t4_linear, 1000]
+preset_both_for_t1 = ['hundred', regression_models, scaling, imputators, t1_forest, 1000]
+
+preset_linear = ['hundred', {"LinearRegression": LinearRegression()}, scaling, imputators, all_features, 1000]
+preset_linear_t6 = ['hundred', {"LinearRegression": LinearRegression()}, scaling, imputators, t6_linear, 1000]
+
+preset_forest_all = ['hundred', {"RandomForest": RandomForestRegressor(n_estimators=100, random_state=729154)},
+                     scaling, imputators, all_features, 1000]
+preset_for_all_no_scaling = ['hundred', {"RandomForest": RandomForestRegressor(n_estimators=100, random_state=729154)},
+                            [None], imputators, all_features, 1000]
+preset_forest_t1 = ['hundred', {"RandomForest": RandomForestRegressor(n_estimators=100, random_state=729154)},
+                    scaling, imputators, t1_forest, 1000]
+preset_forest_t3 = ['hundred', {"RandomForest": RandomForestRegressor(n_estimators=100, random_state=729154)},
+                    scaling, imputators, t3_forest, 1000]
+
+
+regress_on_different_sets_based_on_label_magnitude(preset_only_scaled[0], preset_only_scaled[1], preset_only_scaled[2],
+                                                   preset_only_scaled[3], preset_only_scaled[4], preset_only_scaled[5],
+                                                   directory_for_excels='/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra',
+                                                   log_label=True, to_excel=True, sgm=True)
 

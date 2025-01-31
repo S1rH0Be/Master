@@ -180,3 +180,10 @@ fin_time_df = df[['Final_solution_time_(cumulative)_Mixed', 'Final_solution_time
 shifted_times = []
 for i in ['Final_solution_time_(cumulative)_Mixed', 'Final_solution_time_(cumulative)_Int']:
     shifted_times.append(shifted_geometric_mean(df[i], 0.5))
+
+
+feats = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/base_feats_no_cmp_24_01.xlsx')
+feature_names = feats.columns
+
+feature_name_df = pd.DataFrame({'Feature Name': feature_names})
+# feature_name_df.to_csv('/Users/fritz/Downloads/ZIB/Master/GitCode/PräsiTristan/Präsi/CSV/final_features.csv', index=False)

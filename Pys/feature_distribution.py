@@ -155,7 +155,29 @@ scaler = QuantileTransformer(n_quantiles=100,output_distribution="normal", rando
 # Fit the scaler and transform the data
 scaled_data = scaler.fit_transform(feats)
 scaled_df = pd.DataFrame(scaled_data, columns=feats.columns, index=feats.index)
-feature_histo(scaled_df, feats.columns)
+# feature_histo(scaled_df, feats.columns)
+
+
+yeo=pd.read_excel(('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/max_scaling/yeo_johnson.xlsx'))
+quantile = pd.read_excel(('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/max_scaling/quantile.xlsx'))
+feature_histo(yeo, ['% vars in DAG (out of all vars)',
+       '% vars in DAG unbounded (out of vars in DAG)',
+       '% vars in DAG integer (out of vars in DAG)',
+       '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
+       'Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
+       'Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
+       'Avg relative bound change for solving strong branching LPs for spatial branchings (not including infeasible ones) Mixed',
+       'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
+       'Avg coefficient spread for convexification cuts Mixed'])
+feature_histo(quantile, ['% vars in DAG (out of all vars)',
+       '% vars in DAG unbounded (out of vars in DAG)',
+       '% vars in DAG integer (out of vars in DAG)',
+       '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
+       'Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
+       'Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
+       'Avg relative bound change for solving strong branching LPs for spatial branchings (not including infeasible ones) Mixed',
+       'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
+       'Avg coefficient spread for convexification cuts Mixed'])
 
 
 """Detect outlier"""
