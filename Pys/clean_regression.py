@@ -235,17 +235,17 @@ def regress_on_different_sets_based_on_label_magnitude(number_of_seeds:str, regr
         target_below_threshold = scale_label(target_below_threshold)
         result_below_threshold_df, linear_importance, forest_importance, sgm_df = regression(d, feat_below_threshold, target_below_threshold, scalers, imputations, regressors, random_seeds=seed_dict[number_of_seeds], extreme_threshold=1.6)
         if sgm:
-            sgm_df.to_excel(directory_for_excels+f'/Logged/SGM/sgm_logged_t{len(feature_names)}_{regressor_names_for_excel}_below_{outlier_threshold}_{number_of_seeds}_seeds_{date_string}.xlsx', index=False)
+            sgm_df.to_excel(directory_for_excels+f'/Logged/SGM/sgm_logged_t{len(feature_names)}_{regressor_names_for_excel}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{date_string}.xlsx', index=False)
 
         if to_excel:
             result_below_threshold_df.to_excel(
-                directory_for_excels + f'/Logged/Accuracy/logged_t{len(feature_names)}_{regressor_names_for_excel}_below_{outlier_threshold}_{number_of_seeds}_seeds_{date_string}.xlsx',
+                directory_for_excels + f'/Logged/Accuracy/logged_t{len(feature_names)}_{regressor_names_for_excel}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{date_string}.xlsx',
                 index=False)
             linear_importance.to_excel(
-                directory_for_excels + f'/Logged/Importance/logged_lin_impo_t{len(feature_names)}_below_{outlier_threshold}_{number_of_seeds}_seeds_{date_string}.xlsx',
+                directory_for_excels + f'/Logged/Importance/Linear/logged_lin_impo_t{len(feature_names)}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{date_string}.xlsx',
                 index=False)
             forest_importance.to_excel(
-                directory_for_excels + f'/Logged/Importance/logged_forest_impo_t{len(feature_names)}_below_{outlier_threshold}_{number_of_seeds}_seeds_{date_string}.xlsx',
+                directory_for_excels + f'/Logged/Importance/Forest/logged_forest_impo_t{len(feature_names)}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{date_string}.xlsx',
                 index=False)
 
     else:
@@ -253,24 +253,25 @@ def regress_on_different_sets_based_on_label_magnitude(number_of_seeds:str, regr
         result_below_threshold_df, linear_importance, forest_importance, sgm_df = regression(d, feat_below_threshold, target_below_threshold, scalers, imputations, regressors, random_seeds=seed_dict[number_of_seeds])
         if sgm:
             # sgm_unscaled.to_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/PräsiTristan/Präsi/CSV/t3_unscaled_sgm.xlsx', index=False)
-            sgm_df.to_excel(directory_for_excels+'/Unscaled/SGM/sgm_unscaled'+f'_t{len(feature_names)}_{regressor_names_for_excel}_below_{outlier_threshold}_{number_of_seeds}_seeds_{date_string}.xlsx', index=False)
+            sgm_df.to_excel(directory_for_excels+'/Unscaled/SGM/sgm_unscaled'+f'_t{len(feature_names)}_{regressor_names_for_excel}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{date_string}.xlsx', index=False)
 
         if to_excel:
             result_below_threshold_df.to_excel(
-                directory_for_excels+f'/Unscaled/Accuracy/unscaled_t{len(feature_names)}_{regressor_names_for_excel}_below_{outlier_threshold}_{number_of_seeds}_seeds_{date_string}.xlsx',
+                directory_for_excels+f'/Unscaled/Accuracy/unscaled_t{len(feature_names)}_{regressor_names_for_excel}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{date_string}.xlsx',
                 index=False)
             linear_importance.to_excel(
-                directory_for_excels+f'/Unscaled/Importance/Linear/unscaled_lin_impo_t{len(feature_names)}_below_{outlier_threshold}_{number_of_seeds}_seeds_{date_string}.xlsx',
+                directory_for_excels+f'/Unscaled/Importance/Linear/unscaled_lin_impo_t{len(feature_names)}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{date_string}.xlsx',
                 index=False)
             forest_importance.to_excel(
-                directory_for_excels+f'/Unscaled/Importance/Forest/unscaled_forest_impo_t{len(feature_names)}_below_{outlier_threshold}_{number_of_seeds}_seeds_{date_string}.xlsx',
+                directory_for_excels+f'/Unscaled/Importance/Forest/unscaled_forest_impo_t{len(feature_names)}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{date_string}.xlsx',
                 index=False)
 
 
 imputators = ['constant', 'median', 'mean']
-scaling = [None, PowerTransformer('yeo-johnson'),
-           QuantileTransformer(n_quantiles=100,output_distribution="normal",random_state=42)] #'byHand',
-regression_models = {"LinearRegression": LinearRegression(), "RandomForest": RandomForestRegressor(n_estimators=100, random_state=729154)}
+scaling = [PowerTransformer('yeo-johnson'),
+           QuantileTransformer(n_quantiles=100,output_distribution="normal",random_state=42)]
+regression_models = {"LinearRegression": LinearRegression(),
+                     "RandomForest": RandomForestRegressor(n_estimators=100, random_state=729154)}
 
 all_features = ['Matrix Equality Constraints', 'Matrix Quadratic Elements',
        'Matrix NLP Formula', 'Presolve Columns', 'Presolve Global Entities',
@@ -328,7 +329,6 @@ df, feat, label  = read_data()
 preset_already_scaled = ['hundred', regression_models, [None], imputators, all_features, 1000]
 
 preset_everything = ['hundred', regression_models, scaling, imputators, all_features, 1000]
-preset_everything_200 = ['hundred', regression_models, scaling, imputators, all_features, 200]
 
 preset_only_scaled = ['hundred', regression_models, [PowerTransformer('yeo-johnson'),
                       QuantileTransformer(n_quantiles=100,output_distribution="normal",random_state=42)],
@@ -338,29 +338,15 @@ preset_only_quantile = ['hundred', regression_models,
                         [QuantileTransformer(n_quantiles=100,output_distribution="normal",random_state=42)],
                         imputators, all_features, 1000]
 
-preset_combined_t3_quantile = ['hundred', regression_models,
-                              [QuantileTransformer(n_quantiles=100,output_distribution="normal",random_state=42)],
-                              imputators, t3_feats_combined, 1000]
 preset_combined_t3 = ['hundred', regression_models, scaling, imputators, t3_feats_combined, 1000]
-preset_both_lin_t6 = ['hundred', regression_models, scaling, imputators, t6_linear, 1000]
-preset_both_lin_t4 = ['hundred', regression_models, scaling, imputators, t4_linear, 1000]
-preset_both_for_t1 = ['hundred', regression_models, scaling, imputators, t1_forest, 1000]
 
-preset_linear = ['hundred', {"LinearRegression": LinearRegression()}, scaling, imputators, all_features, 1000]
-preset_linear_t6 = ['hundred', {"LinearRegression": LinearRegression()}, scaling, imputators, t6_linear, 1000]
-
-preset_forest_all = ['hundred', {"RandomForest": RandomForestRegressor(n_estimators=100, random_state=729154)},
-                     scaling, imputators, all_features, 1000]
-preset_for_all_no_scaling = ['hundred', {"RandomForest": RandomForestRegressor(n_estimators=100, random_state=729154)},
-                            [None], imputators, all_features, 1000]
-preset_forest_t1 = ['hundred', {"RandomForest": RandomForestRegressor(n_estimators=100, random_state=729154)},
-                    scaling, imputators, t1_forest, 1000]
-preset_forest_t3 = ['hundred', {"RandomForest": RandomForestRegressor(n_estimators=100, random_state=729154)},
-                    scaling, imputators, t3_forest, 1000]
 
 
 regress_on_different_sets_based_on_label_magnitude(preset_only_scaled[0], preset_only_scaled[1], preset_only_scaled[2],
                                                    preset_only_scaled[3], preset_only_scaled[4], preset_only_scaled[5],
                                                    directory_for_excels='/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra',
                                                    log_label=True, to_excel=True, sgm=True)
-
+regress_on_different_sets_based_on_label_magnitude(preset_only_scaled[0], preset_only_scaled[1], preset_only_scaled[2],
+                                                   preset_only_scaled[3], preset_only_scaled[4], preset_only_scaled[5],
+                                                   directory_for_excels='/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra',
+                                                   log_label=False, to_excel=True, sgm=True)

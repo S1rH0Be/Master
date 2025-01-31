@@ -88,60 +88,6 @@ def assign_points(df):
     result_df = df_points[["Feature", "Total Points"]]
     return result_df
 
-# linimp = pd.read_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/linear_importances_yeo_20_01.xlsx').drop('Feature', axis=1)
-# forimp = pd.read_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/forest_importances_20_01.xlsx').drop('Feature', axis=1)
-#
-# # Calculate row-wise variance
-# lin_row_variance = linimp.var(axis=1)
-# lin_noscaling_variance = linimp.iloc[:,0::3].var(axis=1)
-# lin_byhand_variance = linimp.iloc[:,1::3].var(axis=1)
-# lin_yeojohn_variance = linimp.iloc[:,2::3].var(axis=1)
-#
-# bar(lin_row_variance.values, [str(i) for i in range(len(lin_row_variance.values))], 'Linear Variance Total')
-# bar(lin_noscaling_variance.values, [str(i) for i in range(len(lin_row_variance.values))], 'Linear Variance NoScaling')
-# bar(lin_byhand_variance.values, [str(i) for i in range(len(lin_row_variance.values))], 'Linear Variance byHand')
-# bar(lin_yeojohn_variance.values, [str(i) for i in range(len(lin_row_variance.values))], 'Linear Variance Yeo-Johnson')
-
-
-
-#
-# # Calculate row-wise minimum
-# lin_row_min = linimp.min(axis=1)
-# # Calculate row-wise maximum
-# lin_row_max = linimp.max(axis=1)
-# # Calculate row-wise mean
-# lin_row_mean = linimp.mean(axis=1)
-#
-#
-#
-# # Calculate row-wise variance
-# for_row_variance = forimp.var(axis=1)
-# # Calculate row-wise minimum
-# for_row_min = forimp.min(axis=1)
-# # Calculate row-wise maximum
-# for_row_max = forimp.max(axis=1)
-# # Calculate row-wise mean
-# for_row_mean = forimp.mean(axis=1)
-# lin_with_outlier_df = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/Tester/Importance/Linear/unscaled_lin_impo_t18_below_100000000_hundred_seeds_28_01.xlsx')
-# lin_df = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/Tester/Importance/Linear/unscaled_lin_impo_t18_below_1000_hundred_seeds_28_01.xlsx')
-# shift_outlier = -(lin_with_outlier_df.iloc[:, 1:].min().min())+1
-# shift_no_outlier = -(lin_df.iloc[:, 1:].min().min())+1
-# # shift = 0
-# lin_df["ShiftedGeometricMean"] = lin_df.iloc[:, 1:].apply(
-#     lambda row: shifted_geometric_mean(row, shift_no_outlier), axis=1)
-#
-# lin_with_outlier_df["ShiftedGeometricMean"] = lin_with_outlier_df.iloc[:, 1:].apply(
-#     lambda row: shifted_geometric_mean(row, shift_outlier), axis=1)
-#
-#
-# time_df = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/base_data_24_01.xlsx')
-# time_df = time_df[['Final solution time (cumulative) Int', 'Final solution time (cumulative) Mixed', 'Virtual Best']]
-# values = [shifted_geometric_mean(time_df[column], 0.5) for column in time_df.columns]
-# values_relative = [value/values[1] for value in values]
-# names = ['Int', 'Mixed', 'Virtual Best']
-
-
-
 def plot_sgm_feature_importance(df, title):
     shift = -(df.iloc[:, 1:].min().min())+1
     df["ShiftedGeometricMean"] = df.iloc[:, 1:].apply(lambda row: shifted_geometric_mean(row, shift), axis=1)
@@ -158,20 +104,9 @@ def plot_sgm_feature_importance(df, title):
     plt.tight_layout()
     plt.show()
 
-# lin_with_outlier_df[["Feature", "ShiftedGeometricMean"]].to_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/Tester/Importance/Linear/sgm_linear_with_outlier_unscaled.xlsx', index=False)
-# lin_df[["Feature", "ShiftedGeometricMean"]].to_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/Tester/Importance/Linear/sgm_linear_no_outlier_unscaled.xlsx', index=False)
-#
-
-
-
-
-
-# forest_importance_score = assign_points(for_df)
-# lin_importance = assign_points(lin_df)
-# importance_df = pd.DataFrame({'Feature': forest_importance_score['Feature']})
-# importance_df["Total Points Linear"] = lin_importance["Total Points"]
-# importance_df["Total Points Forest"] = forest_importance_score["Total Points"]
-# importance_df["Total Points"] = importance_df["Total Points Forest"]+importance_df["Total Points Linear"]
-# importance_df = importance_df.sort_values(by='Total Points', ascending=True)
-
-
+importance_linear = pd.read_excel(
+    '/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/Logged/Importance/Linear/logged_lin_impo_t18_below_1000_hundred_seeds_31_01.xlsx')
+# importance_ranking_forest = pd.read_csv('data/improtance_ranking.csv')
+print(importance_linear)
+plot_sgm_feature_importance(importance_linear, 'Linear Importance')
+print(assign_points(importance_linear))
