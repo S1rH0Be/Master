@@ -1,3 +1,4 @@
+import os
 from scipy.stats import gmean
 import pandas as pd
 from pandas import Series
@@ -152,12 +153,37 @@ def plot_sgm_single_df(df, title:str):
     bar_names = df.iloc[:, 0]
     # Calculate the mean of each row (excluding the first column)
     values = df.iloc[:, 1]
+    # print(values[1], values[5])
     # Create the bar plot
     plt.figure(figsize=(10, 6))
     plt.bar(bar_names, values, color=['lightblue', 'orange', '#FF8C00', 'limegreen', 'lightgreen', 'lightblue'])
     # Add labels and title
     plt.ylabel('Shifted Geometric Mean', fontsize=12)
     plt.ylim(0.5,1.1)
+    plt.title(title, fontsize=14)
+    plt.xticks(rotation=45, ha='right', fontsize=10)
+    plt.tight_layout()
+    # Show the plot
+    plt.show()
+
+def plot_sgm_relative_to_mixed(df, title:str):
+    lin_df = df[[col for col in df.columns if 'Linear' in col]]
+    for_df = df[[col for col in df.columns if 'Forest' in col]]
+
+    sgm_lin = lin_df.iloc[:, 1:].apply(lambda row: shifted_geometric_mean(row, 0), axis=1)
+    sgm_for = for_df.iloc[:, 1:].apply(lambda row: shifted_geometric_mean(row, 0), axis=1)
+    sgm_mixed = sgm_lin.iloc[0]
+
+    relative_values = [1.0, np.round(sgm_lin.iloc[1]/sgm_mixed, 2), np.round(sgm_for.iloc[1]/sgm_mixed, 2), np.round(sgm_for.iloc[2]/sgm_mixed, 2)]
+    print(relative_values)
+    bar_names = ['Mixed', 'Linear', 'Forest', 'Virtual Best']
+
+    # Create the bar plot
+    plt.figure(figsize=(10, 6))
+    plt.bar(bar_names, relative_values, color=['lightblue', 'orange', 'limegreen', 'lightblue'])
+    # Add labels and title
+    plt.ylabel('Shifted Geometric Mean', fontsize=12)
+    plt.ylim(0.5, 1.1)
     plt.title(title, fontsize=14)
     plt.xticks(rotation=45, ha='right', fontsize=10)
     plt.tight_layout()
@@ -210,5 +236,41 @@ def create_accuracy_bars(df=None, title=None):
     else:
         plot_sgm_accuracy(df, title)
 
-feats = pd.read_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/base_feats_no_cmp_24_01.xlsx')
-print(feats.columns)
+def process_excel_files(directory, function1):
+    """
+    Reads all .xlsx files in a given directory and applies the assign_points function.
+
+    Parameters:
+    directory (str): Path to the directory containing .xlsx files.
+
+    Returns:
+    dict: A dictionary where keys are filenames and values are DataFrames with assigned points.
+    """
+    results = {}  # Store processed DataFrames
+
+    for file in os.listdir(directory):
+        if file.endswith(".xlsx"):  # Process only .xlsx files
+            file_path = os.path.join(directory, file)
+
+            try:
+                df = pd.read_excel(file_path)  # Read the Excel file
+                processed_df = function1(df)  # Apply your function
+                results[file] = processed_df  # Store the result
+                print(f"Processed: {file}")
+            except Exception as e:
+                print(f"Error processing {file}: {e}")
+
+    return results
+
+def list_of_dataframes(directory):
+    dataframes = []
+    for file in os.listdir(directory):
+        if file.endswith(".xlsx"):  # Process only .xlsx files
+            file_path = os.path.join(directory, file)
+            dataframes.append(pd.read_excel(file_path))
+    return dataframes
+
+accuracy_df = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/Logged/Accuracy/logged_t18_lin_optimized_both_below_1000_hundred_seeds_1_31_01.xlsx')
+print(len(accuracy_df))
+run_time_df = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/Logged/SGM/sgm_logged_t18_lin_optimized_both_below_1000_hundred_seeds_1_31_01.xlsx')
+

@@ -21,10 +21,7 @@ date_string = current_date.strftime("%d_%m")
 def read_data():
     data = pd.read_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/base_data_24_01.xlsx').drop(columns='Matrix Name')
     feats = pd.read_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/base_feats_no_cmp_24_01.xlsx')
-    # feats = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/max_scaling/yeo_johnson.xlsx')
-    # feats = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/max_scaling/quantile.xlsx')
-
-    # feats = feats/feats.max()
+    feats.replace(-1, np.nan, inplace=True)
     label = data['Cmp Final solution time (cumulative)']
     return data, feats, label
 
@@ -93,7 +90,7 @@ def predicted_time(time_df, prediction_df):
     mixed_mean = shifted_geometric_mean(pred_df['Final solution time (cumulative) Mixed'], 0.5)
     predicted_time_mean = shifted_geometric_mean(pred_df['Predicted Time'], 0.5)
     vbs_mean = shifted_geometric_mean(pred_df['Virtual Best'], 0.5)
-    relative_to_mixed_mean = [1.0, predicted_time_mean/mixed_mean, vbs_mean/mixed_mean]
+    relative_to_mixed_mean = [mixed_mean, predicted_time_mean, vbs_mean]
     return relative_to_mixed_mean
 
 def regression(full_data, features, label, scalers, imputations, models, random_seeds, extreme_threshold=4.0):
@@ -118,6 +115,7 @@ def regression(full_data, features, label, scalers, imputations, models, random_
                 for seed in random_seeds:
                     count+=1
                     X_train, X_test, y_train, y_test = train_test_split(features, label, test_size=0.2,random_state=seed)
+
                     # Build pipeline
                     steps = []
                     # Add imputation
@@ -134,6 +132,10 @@ def regression(full_data, features, label, scalers, imputations, models, random_
                         model.random_state = seed
                     # Train the pipeline
                     pipeline.fit(X_train, y_train)
+                    imputer = pipeline.named_steps['imputer']
+                    # print("Imputed Values (for each column):")
+                    # print(pd.Series(imputer.statistics_, index=X_train.columns))
+
                     # Evaluate on the test set
                     relevant_indices = y_test[y_test != 0].index
                     y_test_relevant = y_test.loc[relevant_indices]
@@ -187,7 +189,7 @@ def regression(full_data, features, label, scalers, imputations, models, random_
     return results_df, linear_feature_importance_df, forest_feature_importance_df, sgm_run_time_df
 
 def regress_on_different_sets_based_on_label_magnitude(number_of_seeds:str, regressors, scalers, imputations, feature_names,
-                                                       outlier_threshold=1000,  log_label=False, to_excel=False, sgm=False,
+                                                       preset_name:str, outlier_threshold=1000,  log_label=False, to_excel=False, sgm=False,
                                                        directory_for_excels='/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/Tester/'):
     d, feat, target = read_data()
     feat = feat[feature_names]
@@ -235,17 +237,17 @@ def regress_on_different_sets_based_on_label_magnitude(number_of_seeds:str, regr
         target_below_threshold = scale_label(target_below_threshold)
         result_below_threshold_df, linear_importance, forest_importance, sgm_df = regression(d, feat_below_threshold, target_below_threshold, scalers, imputations, regressors, random_seeds=seed_dict[number_of_seeds], extreme_threshold=1.6)
         if sgm:
-            sgm_df.to_excel(directory_for_excels+f'/Logged/SGM/sgm_logged_t{len(feature_names)}_{regressor_names_for_excel}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{date_string}.xlsx', index=False)
+            sgm_df.to_excel(directory_for_excels+f'/Logged/SGM/sgm_logged_{preset_name}_{regressor_names_for_excel}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{date_string}.xlsx', index=False)
 
         if to_excel:
             result_below_threshold_df.to_excel(
-                directory_for_excels + f'/Logged/Accuracy/logged_t{len(feature_names)}_{regressor_names_for_excel}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{date_string}.xlsx',
+                directory_for_excels + f'/Logged/Accuracy/logged_{preset_name}_{regressor_names_for_excel}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{date_string}.xlsx',
                 index=False)
             linear_importance.to_excel(
-                directory_for_excels + f'/Logged/Importance/Linear/logged_lin_impo_t{len(feature_names)}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{date_string}.xlsx',
+                directory_for_excels + f'/Logged/Importance/Linear/logged_lin_impo_{preset_name}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{date_string}.xlsx',
                 index=False)
             forest_importance.to_excel(
-                directory_for_excels + f'/Logged/Importance/Forest/logged_forest_impo_t{len(feature_names)}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{date_string}.xlsx',
+                directory_for_excels + f'/Logged/Importance/Forest/logged_forest_impo_{preset_name}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{date_string}.xlsx',
                 index=False)
 
     else:
@@ -253,23 +255,22 @@ def regress_on_different_sets_based_on_label_magnitude(number_of_seeds:str, regr
         result_below_threshold_df, linear_importance, forest_importance, sgm_df = regression(d, feat_below_threshold, target_below_threshold, scalers, imputations, regressors, random_seeds=seed_dict[number_of_seeds])
         if sgm:
             # sgm_unscaled.to_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/PräsiTristan/Präsi/CSV/t3_unscaled_sgm.xlsx', index=False)
-            sgm_df.to_excel(directory_for_excels+'/Unscaled/SGM/sgm_unscaled'+f'_t{len(feature_names)}_{regressor_names_for_excel}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{date_string}.xlsx', index=False)
+            sgm_df.to_excel(directory_for_excels+'/Unscaled/SGM/sgm_unscaled'+f'_{preset_name}_{regressor_names_for_excel}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{date_string}.xlsx', index=False)
 
         if to_excel:
             result_below_threshold_df.to_excel(
-                directory_for_excels+f'/Unscaled/Accuracy/unscaled_t{len(feature_names)}_{regressor_names_for_excel}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{date_string}.xlsx',
+                directory_for_excels+f'/Unscaled/Accuracy/unscaled_{preset_name}_{regressor_names_for_excel}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{date_string}.xlsx',
                 index=False)
             linear_importance.to_excel(
-                directory_for_excels+f'/Unscaled/Importance/Linear/unscaled_lin_impo_t{len(feature_names)}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{date_string}.xlsx',
+                directory_for_excels+f'/Unscaled/Importance/Linear/unscaled_lin_impo_{preset_name}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{date_string}.xlsx',
                 index=False)
             forest_importance.to_excel(
-                directory_for_excels+f'/Unscaled/Importance/Forest/unscaled_forest_impo_t{len(feature_names)}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{date_string}.xlsx',
+                directory_for_excels+f'/Unscaled/Importance/Forest/unscaled_forest_impo_{preset_name}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{date_string}.xlsx',
                 index=False)
 
 
-imputators = ['constant', 'median', 'mean']
-scaling = [PowerTransformer('yeo-johnson'),
-           QuantileTransformer(n_quantiles=100,output_distribution="normal",random_state=42)]
+imputators = ['median'] # ['constant', 'median', 'mean']
+scaling = [QuantileTransformer(n_quantiles=100,output_distribution="normal",random_state=42)] # PowerTransformer('yeo-johnson'),
 regression_models = {"LinearRegression": LinearRegression(),
                      "RandomForest": RandomForestRegressor(n_estimators=100, random_state=729154)}
 
@@ -302,51 +303,41 @@ float_feature = ['% vars in DAG (out of all vars)',
        'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
        'Avg coefficient spread for convexification cuts Mixed']
 
-t3_feats_combined = ['Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
-            '#nodes in DAG',
-            'Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed']
+t3_feats_combined = ['Avg coefficient spread for convexification cuts Mixed',
+                     'Presolve Global Entities',
+                     '#integer violations at root']
 
-t6_linear = ['Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
-             '#nodes in DAG',
-             '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
-             '% vars in DAG integer (out of vars in DAG)',
+t3_linear = ['#nodes in DAG',
              'Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
-             'Presolve Columns']
+             '#integer violations at root']
 
-t4_linear = ['Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
-             '#nodes in DAG',
-             '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
-             '% vars in DAG integer (out of vars in DAG)']
+t2_forest = ['Avg coefficient spread for convexification cuts Mixed',
+             'Presolve Global Entities']
 
-t1_forest = ['#integer violations at root']
-t3_forest = ['#integer violations at root',
+t3_forest = ['Avg coefficient spread for convexification cuts Mixed',
              'Presolve Global Entities',
-             'Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed']
+             '#integer violations at root']
 
-
-df, feat, label  = read_data()
-
-preset_already_scaled = ['hundred', regression_models, [None], imputators, all_features, 1000]
+setup_for_now = ['hundred', regression_models,
+                 [QuantileTransformer(n_quantiles=100,output_distribution="normal",random_state=42)],
+                 ['median'], all_features, 1000]
 
 preset_everything = ['hundred', regression_models, scaling, imputators, all_features, 1000]
 
-preset_only_scaled = ['hundred', regression_models, [PowerTransformer('yeo-johnson'),
-                      QuantileTransformer(n_quantiles=100,output_distribution="normal",random_state=42)],
-                      imputators, all_features, 1000]
-
-preset_only_quantile = ['hundred', regression_models,
-                        [QuantileTransformer(n_quantiles=100,output_distribution="normal",random_state=42)],
-                        imputators, all_features, 1000]
-
 preset_combined_t3 = ['hundred', regression_models, scaling, imputators, t3_feats_combined, 1000]
 
+preset_linear_t3 = ['hundred', regression_models, scaling, imputators, t3_linear, 1000]
+
+preset_forest_t2 = ['hundred', regression_models, scaling, imputators, t2_forest, 1000]
+
+all_top_presets = [preset_combined_t3, preset_linear_t3, preset_forest_t2]
+preset_names = ['GlobTop3', 'LinearTop3', 'ForestTop2']
+count=0
 
 
-regress_on_different_sets_based_on_label_magnitude(preset_only_scaled[0], preset_only_scaled[1], preset_only_scaled[2],
-                                                   preset_only_scaled[3], preset_only_scaled[4], preset_only_scaled[5],
+regress_on_different_sets_based_on_label_magnitude(setup_for_now[0], setup_for_now[1], setup_for_now[2],
+                                                   setup_for_now[3], setup_for_now[4], 't18_lin_optimized',
+                                                   setup_for_now[5],
                                                    directory_for_excels='/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra',
                                                    log_label=True, to_excel=True, sgm=True)
-regress_on_different_sets_based_on_label_magnitude(preset_only_scaled[0], preset_only_scaled[1], preset_only_scaled[2],
-                                                   preset_only_scaled[3], preset_only_scaled[4], preset_only_scaled[5],
-                                                   directory_for_excels='/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra',
-                                                   log_label=False, to_excel=True, sgm=True)
+

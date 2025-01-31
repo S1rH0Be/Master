@@ -60,7 +60,7 @@ def bar(values, bar_names, title):
     plt.show()
     plt.close()
 
-def assign_points(df):
+def assign_points(df, title:str):
     """
     Assign points to each feature based on importance scores.
     Most important feature (highest score) gets 0 points,
@@ -77,16 +77,26 @@ def assign_points(df):
     df_points = df.copy()
 
     # Iterate over all columns except the first one (Feature names)
-    for col in df.columns[1:]:
-        # Rank the features: most important (highest score) gets 0 points
-        rankings = df[col].rank(ascending=False, method="min") - 1
-        df_points[col] = rankings.astype(int)
-        # Calculate total points for each feature
-    df_points["Total Points"] = df_points.iloc[:, 1:].sum(axis=1)
+    feature_col = df.columns[0]  # First column is assumed to contain feature names
 
-    # Return a new DataFrame with feature names and their total points
-    result_df = df_points[["Feature", "Total Points"]]
-    return result_df
+    # Rank all importance score columns (absolute values), then subtract 1 to start from 0
+    rankings = df.iloc[:, 1:].abs().rank(ascending=False, method="min") - 1
+
+    # Compute total points across all columns
+    df[title] = rankings.sum(axis=1).astype(int)
+
+    # Return DataFrame with only features and their total points
+    return df[[feature_col, title]]
+
+def create_importance_score_df(linear_df, forest_df):
+    lin_scores = assign_points(linear_df, 'Linear Scores')
+    forest_scores = assign_points(forest_df, 'Forest Scores')
+    combined_df = lin_scores.copy()
+    combined_df['Forest Scores'] = forest_scores['Forest Scores'].copy()
+    combined_df['Total Scores'] = combined_df['Linear Scores'] + combined_df['Forest Scores']
+    combined_df.sort_values('Total Scores', ascending=True, inplace=True)
+
+    return combined_df
 
 def plot_sgm_feature_importance(df, title):
     shift = -(df.iloc[:, 1:].min().min())+1
@@ -103,10 +113,3 @@ def plot_sgm_feature_importance(df, title):
     # Show the plot
     plt.tight_layout()
     plt.show()
-
-importance_linear = pd.read_excel(
-    '/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/Logged/Importance/Linear/logged_lin_impo_t18_below_1000_hundred_seeds_31_01.xlsx')
-# importance_ranking_forest = pd.read_csv('data/improtance_ranking.csv')
-print(importance_linear)
-plot_sgm_feature_importance(importance_linear, 'Linear Importance')
-print(assign_points(importance_linear))
