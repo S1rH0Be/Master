@@ -3,6 +3,10 @@ from scipy.stats import gmean
 import pandas as pd
 from pandas import Series
 import numpy as np
+from sklearn.preprocessing import QuantileTransformer
+from sklearn.impute import SimpleImputer
+# custim functions
+from clean_regression import scale_label
 # plotting
 import matplotlib.pyplot as plt
 
@@ -108,15 +112,20 @@ def plot_sgm_accuracy(accuracy_df, title):
 
     values_seperated_names = ['LinReg Total', 'LinReg Extreme', 'RandomForest Total', 'RandomForest Extreme']
     colors = ['orange', 'orange', 'limegreen', 'limegreen']
+
     plt.figure(figsize=(10, 6))
-    plt.bar(values_seperated_names, values_seperated, color=colors)
-    plt.ylim([35,  90])
+    bars = plt.bar(values_seperated_names, values_seperated, color=colors)
+    plt.ylim([35,  105])
     # Add labels and title
     plt.ylabel('SGM Accuracy')
     plt.title(title)
     plt.tight_layout()
     # Remove x-axis ticks
     plt.xticks(values_seperated_names)
+    # Add values on top of bars
+    for bar in bars:
+        yval = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width() / 2, yval + 1, f'{yval:.1f}', ha='center', fontsize=12)
     # Show the plot
     plt.show()
 
@@ -127,44 +136,13 @@ def box_plot(values:Series, title:str):
     plt.show()
     plt.close()
 
-def plot_sgm(df, title:str):
-    lin_df = df[[col for col in df.columns if 'Linear' in col]]
-    for_df = df[[col for col in df.columns if 'Forest' in col]]
-
-    sgm_lin = lin_df.iloc[:, 1:].apply(lambda row: shifted_geometric_mean(row, 0), axis=1)
-    sgm_for = for_df.iloc[:, 1:].apply(lambda row: shifted_geometric_mean(row, 0), axis=1)
-    sgm_values = [sgm_lin.iloc[0], sgm_lin.iloc[1], sgm_for.iloc[1], sgm_for.iloc[2]]
-
-    bar_names = ['Mixed', 'Linear', 'Forest', 'Virtual Best']
-
-    # Create the bar plot
-    plt.figure(figsize=(10, 6))
-    plt.bar(bar_names, sgm_values, color=['lightblue', 'orange', 'limegreen', 'lightblue'])
-    # Add labels and title
-    plt.ylabel('Shifted Geometric Mean', fontsize=12)
-    plt.ylim(0.5,1.1)
-    plt.title(title, fontsize=14)
-    plt.xticks(rotation=45, ha='right', fontsize=10)
-    plt.tight_layout()
-    # Show the plot
+def comp_box_plot(values, title):
+    for value in values:
+        plt.boxplot(values, vert=True, patch_artist=True)
+    plt.title(title)
+    plt.ylabel("Values")
     plt.show()
-
-def plot_sgm_single_df(df, title:str):
-    bar_names = df.iloc[:, 0]
-    # Calculate the mean of each row (excluding the first column)
-    values = df.iloc[:, 1]
-    # print(values[1], values[5])
-    # Create the bar plot
-    plt.figure(figsize=(10, 6))
-    plt.bar(bar_names, values, color=['lightblue', 'orange', '#FF8C00', 'limegreen', 'lightgreen', 'lightblue'])
-    # Add labels and title
-    plt.ylabel('Shifted Geometric Mean', fontsize=12)
-    plt.ylim(0.5,1.1)
-    plt.title(title, fontsize=14)
-    plt.xticks(rotation=45, ha='right', fontsize=10)
-    plt.tight_layout()
-    # Show the plot
-    plt.show()
+    plt.close()
 
 def plot_sgm_relative_to_mixed(df, title:str):
     lin_df = df[[col for col in df.columns if 'Linear' in col]]
@@ -174,52 +152,26 @@ def plot_sgm_relative_to_mixed(df, title:str):
     sgm_for = for_df.iloc[:, 1:].apply(lambda row: shifted_geometric_mean(row, 0), axis=1)
     sgm_mixed = sgm_lin.iloc[0]
 
-    relative_values = [1.0, np.round(sgm_lin.iloc[1]/sgm_mixed, 2), np.round(sgm_for.iloc[1]/sgm_mixed, 2), np.round(sgm_for.iloc[2]/sgm_mixed, 2)]
-    print(relative_values)
+    relative_values = [1.0, np.round(sgm_lin.iloc[1]/sgm_mixed, 6), np.round(sgm_for.iloc[1]/sgm_mixed, 6), np.round(sgm_for.iloc[2]/sgm_mixed, 6)]
+
     bar_names = ['Mixed', 'Linear', 'Forest', 'Virtual Best']
+    colors = ['lightblue', 'orange', 'limegreen', 'lightblue']
 
     # Create the bar plot
     plt.figure(figsize=(10, 6))
-    plt.bar(bar_names, relative_values, color=['lightblue', 'orange', 'limegreen', 'lightblue'])
+    bars = plt.bar(bar_names, relative_values, color=colors)
     # Add labels and title
     plt.ylabel('Shifted Geometric Mean', fontsize=12)
-    plt.ylim(0.5, 1.1)
+    plt.ylim(0.55, 1.05)
     plt.title(title, fontsize=14)
-    plt.xticks(rotation=45, ha='right', fontsize=10)
+    plt.xticks(bar_names)
     plt.tight_layout()
+    # Add values on top of bars
+    for bar in bars:
+        yval = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width() / 2, yval + 0.01, f'{yval:.2f}', ha='center', fontsize=12)
     # Show the plot
     plt.show()
-
-def plot_sgm_run_time_single_df(sgm_df1, sgm_df2,  title):
-
-    def calc_sgm(sgm_df):
-        lin_df = sgm_df[[col for col in sgm_df.columns if 'Linear' in col]]
-        for_df = sgm_df[[col for col in sgm_df.columns if 'Forest' in col]]
-
-        sgm_lin = lin_df.iloc[:, 1:].apply(lambda row: shifted_geometric_mean(row, 0), axis=1)
-        sgm_for = for_df.iloc[:, 1:].apply(lambda row: shifted_geometric_mean(row, 0), axis=1)
-        sgm_values = [sgm_lin.iloc[1], sgm_for.iloc[1], sgm_for.iloc[2]]
-        return sgm_values
-
-    sgm1_values = calc_sgm(sgm_df1)
-    sgm2_values = calc_sgm(sgm_df2)
-
-    sgm_combined_values = [1, sgm1_values[0], sgm2_values[0], sgm1_values[1], sgm2_values[1], sgm1_values[2]]
-    names = ['Mixed', 'Linear All', 'Linear Top3', 'Random Forest All', 'Forest Top3', 'Virtual Best']
-
-    sgm_combined_df = pd.DataFrame({'Regressor': names, 'Shifted Geometric Mean': sgm_combined_values})
-    plot_sgm_single_df(sgm_combined_df, title)
-
-def create_run_time_bars(df=None, title=None):
-    if df is None:
-        all_sgm_df = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/PräsiTristan/Präsi/CSV/all_unscaled_sgm_1000.xlsx')
-        t3_sgm_df = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/PräsiTristan/Präsi/CSV/t3_unscaled_sgm_1000.xlsx')
-        plot_sgm_run_time_single_df(all_sgm_df, t3_sgm_df, 'SGM Run Time Comparison on unscaled Label')
-        all_logged = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/Tester/SGM/sgm_logged_t18_both_below_1000_hundred_seeds_28_01.xlsx')
-        t3_logged = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/Tester/SGM/sgm_logged_t3_both_below_1000_hundred_seeds_29_01.xlsx')
-        plot_sgm_run_time_single_df(all_logged, t3_logged, 'SGM Run Time Comparison on logged Label')
-    else:
-        plot_sgm_run_time_single_df(df, df, title)
 
 def create_accuracy_bars(df=None, title=None):
     if df is None:
@@ -235,6 +187,51 @@ def create_accuracy_bars(df=None, title=None):
         plot_sgm_accuracy(acc_t3_logged_label, 'Accuracy on Top3 Features and logged Label')
     else:
         plot_sgm_accuracy(df, title)
+
+def feature_histo(df, columns: list, number_bins=10):
+    """
+    Create histograms for specified columns in a DataFrame, focusing only on values in (0, 1).
+    Args:
+        df: The DataFrame containing data.
+        columns: List of column names to plot histograms for.
+        number_bins: Number of bins for the histograms.
+    """
+    # Create a figure with subplots for each column dynamically
+    fig, axs = plt.subplots(len(columns), 1, figsize=(8, 4 * len(columns)))  # n rows, 1 column
+
+    # If there's only one column, axs is not an array, so we handle it separately
+    if len(columns) == 1:
+        axs = [axs]
+
+    for i, col in enumerate(columns):
+        # Filter values in (0, 1)
+        # if df.values.min().min()>=0 and df.values.max().max()<=1:
+        #     filtered_data = df[col][(df[col] >= 0) & (df[col] <= 1)]
+        # else:
+        filtered_data = df[col]
+        # Plot histogram with color distinction
+        color = 'orange' if 'Mixed' in col else 'lightblue'
+        axs[i].hist(filtered_data, bins=number_bins, color=color, alpha=1)#, label=f'Filtered ({len(filtered_data)} points)')
+        axs[i].set_title(f'{col}')
+
+    # Adjust layout
+    plt.tight_layout()
+    # Show the plots once all are created
+    plt.show()
+    # Close the plot to free up memory
+    plt.close()
+
+def label_histo(label_series, number_bins=10):
+
+    plt.hist(label_series, bins=number_bins, color='magenta')
+    plt.title('Cmp Final solution time (cumulative)')
+
+    # Adjust layout
+    plt.tight_layout()
+    # Show the plots once all are created
+    plt.show()
+    # Close the plot to free up memory
+    plt.close()
 
 def process_excel_files(directory, function1):
     """
@@ -270,7 +267,33 @@ def list_of_dataframes(directory):
             dataframes.append(pd.read_excel(file_path))
     return dataframes
 
-accuracy_df = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/Logged/Accuracy/logged_t18_lin_optimized_both_below_1000_hundred_seeds_1_31_01.xlsx')
-print(len(accuracy_df))
-run_time_df = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/Logged/SGM/sgm_logged_t18_lin_optimized_both_below_1000_hundred_seeds_1_31_01.xlsx')
+def imputation(df):
+    imputated_features = df.copy()
+    imputated_features = imputated_features.replace(-1, np.nan)
+    # Initialize the imputer with the median strategy
+    imputer = SimpleImputer(strategy="median")
+    # Fit and transform the data
+    imputated_features = pd.DataFrame(imputer.fit_transform(imputated_features), columns=imputated_features.columns)
+    return imputated_features
 
+def scaling(feat_df, label_series):
+    qt = QuantileTransformer(n_quantiles=100, output_distribution="normal", random_state=42)
+    # Fit and transform the data
+    feature_df_transformed = qt.fit_transform(feat_df)
+    feature_df_transformed = pd.DataFrame(feature_df_transformed, columns=feature_df.columns)
+    logged_label = scale_label(label_series)
+    return feature_df_transformed, logged_label
+
+data = pd.read_excel("/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/base_data_24_01.xlsx")
+feature_df = pd.read_excel("/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/base_feats_no_cmp_24_01.xlsx")
+label = data['Cmp Final solution time (cumulative)'].copy()
+
+imputed_feature = imputation(feature_df)
+scaled_feature, logged_label = scaling(imputed_feature, label)
+
+imputed_feature.to_excel("/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/base_feats_no_cmp_imputed.xlsx", index=False)
+scaled_feature.to_excel("/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/base_feats_no_cmp_imputed_Scaled.xlsx", index=False)
+logged_label.to_excel("/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/label_scaled.xlsx", index=False)
+
+for col in feature_df.columns:
+    box_plot(scaled_feature[col], col)

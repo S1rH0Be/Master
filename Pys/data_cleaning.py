@@ -44,14 +44,13 @@ def data_cleaning(data):
     #deleted_cols += dropped_triv_lst
     deleted_cols += not_consistent_cols
     deleted_cols += dropped_wrong_type
-    #until now only wegen optopt gelöscht
     deleted_instances = different_opt_val
     #create df with deleted instances for checking
     #now ugly later beautiful
     deleted_instances_df = complete_df[complete_df['Matrix Name'].isin(deleted_instances)]
 
     #add a absolute timesave potential column
-    x = np.round(df['Final solution time (cumulative) Mixed']-df['Final solution time (cumulative) Int'], 2).abs()
+    x = np.round(df['Final solution time (cumulative) Mixed']-df['Final solution time (cumulative) Int'], 6).abs()
     df.loc[:, 'Pot Time Save'] = x
     return df, deleted_instances_df
 
@@ -61,6 +60,7 @@ clean_df, deleted_df = data_cleaning('/Users/fritz/Downloads/ZIB/Master/CSV/Seco
 # Assuming df is your existing DataFrame
 # Replace absolute values smaller than 10**-6 with 0 in numeric columns
 numeric_cols = clean_df.select_dtypes(include=['number']).columns  # Get numeric columns
+# replace values close to 0 with zero
 clean_df[numeric_cols] = clean_df[numeric_cols].where(abs(clean_df[numeric_cols]) >= 10**-6, 0)
 
 #delete all 'bad' instances
@@ -74,9 +74,12 @@ pointfive_is_zero_df['Cmp Final solution time (cumulative)'] = pointfive_is_zero
 for index, row in pointfive_is_zero_df.iterrows():
     if abs(row['Final solution time (cumulative) Mixed']-row['Final solution time (cumulative) Int'])<=0.5:
         pointfive_is_zero_df.loc[index, 'Cmp Final solution time (cumulative)'] = 0.0
+        pointfive_is_zero_df.loc[index, 'Pot Time Save'] = 0.0
+
     if abs(row['Cmp Final solution time (cumulative)'])<=0.01:
         #1% doesnt matter as well
         pointfive_is_zero_df.loc[index, 'Cmp Final solution time (cumulative)'] = 0.0
+        pointfive_is_zero_df.loc[index, 'Pot Time Save'] = 0.0
 
 # Get the current date
 current_date = datetime.now()
@@ -84,7 +87,7 @@ current_date = datetime.now()
 date_string = current_date.strftime("%d_%m")
 
 pointfive_is_zero_df.to_excel(
-        f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/clean_data_final_{date_string}.xlsx',
+        f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/clean_data_final_{date_string}.xlsx',
         index=False)
 
 # print(feature_candidates.columns)

@@ -16,7 +16,7 @@ def rename_cols(df, int_cols, dbl_cols):
         "# ":"#",
         "  ":" "
     }
-    #replace _ wit ' ' in the column names
+    #replace _ with ' ' in the column names
     named_df.columns = named_df.columns.str.replace('_', ' ')
     #change official name of rules to mixed and int, and also replace the rest of the replacment dict
     def rename_column(col_name):
@@ -198,7 +198,6 @@ def check_col_consistency(df, requirement_df):
             print(f"Column '{column_name}' is not entirely positive.")
             return [column_name]
         return []
-    
     #check if all entries are strings
     def is_string(df, column_name):
         # Check if all entries in the column 'Column Name' are strings
@@ -213,7 +212,6 @@ def check_col_consistency(df, requirement_df):
             print(f"Column '{column_name}' has an invalid state.")
             return [column_name]
         return []
-    
     #check if all values are in the intervall [0,1]
     def in_zero_one(df, column_name):
         minimum = df[column_name].min()
@@ -231,7 +229,6 @@ def check_col_consistency(df, requirement_df):
             # names_for_deletion_lst+=list(broken_instances['Matrix Name'].unique())
             return [column_name]
         return []
-    
     #check if a valid permutation was chosen
     def valid_permutation_seed(df, column_name):
         valid_perms = [0.0,202404273.0,202404274.0]
@@ -239,7 +236,6 @@ def check_col_consistency(df, requirement_df):
             print(f"Column '{column_name}' has an invalid permutation seed.")
             return [column_name]
         return []
-    
     #will think about it later
     def perms_have_same_entries(df, column_name):
         #first sort instances by name so that all entries which should be equal are together
@@ -252,7 +248,6 @@ def check_col_consistency(df, requirement_df):
                 print('Permutation not consistent', df['Matrix Name'].iloc[index])
                 return [column_name]
         return []
-    
     #some float columns are nonnegative floats but have -1 if this action did not happen
     def float_or_minus_one(df, column_name):
         for value in df[column_name]:
@@ -271,6 +266,7 @@ def check_col_consistency(df, requirement_df):
         req_df = req_df.drop(req_df.columns[-1], axis=1)
         req_df.columns = df.columns
         return req_df
+
     
     requirement_df = clean_requirements(requirement_df)
     

@@ -1,8 +1,8 @@
 from typing import List
 import string
 import pandas as pd
+import matplotlib.pyplot as plt
 import numpy as np
-
 
 def delete_instances(df, instances, reason):
     """"Input: df pandas dataframe, instances: set of strings containing names of instances which should be deleted
@@ -17,8 +17,7 @@ def delete_instances(df, instances, reason):
     return df
 
 def opt_opt(df):
-    """Input: df which contains all rows where status int/mixed is opt,
-    and names of columns which should be equal
+    """Input: df
     Output: List of instances names which have different entries where they should be equal"""
     broken_instances:List['string'] = []
     opt_opt_df = df[(df['Status Mixed'] == 'Optimal') & (df['Status Int'] == 'Optimal')]
@@ -27,7 +26,6 @@ def opt_opt(df):
         if abs(row['Final Objective Mixed'] - row['Final Objective Int']) > 10**(-3):
             broken_instances.append(row['Matrix Name'])
 
-    #df = delete_instances(df, set(broken_instances), 'Final Objective Mismatch')
     return df, broken_instances
 
 def timeout_time(df):
@@ -46,7 +44,7 @@ def timeout_time(df):
 
     return too_early
 
-def entities_vs_vars(df):
+def entities_vs_vars():
     """Again need to check what happens here"""
 #only constraint on ticks is, that they are either nonnegative or equal to -1
 def tickst_du_richtig(df):
@@ -129,7 +127,7 @@ def perm_consistent(df):
     index_pairs = [eq_opt[eq_opt['Matrix Name'] == i].index for i in pair_opt]
     cmp_opt_pairs = [(abs(eq_opt['Final Objective Int'].loc[i[0]]) -
                       abs(eq_opt['Final Objective Mixed'].loc[i[1]])) for i in index_pairs]
-    not_same_opt = [x for x in cmp_opt_pairs if abs(x) > 10**(-6)]
+    not_same_opt = [x for x in cmp_opt_pairs if abs(x) > 10**(-3)]
 
     for i in index_pairs:
         eq_opt.drop(i[0], inplace=True)
@@ -165,21 +163,34 @@ def equal_cols_to_static(dataframe):
 
     return static_df
 
+def too_long(df):
+    bad_instances = []
+    for index, row in df.iterrows():
+        if df['Final solution time (cumulative) Mixed'].loc[index]>3636:
+            bad_instances.append(index)
+        if df['Final solution time (cumulative) Int'].loc[index]>3636:
+            bad_instances.append(index)
+    return bad_instances
+
 def column_interplay(df):
     #important: first timeout_time checken, then scale columns with +100
     deleted_instances = []
 
-    df, del_instances = opt_opt(df)
-    df = delete_instances(df, del_instances, 'Optimal Value too different')
+    cleaner_df, del_instances = opt_opt(df)
+    cleaner_df = delete_instances(cleaner_df, del_instances, 'Optimal Value too different')
     deleted_instances += del_instances
-    deleted_instances += timeout_time(df)
-    deleted_instances += permutations(df)
-    df, too_many_ticks = tickst_du_richtig(df)
-    df = delete_instances(df, too_many_ticks, 'Ticks > 100')
+    deleted_instances += timeout_time(cleaner_df)
+    cleaner_df = delete_instances(cleaner_df, timeout_time(cleaner_df), 'Timeout too soon')
+    deleted_instances += permutations(cleaner_df)
+    cleaner_df = delete_instances(cleaner_df, permutations(cleaner_df), 'Permutations not consistent')
+    deleted_instances += too_long(cleaner_df)
+    cleaner_df = delete_instances(cleaner_df, too_long(cleaner_df), 'Timeout too long')
+    cleaner_df, too_many_ticks = tickst_du_richtig(cleaner_df)
+    cleaner_df = delete_instances(cleaner_df, too_many_ticks, 'Ticks > 100')
     deleted_instances += too_many_ticks
-    df = equal_cols_to_static(df)
+    cleaner_df = equal_cols_to_static(cleaner_df)
     deleted_instances = set(deleted_instances)
-    return df, deleted_instances
+    return cleaner_df, deleted_instances
 
 
 opt_opt_same_lst =['Final Objective Mixed',	'Final Objective Int']

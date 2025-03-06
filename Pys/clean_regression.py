@@ -94,7 +94,6 @@ def predicted_time(time_df, prediction_df):
     return relative_to_mixed_mean
 
 def regression(full_data, features, label, scalers, imputations, models, random_seeds, extreme_threshold=4.0):
-
     results = []
 
     # Initialize dictionaries to collect feature importance data
@@ -132,9 +131,6 @@ def regression(full_data, features, label, scalers, imputations, models, random_
                         model.random_state = seed
                     # Train the pipeline
                     pipeline.fit(X_train, y_train)
-                    imputer = pipeline.named_steps['imputer']
-                    # print("Imputed Values (for each column):")
-                    # print(pd.Series(imputer.statistics_, index=X_train.columns))
 
                     # Evaluate on the test set
                     relevant_indices = y_test[y_test != 0].index
@@ -153,6 +149,7 @@ def regression(full_data, features, label, scalers, imputations, models, random_
                     # feature importance
                     if model_name == "LinearRegression":
                         coefficients = model.coef_
+                        print('INTERCEPT', model.intercept_, 'COEFFS', coefficients)
                         # linear_feature_importance_df[str(model_name)+str(imputation)+str(scaler)+str(count)] = coefficients
                         linear_feature_importance_data[f"{model_name}_{imputation}_{scaler}_{count}"] = coefficients
                         mean_to_mixed = predicted_time(time_mixed_int_vbs, pred_df)
@@ -231,11 +228,17 @@ def regress_on_different_sets_based_on_label_magnitude(number_of_seeds:str, regr
                    2912980295]
     seed_dict = {'one': one_seed, 'ten': ten_seeds, 'twenty': twenty_seeds, 'fifty': fifty_seeds,
                  'hundred': hundred_seeds}
-
     if log_label:
         feat_below_threshold, target_below_threshold = kick_outlier(feat, target, outlier_threshold)
         target_below_threshold = scale_label(target_below_threshold)
-        result_below_threshold_df, linear_importance, forest_importance, sgm_df = regression(d, feat_below_threshold, target_below_threshold, scalers, imputations, regressors, random_seeds=seed_dict[number_of_seeds], extreme_threshold=1.6)
+        result_below_threshold_df, linear_importance, forest_importance, sgm_df = regression(full_data=d,
+                                                                                             features=feat_below_threshold,
+                                                                                             label=target_below_threshold,
+                                                                                             scalers=scalers,
+                                                                                             imputations=imputations,
+                                                                                             models=regressors,
+                                                                                             random_seeds=seed_dict[number_of_seeds],
+                                                                                             extreme_threshold=1.6)
         if sgm:
             sgm_df.to_excel(directory_for_excels+f'/Logged/SGM/sgm_logged_{preset_name}_{regressor_names_for_excel}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{date_string}.xlsx', index=False)
 
@@ -311,6 +314,11 @@ t3_linear = ['#nodes in DAG',
              'Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
              '#integer violations at root']
 
+t2_linear = ['#nodes in DAG',
+             'Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed']
+
+t1_linear = ['#nodes in DAG']
+
 t2_forest = ['Avg coefficient spread for convexification cuts Mixed',
              'Presolve Global Entities']
 
@@ -328,16 +336,29 @@ preset_combined_t3 = ['hundred', regression_models, scaling, imputators, t3_feat
 
 preset_linear_t3 = ['hundred', regression_models, scaling, imputators, t3_linear, 1000]
 
+preset_linear_t2 = ['hundred', regression_models, scaling, imputators, t2_linear, 1000]
+
+preset_linear_t1 = ['hundred', regression_models, scaling, imputators, t1_linear, 1000]
+
 preset_forest_t2 = ['hundred', regression_models, scaling, imputators, t2_forest, 1000]
 
 all_top_presets = [preset_combined_t3, preset_linear_t3, preset_forest_t2]
 preset_names = ['GlobTop3', 'LinearTop3', 'ForestTop2']
 count=0
 
+# regress_on_different_sets_based_on_label_magnitude(preset_everything[0], preset_everything[1], preset_everything[2],
+#                                                    preset_everything[3], preset_everything[4], 'WERTZUIKJHGFDSASEDRTZU',
+#                                                    preset_everything[5])
 
-regress_on_different_sets_based_on_label_magnitude(setup_for_now[0], setup_for_now[1], setup_for_now[2],
-                                                   setup_for_now[3], setup_for_now[4], 't18_lin_optimized',
-                                                   setup_for_now[5],
-                                                   directory_for_excels='/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra',
-                                                   log_label=True, to_excel=True, sgm=True)
+# regress_on_different_sets_based_on_label_magnitude(preset_linear_t1[0], preset_linear_t1[1], preset_linear_t1[2],
+#                                                    preset_linear_t1[3], preset_linear_t1[4], 't1_lin_optimized',
+#                                                    preset_linear_t1[5],
+#                                                    directory_for_excels='/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra',
+#                                                    log_label=True, to_excel=True, sgm=True)
 
+
+# regress_on_different_sets_based_on_label_magnitude(preset_everything[0], preset_everything[1], preset_everything[2],
+#                                                    preset_everything[3], preset_everything[4], 't3_lin_optimized',
+#                                                    preset_everything[5],
+#                                                    directory_for_excels='/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra',
+#                                                    log_label=True, to_excel=True, sgm=True)
