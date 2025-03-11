@@ -7,12 +7,10 @@ import numpy as np
 def delete_instances(df, instances, reason):
     """"Input: df pandas dataframe, instances: set of strings containing names of instances which should be deleted
     Output: df pandas dataframe with deleted instances removed and reason why added to column Deletion Reason"""
-
     if not ('Deletion Reason' in df.columns):
         df.loc[:, 'Deletion Reason'] = ''
 
     df.loc[df['Matrix Name'].isin(instances), 'Deletion Reason'] = reason
-
     #df = df[~df['Matrix Name'].isin(instances)]
     return df
 
@@ -167,9 +165,9 @@ def too_long(df):
     bad_instances = []
     for index, row in df.iterrows():
         if df['Final solution time (cumulative) Mixed'].loc[index]>3636:
-            bad_instances.append(index)
+            bad_instances.append(df['Matrix Name'].loc[index])
         if df['Final solution time (cumulative) Int'].loc[index]>3636:
-            bad_instances.append(index)
+            bad_instances.append(df['Matrix Name'].loc[index])
     return bad_instances
 
 def column_interplay(df):

@@ -6,7 +6,7 @@ import numpy as np
 from sklearn.preprocessing import QuantileTransformer
 from sklearn.impute import SimpleImputer
 # custim functions
-from clean_regression import scale_label
+from das_ist_die_richtige_regression import scale_label
 # plotting
 import matplotlib.pyplot as plt
 

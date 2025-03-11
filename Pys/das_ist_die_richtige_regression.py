@@ -19,8 +19,9 @@ current_date = datetime.now()
 date_string = current_date.strftime("%d_%m")
 
 def read_data():
-    data = pd.read_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/base_data_24_01.xlsx').drop(columns='Matrix Name')
-    feats = pd.read_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/base_feats_no_cmp_24_01.xlsx')
+    data = pd.read_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/clean_data_final_06_03.xlsx').drop(columns='Matrix Name')
+    feats = pd.read_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/base_feats_no_cmp_24_01.xlsx')
+    print(feats.columns)
     feats.replace(-1, np.nan, inplace=True)
     label = data['Cmp Final solution time (cumulative)']
     return data, feats, label
@@ -362,3 +363,6 @@ count=0
 #                                                    preset_everything[5],
 #                                                    directory_for_excels='/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra',
 #                                                    log_label=True, to_excel=True, sgm=True)
+
+
+read_data()

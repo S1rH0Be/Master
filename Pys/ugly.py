@@ -94,71 +94,71 @@ def to_float(df, columns):
             bad_cols.append(column)
     if len(bad_cols) > 0:
         print("Not Float: ", bad_cols)
-    return df, bad_cols
+    return bad_cols
 
-def check_datatype(df, int_cols, float_cols, object_cols):
-    #input: DataFrame, Lists of strings containing the column names which should be int, float or object type
-    #Output: List of column names which do not have the proper dtype
-    '''Now its working for this case, to generalize add function to better deal with bad cases'''
-    bad_columns = []
-    
+def check_datatype(df):
+    #input: DataFrame
+    #Output: List of matrix names which do not have the proper dtype
+
+    # all columns which should be int
+    int_cols = ['Matrix Equality Constraints', 'Matrix Quadratic Elements', 'Matrix NLP Formula',
+                'Presolve Columns Mixed', 'Presolve Columns Int', 'Presolve Global Entities Mixed',
+                'Presolve Global Entities Int']
+    # add all columns containing # but not 'Cmp', because the quantity of variables etc should be int and Cmp are percentages ergo floats
+    other_int_cols = [col for col in df.columns if '#' in col and 'Cmp' not in col]
+    int_cols += other_int_cols
+
+    # object columns
+    object_cols = ['Matrix Name', 'Status Mixed', 'Status Int']
+
+    # float cols are the remaining ones
+    non_floats = int_cols + object_cols
+    float_cols = [col for col in df.columns if col not in non_floats]
+    # In bad_instances we store the Matrix Name for instances with one entry with wrong datatype
+    bad_instances = []
+    # First check if everything which should be an integer is an integer
     for int_col in int_cols:
-        if np.dtype(df[int_col])!='int64':
-            bad_columns.append(int_col)
-            
+        bad_rows = df[~df[int_col].apply(lambda x: isinstance(x, int))]['Matrix Name']
+        bad_instances.extend(bad_rows.tolist())
+    # Then check if everything which should be a float is a float
     for float_col in float_cols:
-        if np.dtype(df[float_col])!='float64':
-            bad_columns.append(float_col)
-    
+        bad_rows = df[~df[float_col].apply(lambda x: isinstance(x, float))]['Matrix Name']
+        bad_instances.extend(bad_rows.tolist())
+    # First check if everything which should be an object is an object
     for object_col in object_cols:
-        if np.dtype(df[object_col])!='object':
-            bad_columns.append(object_col)
-    if len(bad_columns) > 0:
-        print("Bad Columns: ", bad_columns)
-    return bad_columns
+        bad_rows = df[~df[object_col].apply(lambda x: isinstance(x, str))]['Matrix Name']
+        bad_instances.extend(bad_rows.tolist())
+
+    if len(bad_instances) > 0:
+        print("Wrong Datatype: ", bad_instances)
+
+    return bad_instances
 
 def datatype_converter(df):
-    '''Takes a df and tries to convert each column to the right datatype'''
-    #input: Dataframe
-    #Output: DataFrame where each row has the right datatype, names of the dropped instances 
-    #dropped_instances = []
+    """Takes a df and tries to convert each column to the right datatype"""
+    # Input: Dataframe
+    # Output: DataFrame where each row has the right datatype, names of the dropped instances
+    bad_instances = []
     
-    #remove percent sign in order to be able to work with the percentages as floats
+    # remove percent sign in order to be able to work with the percentages as floats
     df.replace('%', '', regex=True, inplace=True)
-    
-    #columns which had a % sign need to be converted from dtype object to float
-    #only columns with cmp in their name need to be converted
+    # columns which had a % sign need to be converted from dtype object to float
+    # only columns with cmp in their name need to be converted
     perc_columns = df.filter(like='Cmp')
-    #call to_float to convert columns to float columns
-    df, bad_cols = to_float(df, perc_columns)
+    # call to_float to convert columns to float columns
+    bad_cols = to_float(df, perc_columns)
     
-    #gather all columns which should be int
-    int_cols = ['Matrix Equality Constraints', 'Matrix Quadratic Elements', 'Matrix NLP Formula', 
-                'Presolve Columns Mixed', 'Presolve Columns Int', 'Presolve Global Entities Mixed', 
-                'Presolve Global Entities Int']
-    #add all columns containing # but not 'Cmp' ,because the quantity of variables etc should be int
-    #and Cmp are percentages ergo floats
-    other_int_cols = [col for col in df.columns if '#' in col and 'Cmp' not in col]
-    
-    int_cols+= other_int_cols
+    bad_instances += check_datatype(df)
 
-    #object columns
-    object_cols = ['Matrix Name', 'Status Mixed', 'Status Int']
-    
-    #float cols are the remaining ones
-    non_floats = int_cols+object_cols
-    float_cols = [col for col in df.columns if col not in non_floats]
-    
-    bad_cols+=check_datatype(df, int_cols, float_cols, object_cols)
-    if len(bad_cols)>0:
-        print("Datatype converter: ", bad_cols)
+    if len(bad_instances)>0:
+        print("Datatype converter: ", bad_instances)
     return df, bad_cols
 
 '''SINGLE COLUMN CHECKER'''
 
 def check_col_consistency(df, requirement_df):
 
-    '''Hier kommen alle requirement checker'''
+    """Hier kommen alle requirement checker"""
     '''Am ende werden sie dann aufgerufen'''
     # Function to check and convert column to float
     def convert_column_to_float(df, column_name):

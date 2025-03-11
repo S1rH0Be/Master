@@ -8,7 +8,7 @@ from sklearn.preprocessing import QuantileTransformer
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 
-from clean_regression import read_data, get_accuracy, predicted_time
+from das_ist_die_richtige_regression import read_data, get_accuracy, predicted_time
 
 
 def linear_regression(random_seed, used_feature_names='All', extreme_threshold=1.6):
