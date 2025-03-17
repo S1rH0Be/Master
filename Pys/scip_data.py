@@ -1,6 +1,7 @@
 import os
 import re
 import pandas as pd
+import numpy as np
 import json
 
 '''
@@ -38,7 +39,7 @@ def find_no_feature_instances(df):
 
     return all_runs_no_feats, s0_no_feats, s1_no_feats, s2_no_feats
 
-def map_scip_to_xpress(df, compper_df, operation_dict):
+def map_raw_scip_to_feature(df, compper_df, operation_dict):
     # Get the list of columns in compper_df
     df_columns = df.columns.tolist()
 
@@ -58,38 +59,75 @@ def map_scip_to_xpress(df, compper_df, operation_dict):
         try:
             # Evaluate the expression and create the new column in df
             compper_df[new_col] = eval(operation)
+            if compper_df[new_col].isna().sum() > 0:
+                compper_df[new_col] = compper_df[new_col].replace(np.nan, -1)
+
         except Exception as e:
             print(f"Error while evaluating operation for {new_col}: {e}")
             compper_df[new_col] = None  # If there's an error, assign NaN or None
 
     return compper_df
 
-def create_compatible_dataframe(df):
-    name_mapping = {'#integer violations at root': 'nintpseudocost',
-                    '#nodes in DAG': 'nauxvars', #aber vielleicht sind auch nnonlinearexpr oder nnonconvexexpr interessant
+def create_compatible_dataframe(df, fico_only=False):
+
+    name_mapping_fico_only = {'#integer violations at root': 'nintpseudocost',
+                    '#nodes in DAG': 'nnonlinearvars+nauxvars',#weiß nicht warum ich nur nauxvars bisher hatte #aber vielleicht sind auch nnonlinearexpr oder nnonconvexexpr interessant
                     'Avg coefficient spread for convexification cuts Mixed': 'sumcoefspreadnonlinrows / nnonlinrows',#aber vielleicht ist auch sumcoefspreadactnonlinrows / nactnonlinrows interessant.
                     'Presolve Global Entities': 'nintegervars',
                     'Presolve Columns': 'ncontinuousvars + nbinaryvars + nintegervars',
                     '#nonlinear violations at root': 'nviolconss', #'nnlviolcands waeren die anzahl der branching candidates fuers spatial branching, also die anzahl von variables in nichtkonvexen termen in verletzen nichtlinear constraints',
-                    #'Avg work for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed': 'avgstrongbranchrootiter ist die Anzahl der LP iter, but including infeasible ones',
+                    #'Avg work for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed': 'avgstrongbranchrootiter' ist die Anzahl der LP iter, but including infeasible ones',
                     'Matrix Equality Constraints': 'nlinearequconss + nnonlinearequconss',
                     'Matrix NLP Formula': 'nnonlinearconss',
                     #'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed': 'sumintpseudocost / nintpseudocost kann ich als Alternative anbieten',
-                    '% vars in DAG (out of all vars)': 'nnonlinearvars/ (ncontinuousvars + nbinaryvars + nintegervars)', #aber vielleicht ist nnonconvexvars besser',
-                    '% vars in DAG integer (out of vars in DAG)': '(nnonlinearbinvars + nnonlinearintvars) / nnonlinearvars', #oder es ist (nnonconvexbinvars + nnonconvexintvars) / nnonconvexvars besser',
+                    '% vars in DAG (out of all vars)': '(nnonlinearvars + nauxvars) / (ncontinuousvars+nbinaryvars+nintegervars+nauxvars)',
+                    '% vars in DAG integer (out of vars in DAG)': '(nnonlinearbinvars + nnonlinearintvars + nintauxvars) / (nnonlinearvars+nauxvars)',
+                    '% vars in DAG unbounded (out of vars in DAG)': '(nnonlinearunboundedvars + nunboundedauxvars) / (nnonlinearvars+nauxvars)',
                     '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)': 'nquadexpr / (nquadexpr + nsuperquadexpr)',
-                    '% vars in DAG unbounded (out of vars in DAG)': 'nnonlinearunboundedvars / nnonlinearvars', #, aber vielleicht ist nnonconvexunboundedvars / nnonconvexvars besser',
                     'Matrix Quadratic Elements': 'nquadcons'
                     }
 
-    compa_df = pd.DataFrame(columns= ['Matrix Name', 'Random Seed Shift']+[name for name in name_mapping.keys()]+['SCIP Status Mixed', 'SCIP Status Int', 'Final solution time (cumulative) Mixed', 'Final solution time (cumulative) Int', 'Virtual Best'], index=df.index)
-    for col_name in compa_df.columns:
-        if col_name not in name_mapping:
-            compa_df[col_name] = df[col_name]
-        elif name_mapping[col_name] in df.columns:
-            compa_df[col_name] = df[name_mapping[col_name]]
+    name_mapping_with_more_scip_features = {'#integer violations at root': 'nintpseudocost',
+                                            '#nodes in DAG': 'nnonlinearvars+nauxvars',
+                                            # weiß nicht warum ich nur nauxvars bisher hatte #aber vielleicht sind auch nnonlinearexpr oder nnonconvexexpr interessant
+                                            'Avg coefficient spread for convexification cuts Mixed': 'sumcoefspreadnonlinrows / nnonlinrows',
+                                            # aber vielleicht ist auch sumcoefspreadactnonlinrows / nactnonlinrows interessant.
+                                            'Presolve Global Entities': 'nintegervars',
+                                            'Presolve Columns': 'ncontinuousvars + nbinaryvars + nintegervars',
+                                            '#nonlinear violations at root': 'nviolconss',
+                                            # 'nnlviolcands waeren die anzahl der branching candidates fuers spatial branching, also die anzahl von variables in nichtkonvexen termen in verletzen nichtlinear constraints',
+                                            # 'Avg work for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed': 'avgstrongbranchrootiter' ist die Anzahl der LP iter, but including infeasible ones',
+                                            'Matrix Equality Constraints': 'nlinearequconss + nnonlinearequconss',
+                                            'Matrix NLP Formula': 'nnonlinearconss',
+                                            # 'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed': 'sumintpseudocost / nintpseudocost kann ich als Alternative anbieten',
+                                            'Avg pseudocosts of integer variables': 'sumintpseudocost / nintpseudocost',
+                                            '% vars in DAG (out of all vars)': '(nnonlinearvars + nauxvars) / (ncontinuousvars+nbinaryvars+nintegervars+nauxvars)',
+                                            '% vars in DAG integer (out of vars in DAG)': '(nnonlinearbinvars + nnonlinearintvars + nintauxvars) / (nnonlinearvars+nauxvars)',
+                                            '% vars in DAG unbounded (out of vars in DAG)': '(nnonlinearunboundedvars + nunboundedauxvars) / (nnonlinearvars+nauxvars)',
+                                            '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)': 'nquadexpr / (nquadexpr + nsuperquadexpr)',
+                                            'Matrix Quadratic Elements': 'nquadcons'
+                                            }
 
-    compa_df = map_scip_to_xpress(df, compa_df, name_mapping)
+    if fico_only:
+        compa_df = pd.DataFrame(columns= ['Matrix Name', 'Random Seed Shift']+[name for name in name_mapping_fico_only.keys()]+['SCIP Status Mixed', 'SCIP Status Int', 'Final solution time (cumulative) Mixed', 'Final solution time (cumulative) Int', 'Virtual Best'], index=df.index)
+        for col_name in compa_df.columns:
+            if col_name not in name_mapping_fico_only:
+                compa_df[col_name] = df[col_name]
+            elif name_mapping_fico_only[col_name] in df.columns:
+                compa_df[col_name] = df[name_mapping_fico_only[col_name]]
+        compa_df = map_raw_scip_to_feature(df, compa_df, name_mapping_fico_only)
+    else:
+        compa_df = pd.DataFrame(
+            columns=['Matrix Name', 'Random Seed Shift'] + [name for name in name_mapping_with_more_scip_features.keys()] + [
+                'SCIP Status Mixed', 'SCIP Status Int', 'Final solution time (cumulative) Mixed',
+                'Final solution time (cumulative) Int', 'Virtual Best'], index=df.index)
+        for col_name in compa_df.columns:
+            if col_name not in name_mapping_with_more_scip_features:
+                compa_df[col_name] = df[col_name]
+            elif name_mapping_with_more_scip_features[col_name] in df.columns:
+                compa_df[col_name] = df[name_mapping_with_more_scip_features[col_name]]
+
+        compa_df = map_raw_scip_to_feature(df, compa_df, name_mapping_with_more_scip_features)
 
     return compa_df
 
@@ -303,9 +341,30 @@ def read_in_and_call_process(directory_path = "/Users/fritz/Downloads/ZIB/Master
         stefans_data_merged_all_have_features.to_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/stefans_data_merged_all_with_feature.xlsx',
                                index=False)
 
+        stefan_scip_feats_no_nan = create_compatible_dataframe(stefans_data_merged_all_have_features)
+        stefan_scip_feats_no_nan.to_excel(
+            "/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/scip_data_reduced_columns_no_nan.xlsx",
+            index=False)
+
+        stefans_feats = stefan_scip_feats_no_nan[['#integer violations at root',
+                                            '#nodes in DAG',
+                                            'Avg coefficient spread for convexification cuts Mixed',
+                                            'Presolve Global Entities', 'Presolve Columns',
+                                            '#nonlinear violations at root', 'Matrix Equality Constraints',
+                                            'Matrix NLP Formula', '% vars in DAG (out of all vars)',
+                                            '% vars in DAG integer (out of vars in DAG)',
+                                            'Matrix Quadratic Elements',
+                                            '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
+                                            '% vars in DAG unbounded (out of vars in DAG)']].copy()
+
+        stefans_feats.to_excel(
+            '/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/stefans_feats_scip_no_nan.xlsx',
+            index=False)
+
+
     if fico:
         # all instances
-        scip_to_fic_df = create_compatible_dataframe(stefans_data_merged)
+        scip_to_fic_df = create_compatible_dataframe(stefans_data_merged, fico_only=True)
         scip_to_fic_df.to_excel("/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_instances/scip_to_fic.xlsx",
                                 index=False)
 
@@ -345,4 +404,4 @@ def read_in_and_call_process(directory_path = "/Users/fritz/Downloads/ZIB/Master
             index=False)
 
 
-read_in_and_call_process(fico=True, to_excel=True)
+read_in_and_call_process()
