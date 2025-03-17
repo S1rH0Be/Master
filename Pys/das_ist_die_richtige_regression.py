@@ -18,12 +18,19 @@ current_date = datetime.now()
 # Format it as a string
 date_string = current_date.strftime("%d_%m")
 
-def read_data():
-    data = pd.read_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/clean_data_final_06_03.xlsx').drop(columns='Matrix Name')
-    feats = pd.read_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/base_feats_no_cmp_24_01.xlsx')
-    print(feats.columns)
-    feats.replace(-1, np.nan, inplace=True)
-    label = data['Cmp Final solution time (cumulative)']
+def read_data(data_set:str):
+    if data_set == 'Timo':
+        data = pd.read_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/clean_data_final_06_03.xlsx').drop(columns='Matrix Name')
+        feats = pd.read_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/base_feats_no_cmp_24_01.xlsx')
+        feats.replace(-1, np.nan, inplace=True)
+        label = data['Cmp Final solution time (cumulative)'].copy()
+    elif data_set == 'Stefan':
+        data = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/stefan_outs/stefan_merged_complete.xlsx')
+        feats = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/stefan_outs/stefans_feats.xlsx')
+        label = data['Cmp Final solution time (cumulative)'].copy()
+    else:
+        print('Invalid data set')
+        return 1
     return data, feats, label
 
 def kick_outlier(feat_df, label_series, threshold : int):
@@ -150,7 +157,6 @@ def regression(full_data, features, label, scalers, imputations, models, random_
                     # feature importance
                     if model_name == "LinearRegression":
                         coefficients = model.coef_
-                        print('INTERCEPT', model.intercept_, 'COEFFS', coefficients)
                         # linear_feature_importance_df[str(model_name)+str(imputation)+str(scaler)+str(count)] = coefficients
                         linear_feature_importance_data[f"{model_name}_{imputation}_{scaler}_{count}"] = coefficients
                         mean_to_mixed = predicted_time(time_mixed_int_vbs, pred_df)
@@ -187,10 +193,10 @@ def regression(full_data, features, label, scalers, imputations, models, random_
     return results_df, linear_feature_importance_df, forest_feature_importance_df, sgm_run_time_df
 
 def regress_on_different_sets_based_on_label_magnitude(number_of_seeds:str, regressors, scalers, imputations, feature_names,
-                                                       preset_name:str, outlier_threshold=1000,  log_label=False, to_excel=False, sgm=False,
-                                                       directory_for_excels='/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/Tester/'):
-    d, feat, target = read_data()
-    feat = feat[feature_names]
+                                                       preset_name:str, data_set_name:str, outlier_threshold=1000,  log_label=False, to_excel=False, sgm=False,
+                                                       directory_for_excels='/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/stefan_outs/Testrun1'):
+    d, feat, target = read_data(data_set_name)
+
     if len(regressors) == 2:
         regressor_names_for_excel = 'both'
     elif len(regressors) == 1:
@@ -347,22 +353,9 @@ all_top_presets = [preset_combined_t3, preset_linear_t3, preset_forest_t2]
 preset_names = ['GlobTop3', 'LinearTop3', 'ForestTop2']
 count=0
 
-# regress_on_different_sets_based_on_label_magnitude(preset_everything[0], preset_everything[1], preset_everything[2],
-#                                                    preset_everything[3], preset_everything[4], 'WERTZUIKJHGFDSASEDRTZU',
-#                                                    preset_everything[5])
-
-# regress_on_different_sets_based_on_label_magnitude(preset_linear_t1[0], preset_linear_t1[1], preset_linear_t1[2],
-#                                                    preset_linear_t1[3], preset_linear_t1[4], 't1_lin_optimized',
-#                                                    preset_linear_t1[5],
-#                                                    directory_for_excels='/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra',
-#                                                    log_label=True, to_excel=True, sgm=True)
-
-
-# regress_on_different_sets_based_on_label_magnitude(preset_everything[0], preset_everything[1], preset_everything[2],
-#                                                    preset_everything[3], preset_everything[4], 't3_lin_optimized',
-#                                                    preset_everything[5],
-#                                                    directory_for_excels='/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra',
-#                                                    log_label=True, to_excel=True, sgm=True)
-
-
-read_data()
+regress_on_different_sets_based_on_label_magnitude(preset_everything[0], preset_everything[1], preset_everything[2],
+                                                   preset_everything[3], preset_everything[4], 'STEFAN',
+                                                   data_set_name='Stefan', outlier_threshold=preset_everything[5],
+                                                   directory_for_excels='/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/stefan_outs/Testrun1',
+                                                   log_label=True, to_excel=True, sgm=True
+                                                   )

@@ -153,7 +153,7 @@ def plot_sgm_relative_to_mixed(df, title:str):
     sgm_mixed = sgm_lin.iloc[0]
 
     relative_values = [1.0, np.round(sgm_lin.iloc[1]/sgm_mixed, 6), np.round(sgm_for.iloc[1]/sgm_mixed, 6), np.round(sgm_for.iloc[2]/sgm_mixed, 6)]
-
+    print(relative_values)
     bar_names = ['Mixed', 'Linear', 'Forest', 'Virtual Best']
     colors = ['lightblue', 'orange', 'limegreen', 'lightblue']
 
@@ -284,16 +284,20 @@ def scaling(feat_df, label_series):
     logged_label = scale_label(label_series)
     return feature_df_transformed, logged_label
 
-data = pd.read_excel("/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/base_data_24_01.xlsx")
-feature_df = pd.read_excel("/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/base_feats_no_cmp_24_01.xlsx")
+data = pd.read_excel("/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/stefan_outs/stefan_merged_complete.xlsx")
+feature_df = pd.read_excel("/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/stefan_outs/stefans_feats.xlsx")
 label = data['Cmp Final solution time (cumulative)'].copy()
 
-imputed_feature = imputation(feature_df)
-scaled_feature, logged_label = scaling(imputed_feature, label)
+accuracy = pd.read_excel("/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/stefan_outs/Testrun1/Logged/Accuracy/logged_STEFAN_both_below_1000_hundred_seeds_1_13_03.xlsx")
+sgm = pd.read_excel("/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/stefan_outs/Testrun1/Logged/SGM/sgm_logged_STEFAN_both_below_1000_hundred_seeds_1_13_03.xlsx")
+# plot_sgm_accuracy(accuracy, 'Accuracy on Top3 Features and logged Label')
+plot_sgm_relative_to_mixed(sgm, "First SGM of Stefan")
+# imputed_feature = imputation(feature_df)
+# scaled_feature, logged_label = scaling(imputed_feature, label)
 
-imputed_feature.to_excel("/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/base_feats_no_cmp_imputed.xlsx", index=False)
-scaled_feature.to_excel("/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/base_feats_no_cmp_imputed_Scaled.xlsx", index=False)
-logged_label.to_excel("/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/label_scaled.xlsx", index=False)
+# imputed_feature.to_excel("/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/base_feats_no_cmp_imputed.xlsx", index=False)
+# scaled_feature.to_excel("/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/base_feats_no_cmp_imputed_Scaled.xlsx", index=False)
+# logged_label.to_excel("/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/label_scaled.xlsx", index=False)
 
-for col in feature_df.columns:
-    box_plot(scaled_feature[col], col)
+# for col in feature_df.columns:
+#     box_plot(scaled_feature[col], col)
