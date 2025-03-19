@@ -109,7 +109,7 @@ def create_compatible_dataframe(df, fico_only=False):
                                             }
 
     if fico_only:
-        compa_df = pd.DataFrame(columns= ['Matrix Name', 'Random Seed Shift']+[name for name in name_mapping_fico_only.keys()]+['SCIP Status Mixed', 'SCIP Status Int', 'Final solution time (cumulative) Mixed', 'Final solution time (cumulative) Int', 'Virtual Best'], index=df.index)
+        compa_df = pd.DataFrame(columns= ['Matrix Name', 'Random Seed Shift']+[name for name in name_mapping_fico_only.keys()]+['Status Mixed', 'Status Int', 'Final solution time (cumulative) Mixed', 'Final solution time (cumulative) Int', 'Virtual Best'], index=df.index)
         for col_name in compa_df.columns:
             if col_name not in name_mapping_fico_only:
                 compa_df[col_name] = df[col_name]
@@ -119,7 +119,7 @@ def create_compatible_dataframe(df, fico_only=False):
     else:
         compa_df = pd.DataFrame(
             columns=['Matrix Name', 'Random Seed Shift'] + [name for name in name_mapping_with_more_scip_features.keys()] + [
-                'SCIP Status Mixed', 'SCIP Status Int', 'Final solution time (cumulative) Mixed',
+                'Status Mixed', 'Status Int', 'Final solution time (cumulative) Mixed',
                 'Final solution time (cumulative) Int', 'Virtual Best'], index=df.index)
         for col_name in compa_df.columns:
             if col_name not in name_mapping_with_more_scip_features:
@@ -186,7 +186,7 @@ def extract_instance_data_mix0(file_path):
                 except json.JSONDecodeError:
                     features = None  # Keep as None if JSON is invalid
 
-            # Extract SCIP status
+            # Extract Status
             if line.startswith('SCIP Status'):
                 status = get_status(line)
 
@@ -206,7 +206,7 @@ def extract_instance_data_mix0(file_path):
 
                 row = {'Matrix Name': matrix_name or "Unknown", 'Random Seed Shift': random_seed_shift}
                 row.update(features if features else {})
-                row['SCIP Status Mixed'] = status or "Unknown"
+                row['Status Mixed'] = status or "Unknown"
                 row['Final solution time (cumulative) Mixed'] = float(solving_time) or "Unknown"
 
                 rows.append(row)
@@ -242,7 +242,7 @@ def extract_instance_data_minlp(file_path):
             if line.startswith('SCIP> read'):
                 matrix_name = get_name(line)
 
-            # Extract SCIP status
+            # Extract Status
             if line.startswith('SCIP Status'):
                 status = get_status(line)
 
@@ -261,7 +261,7 @@ def extract_instance_data_minlp(file_path):
                     random_seed_shift = 0
 
                 row = {'Matrix Name': matrix_name, 'Random Seed Shift': random_seed_shift,
-                       'SCIP Status Int': status,
+                       'Status Int': status,
                        'Final solution time (cumulative) Int': float(solving_time)}
 
                 rows.append(row)
@@ -315,7 +315,7 @@ def process_directory(directory):
 
         merged_df = pd.merge(mix0_df, minlp_df, on="Matrix Name")
         columns_list = merged_df.columns.tolist()
-        reordered_columns = columns_list[:-4]+['SCIP Status Int', 'Final solution time (cumulative) Mixed', 'Final solution time (cumulative) Int', 'Random Seed Shift']
+        reordered_columns = columns_list[:-4]+['Status Int', 'Final solution time (cumulative) Mixed', 'Final solution time (cumulative) Int', 'Random Seed Shift']
         merged_df = merged_df[reordered_columns]
         merged_df = calculate_label(merged_df)
         merge_seeds_list.append(merged_df)
@@ -325,12 +325,14 @@ def process_directory(directory):
     return complete_df
 
 def read_in_and_call_process(directory_path = "/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/Outs",
-                             fico=False, to_excel=True):
+                             fico=True, to_excel=True):
 
     stefans_data_merged = process_directory(directory_path)
+
     # delete all instances and their permutations if they have np.nan values
     # Identify matrix names that contain NaN values
     matrices_with_nan = stefans_data_merged[stefans_data_merged.isna().any(axis=1)]['Matrix Name'].unique()
+
     # Filter out all rows with those matrix names
     stefans_data_merged_all_have_features = stefans_data_merged[~stefans_data_merged['Matrix Name'].isin(matrices_with_nan)]
 
@@ -355,7 +357,8 @@ def read_in_and_call_process(directory_path = "/Users/fritz/Downloads/ZIB/Master
                                             '% vars in DAG integer (out of vars in DAG)',
                                             'Matrix Quadratic Elements',
                                             '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
-                                            '% vars in DAG unbounded (out of vars in DAG)']].copy()
+                                            '% vars in DAG unbounded (out of vars in DAG)',
+                                            'Avg pseudocosts of integer variables']].copy()
 
         stefans_feats.to_excel(
             '/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/stefans_feats_scip_no_nan.xlsx',
@@ -405,3 +408,4 @@ def read_in_and_call_process(directory_path = "/Users/fritz/Downloads/ZIB/Master
 
 
 read_in_and_call_process()
+

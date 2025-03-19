@@ -86,7 +86,6 @@ def to_float(df, columns):
     #output: DataFrame, List of dropped instances because not float
     bad_cols = []
     dropped_instances = []
-    
     for column in columns:
         try:
            df[column] = df[column].astype(float)
@@ -156,124 +155,173 @@ def datatype_converter(df):
 
 '''SINGLE COLUMN CHECKER'''
 
-def check_col_consistency(df, requirement_df):
+def check_col_consistency(df, requirement_df, SCIP=False):
 
     """Hier kommen alle requirement checker"""
     '''Am ende werden sie dann aufgerufen'''
     # Function to check and convert column to float
     def convert_column_to_float(df, column_name):
-        try:
-            # Attempt to convert the column to float
-            df[column_name] = df[column_name].astype(float)
-            return[]
-        except ValueError:
-            print(column_name, 'not Float')
-            return [column_name]
-            
+        broken_instances = []
+
+        for index, value in df[column_name].items():
+            try:
+                float(value)  # Try converting to float
+            except ValueError:
+                broken_instances.append(df.loc[index, 'Matrix Name'])  # Collect corresponding 'Matrix Name'
+
+        if not broken_instances:
+            df.loc[:, column_name] = df[column_name].astype(float)  # Convert if all values are valid
+
+        return broken_instances
     # Function to check and convert column to integer
     def convert_column_to_integer(df, column_name):
-        try:
-            # Attempt to convert the column to float
-            df[column_name] = df[column_name].astype(int)
-            #print(f"Column '{column_name}' successfully converted to float.")
-            return []
-        except ValueError:
-            print(column_name, 'not Int')
-            return [column_name]
-    
-    #function to check if all entries are nonneg
-    #i check beforehand that only numerical values are in the tested column
+        broken_instances = []
+
+        for index, value in df[column_name].items():
+            try:
+                int(value)  # Try converting to integer
+            except ValueError:
+                broken_instances.append(df.loc[index, 'Matrix Name'])  # Collect corresponding 'Matrix Name'
+
+        if not broken_instances:
+            df.loc[:,column_name] = df[column_name].astype(int)  # Convert if all values are valid
+
+        return broken_instances
+    # function to check if all entries are nonneg
+    # i check beforehand that only numerical values are in the tested column
     def is_non_neg(df, column_name):
         minimum = df[column_name].min()
-        if minimum<0:
-            print(f"Column '{column_name}' has a negative entry.")
-            return [column_name]
-        return []
-    
+        broken_instances = []
+        # Check if any values are outside the range [0, 1]
+        if minimum < 0:
+            for index, row in df.iterrows():
+                if row[column_name] < 0:
+                    print(f"Instance '{df.loc[index, 'Matrix Name']}' in '{column_name}' is negative.")
+                    broken_instances.append((row['Matrix Name'], 'Negative'))
+            return broken_instances
+        return broken_instances
     #function to check if all entries are positiv
     #i check beforehand that only numerical values are in the tested column
     def is_pos(df, column_name):
         minimum = df[column_name].min()
-        if minimum<=0:
-            print(f"Column '{column_name}' is not entirely positive.")
-            return [column_name]
-        return []
+        broken_instances = []
+        # Check if any values are outside the range [0, 1]
+        if minimum <= 0:
+            for index, row in df.iterrows():
+                if row[column_name] <= 0:
+                    print(f"Instance '{df.loc[index, 'Matrix Name']}' in '{column_name}' is nonpositive.")
+                    broken_instances.append((row['Matrix Name'], 'nonpositive'))
+            return broken_instances
+        return broken_instances
     #check if all entries are strings
     def is_string(df, column_name):
-        # Check if all entries in the column 'Column Name' are strings
-        if not df[column_name].apply(lambda x: isinstance(x, str)).all():
-            print(f"Column '{column_name}' is not string.")
-            return [column_name]
-        return []
+        broken_instances = []
+        for index, row in df.iterrows():
+            if type(row[column_name]) != str:
+                print(f"Instance '{row['Matrix Name']}' is not a string.")
+                broken_instances.append((row['Matrix Name'], 'Not string'))
+        return broken_instances
     #check if instance terminates in a valid state
-    def valid_final_state(df, column_name):
+    def valid_final_state_fico(df, column_name):
         valid_states = ['Optimal', 'Timeout','Fail','Infeasible']
-        if not df[column_name].isin(valid_states).all():
-            print(f"Column '{column_name}' has an invalid state.")
-            return [column_name]
-        return []
+        broken_instances = []
+        for index, row in df.iterrows():
+            if row[column_name] not in valid_states:
+                print(f"Instance '{row['Matrix Name']}' has an invalid final state.")
+                broken_instances.append((row['Matrix Name'], 'Invalid final state'))
+        return broken_instances
+
+    def valid_final_state_scip(df, column_name):
+        valid_states = ['optimal', 'timeout','gap limit','infeasible']
+        broken_instances = []
+        for index, row in df.iterrows():
+            if row[column_name] not in valid_states:
+                print(f"Instance '{row['Matrix Name']}' has an invalid final state.")
+                broken_instances.append((row['Matrix Name'], 'Invalid final state'))
+        return broken_instances
     #check if all values are in the intervall [0,1]
     def in_zero_one(df, column_name):
         minimum = df[column_name].min()
         maximum = df[column_name].max()
+        broken_instances = []
         # Check if any values are outside the range [0, 1]
         if minimum < 0 or maximum > 1:
-            print(f"Column '{column_name}' is not in [0,1].")
-            
-            # # Find all entries that are outside the range
-            # broken_instances = df[(df[column_name] < 0) | (df[column_name] > 1)]
-            # #print(broken_instances)
-            # #add these instances to the deleted_df just for error search
-            # global names_for_deletion_lst
-            # print(type(broken_instances['Matrix Name'].unique()))
-            # names_for_deletion_lst+=list(broken_instances['Matrix Name'].unique())
-            return [column_name]
-        return []
+
+            for index, row in df.iterrows():
+                if row[column_name] < 0 | row[column_name] > 1:
+                    print(f"Instance '{df.loc[index, 'Matrix Name']}' in '{column_name}' is not in [0,1].")
+                    broken_instances.append((row['Matrix Name'], 'Not in [0,1]'))
+            return broken_instances
+        return broken_instances
     #check if a valid permutation was chosen
-    def valid_permutation_seed(df, column_name):
+    def valid_permutation_seed_fico(df, column_name):
         valid_perms = [0.0,202404273.0,202404274.0]
-        if not df[column_name].isin(valid_perms).all():
-            print(f"Column '{column_name}' has an invalid permutation seed.")
-            return [column_name]
-        return []
+        broken_instances = []
+        for index, row in df.iterrows():
+            if row[column_name] not in valid_perms:
+                print(f"Instance '{row['Matrix Name']}' has an invalid permutation seed.")
+                broken_instances.append((row['Matrix Name'], 'Invalid permutation seed'))
+        return broken_instances
+
+    def valid_permutation_seed_scip(df, column_name):
+        valid_perms = [0,1,2]
+        broken_instances = []
+        for index,row in df.iterrows():
+            if row[column_name] not in valid_perms:
+                print(f"Instance '{row['Matrix Name']}' has an invalid permutation seed.")
+                broken_instances.append((row['Matrix Name'], 'Invalid permutation seed'))
+        return broken_instances
     #will think about it later
     def perms_have_same_entries(df, column_name):
         #first sort instances by name so that all entries which should be equal are together
-        df = df.sort_values(by='Matrix Name')
+        sorted_df = df.sort_values(by='Matrix Name')
+        broken_instances = []
         for index in range(0,len(df), 3):
-    
-            if df[column_name].iloc[index]==df[column_name].iloc[index+1]==df[column_name].iloc[index+2]:
+            if sorted_df[column_name].iloc[index]==sorted_df[column_name].iloc[index+1]==sorted_df[column_name].iloc[index+2]:
                 continue
             else:
-                print('Permutation not consistent', df['Matrix Name'].iloc[index])
-                return [column_name]
-        return []
+                print('Permutation not consistent', column_name, sorted_df['Matrix Name'].iloc[index])
+                broken_instances.append((sorted_df['Matrix Name'].iloc[index], f'Permutation not consistent: {column_name}'))
+        return broken_instances
     #some float columns are nonnegative floats but have -1 if this action did not happen
-    def float_or_minus_one(df, column_name):
-        for value in df[column_name]:
-            if (value<0)&(value!=-1):
-                print('Not float nor -1')
-                return [column_name]
-        return []
+    def nonneg_or_minus_one(df, column_name):
+        broken_instances = []
+        for index in df[column_name].index:
+            if (df[column_name].loc[index]<0) & (df[column_name].loc[index]!=-1):
+                print(f"Instance '{df['Matrix Name'].loc[index]}' not a float or -1.")
+                broken_instances.append((df['Matrix Name'].loc[index], 'Not float nor -1'))
+        return broken_instances
+
+    def each_name_thrice(df, column_name):
+        broken_instances = []
+
+        matrix_names = df[column_name].unique()
+        for matrix_name in matrix_names:
+            if len(df[df[column_name]==matrix_name])<3:
+                broken_cols.append((matrix_name, 'Less than 3'))
+        return broken_instances
+
     
     req_dict = {'Strings': is_string, 'Integers': convert_column_to_integer, 'nonneg': is_non_neg, 
-                'Each_permutation_same_entries': perms_have_same_entries, '[Optimal,Timeout,Fail,Infeasible]': valid_final_state,
+                'Each_permutation_same_entries': perms_have_same_entries, '[Optimal,Timeout,Fail,Infeasible]': valid_final_state_fico,
+                '[optimal,gap limit,timeout,infeasible]': valid_final_state_scip,
                 'Floats': convert_column_to_float,
-                'is_pos': is_pos, '[0,1]': in_zero_one, '[0,202404273,202404274]': valid_permutation_seed,
-                'float_or_minus_one': float_or_minus_one}
+                'is_pos': is_pos, '[0,1]': in_zero_one, '[0,202404273,202404274]': valid_permutation_seed_fico,
+                '[0,1,2]':valid_permutation_seed_scip,
+                'nonneg_or_minus_one': nonneg_or_minus_one, 'Each_name_3_Times': each_name_thrice}
     #make requirement_df usable
-    def clean_requirements(req_df):
-        req_df = req_df.drop(req_df.columns[-1], axis=1)
+    def clean_requirements(req_df, scip):
+        if not SCIP:
+            req_df = req_df.drop(req_df.columns[-1], axis=1)
         req_df.columns = df.columns
         return req_df
 
-    
-    requirement_df = clean_requirements(requirement_df)
+    requirement_df = clean_requirements(requirement_df, SCIP)
     
     broken_cols = []
     for col in df.columns:
         helper = requirement_df[col]
-        requirements = [word for string in helper for word in string.split(', ')]
+        requirements = [word.strip() for string in helper for word in string.split(', ')]
         for req in requirements:
             broken_cols += req_dict[req](df, col)
 
