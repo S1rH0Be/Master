@@ -34,7 +34,6 @@ def main(file_path_dataset, file_path_requirements_xlsx):
     broken_instance_names = find_broken_instances(data, requirements)
 
     print('Broken instances found:', set(broken_instance_names))
-    print(len(data))
 
 main("/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/scip_data_reduced_columns_no_nan.xlsx",
           "/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/scip_requirements.xlsx")
