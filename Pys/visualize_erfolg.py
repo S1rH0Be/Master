@@ -49,7 +49,7 @@ def bar_plot_time(tuples:List[tuple], title: str) -> None:
     plt.show()
     plt.close()
 
-def shifted_geometric_mean(values, shift):
+def shifted_geo_mean(values, shift):
     """
     Calculate the shifted geometric mean of a list or array of values.
 
@@ -128,7 +128,7 @@ def geo_mean(df, values:List[str], shift):
     """returns a list of tuples with label name and corresponding relative value"""
     tuples = []
     for i in range(len(values)):
-        value = shifted_geometric_mean(df[values[i]], shift)
+        value = shifted_geo_mean(df[values[i]], shift)
         tuples.append((values[i], np.round(value, 2)))
 
     return tuples
@@ -179,7 +179,7 @@ df = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/CSV/SecondIteration/Jetzt 
 fin_time_df = df[['Final_solution_time_(cumulative)_Mixed', 'Final_solution_time_(cumulative)_Int']]
 shifted_times = []
 for i in ['Final_solution_time_(cumulative)_Mixed', 'Final_solution_time_(cumulative)_Int']:
-    shifted_times.append(shifted_geometric_mean(df[i], 0.5))
+    shifted_times.append(shifted_geo_mean(df[i], 0.5))
 
 
 feats = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/base_feats_no_cmp_24_01.xlsx')

@@ -50,7 +50,6 @@ def main(file_path_dataset, file_path_requirements_xlsx, to_excel=False):
             '/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/clean_feats_stefan.xlsx',
             index=False)
 
-
     return clean_data, broken_instances_and_reason
 
 

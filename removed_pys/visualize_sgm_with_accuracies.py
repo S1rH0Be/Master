@@ -64,6 +64,22 @@ def plot_sgms(df, labels, title: str) -> None:
 # forest_sgms_df = pd.DataFrame({'Origin': accs_and_sgm.iloc[:,0], 'SGMs':forest_sgms})
 # plot_sgms(forest_sgms_df, forest_sgms_df['Origin'],'Forest SGMs')
 #
-#
-#
-#
+
+
+
+
+'''From visualize_data_and_results_last_bt gelöscht und ghier zur sicheheit gespeichert'''
+# def create_accuracy_bars(df, title=None):
+#     if df is None:
+#         # unscaled label
+#         acc_t18_unscaled_label = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/Tester/Accuracy/unscaled/unscaled_t18_both_below_1000_hundred_seeds_28_01.xlsx')
+#         plot_sgm_accuracy(acc_t18_unscaled_label, 'Accuracy on All Features and unscaled Label')
+#         acc_t3_unscaled_label = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/Tester/Accuracy/unscaled/unscaled_t3_both_below_1000_hundred_seeds_28_01.xlsx')
+#         plot_sgm_accuracy(acc_t3_unscaled_label, 'Accuracy on Top3 Features and unscaled Label')
+#         # logged label
+#         acc_t18_logged_label = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/Tester/Accuracy/logged/logged_t18_both_below_1000_hundred_seeds_28_01.xlsx')
+#         plot_sgm_accuracy(acc_t18_logged_label, 'Accuracy on All Features and logged Label')
+#         acc_t3_logged_label = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/Tester/Accuracy/logged/logged_t3_both_below_1000_hundred_seeds_29_01.xlsx')
+#         plot_sgm_accuracy(acc_t3_logged_label, 'Accuracy on Top3 Features and logged Label')
+#     else:
+#         plot_sgm_accuracy(df, title)

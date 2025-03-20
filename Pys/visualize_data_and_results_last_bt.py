@@ -5,7 +5,7 @@ from pandas import Series
 import numpy as np
 from sklearn.preprocessing import QuantileTransformer
 from sklearn.impute import SimpleImputer
-# custim functions
+# custom functions
 from das_ist_die_richtige_regression import scale_label
 # plotting
 import matplotlib.pyplot as plt
@@ -29,16 +29,17 @@ def plot_sgms(df, labels, title: str) -> None:
     plt.show()
     plt.close()
 
-def shifted_geometric_mean(values, shift):
-    values = np.array(values)
-    # delete all instances who do naot have extrem instances aka contain nan values
-    values_no_nan = values[~np.isnan(values)]
+def shifted_geometric_mean(values, shift=0.0):
+    # delete all instances who do not have extrem instances aka contain nan values
+    values = values.dropna()
+    values_no_nan = np.array(values)
     # Shift the values by the constant and check for any negative values after shifting
     shifted_values = values_no_nan + shift
-    print(len(shifted_values), shifted_values.min(), shifted_values.max())
+
     if shifted_values.dtype == 'object':
         # Attempt to convert to float
         shifted_values = shifted_values.astype(float)
+
     shifted_values_log = np.log(shifted_values)  # Step 1: Log of each element in shifted_values
     log_mean = np.mean(shifted_values_log)  # Step 2: Compute the mean of the log values
     geo_mean = np.exp(log_mean) - shift
@@ -123,21 +124,20 @@ def plot_sgm_feature_importance(df, title):
     plt.tight_layout()
     plt.show()
 
-def plot_sgm_accuracy(accuracy_df, title, shift_value=0):
+def plot_sgm_accuracy(accuracy_df, title, shift_value=0.0):
     shift=shift_value
     lin_mean = shifted_geometric_mean(accuracy_df['Accuracy'][accuracy_df['Model'] == 'LinearRegression'], shift)
     for_mean = shifted_geometric_mean(accuracy_df['Accuracy'][accuracy_df['Model'] == 'RandomForest'], shift)
     lin_ex_mean = shifted_geometric_mean(accuracy_df['Extreme Accuracy'][accuracy_df['Model'] == 'LinearRegression'], shift)
     for_ex_mean = shifted_geometric_mean(accuracy_df['Extreme Accuracy'][accuracy_df['Model'] == 'RandomForest'], shift)
-    values_seperated = [lin_mean, lin_ex_mean, for_mean, for_ex_mean]
-    print(values_seperated)
+    values_seperated = np.array([lin_mean, lin_ex_mean, for_mean, for_ex_mean])
 
     values_seperated_names = ['LinReg Total', 'LinReg Extreme', 'RandomForest Total', 'RandomForest Extreme']
     colors = ['orange', 'orange', 'limegreen', 'limegreen']
 
     plt.figure(figsize=(10, 6))
     bars = plt.bar(values_seperated_names, values_seperated, color=colors)
-    plt.ylim([35,  105])
+    plt.ylim([values_seperated.min()*0.9,  105])
     # Add labels and title
     plt.ylabel('SGM Accuracy')
     plt.title(title)
@@ -166,7 +166,7 @@ def comp_box_plot(values, title):
     plt.show()
     plt.close()
 
-def plot_sgm_relative_to_mixed(df, title:str, shift=0):
+def plot_sgm_relative_to_mixed(df, title:str, shift=0.0):
     lin_df = df[[col for col in df.columns if 'Linear' in col]]
     for_df = df[[col for col in df.columns if 'Forest' in col]]
 
@@ -194,21 +194,6 @@ def plot_sgm_relative_to_mixed(df, title:str, shift=0):
         plt.text(bar.get_x() + bar.get_width() / 2, yval + 0.01, f'{yval:.2f}', ha='center', fontsize=12)
     # Show the plot
     plt.show()
-
-# def create_accuracy_bars(df, title=None):
-#     if df is None:
-#         # unscaled label
-#         acc_t18_unscaled_label = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/Tester/Accuracy/unscaled/unscaled_t18_both_below_1000_hundred_seeds_28_01.xlsx')
-#         plot_sgm_accuracy(acc_t18_unscaled_label, 'Accuracy on All Features and unscaled Label')
-#         acc_t3_unscaled_label = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/Tester/Accuracy/unscaled/unscaled_t3_both_below_1000_hundred_seeds_28_01.xlsx')
-#         plot_sgm_accuracy(acc_t3_unscaled_label, 'Accuracy on Top3 Features and unscaled Label')
-#         # logged label
-#         acc_t18_logged_label = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/Tester/Accuracy/logged/logged_t18_both_below_1000_hundred_seeds_28_01.xlsx')
-#         plot_sgm_accuracy(acc_t18_logged_label, 'Accuracy on All Features and logged Label')
-#         acc_t3_logged_label = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/Tester/Accuracy/logged/logged_t3_both_below_1000_hundred_seeds_29_01.xlsx')
-#         plot_sgm_accuracy(acc_t3_logged_label, 'Accuracy on Top3 Features and logged Label')
-#     else:
-#         plot_sgm_accuracy(df, title)
 
 def feature_histo(df, columns: list, number_bins=10):
     """

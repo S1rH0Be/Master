@@ -2,6 +2,8 @@ from visualize_data_and_results_last_bt import *
 from das_ist_die_richtige_regression import *
 from scip_data_cleaner import *
 
+import ast
+
 def regression():
     imputators = ['median', 'constant', 'median', 'mean']
     scaling = [QuantileTransformer(n_quantiles=100, output_distribution="normal", random_state=42),
@@ -85,15 +87,23 @@ def regression():
                                                        )
 
 def plot_acc(file_path="/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/Testruns/Testrun2/Logged/Accuracy/logged_STEFAN_both_below_1000_hundred_seeds_2_20_03.xlsx",
-        title='Accuracy of Stefan', shift=1):
+        title='Accuracy of Stefan', shift=1.0):
     accuracy = pd.read_excel(file_path)
     plot_sgm_accuracy(accuracy, title, shift)
+
+def print_sgm_number_extrem_cases(file_path="/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/Testruns/Testrun2/Logged/Accuracy/logged_STEFAN_both_below_1000_hundred_seeds_2_20_03.xlsx",
+                            shift=1.0):
+    number_extreme_cases = pd.read_excel(file_path).loc[:, 'Number Extreme Instances'].replace(np.nan, 0, regex=True)
+    number_extreme_cases_tuples = number_extreme_cases.apply(ast.literal_eval)
+    accuracy_number_extreme_cases = number_extreme_cases_tuples.apply(lambda x: x[0])
+    print(shifted_geometric_mean(accuracy_number_extreme_cases, shift))
+
 
 def plot_sgm_acc(file_path="/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/Testruns/Testrun2/Logged/SGM/sgm_logged_STEFAN_both_below_1000_hundred_seeds_2_20_03.xlsx",
                       title='Second SGM of Stefan'):
 
     sgm = pd.read_excel(file_path)
-    plot_sgm_relative_to_mixed(sgm, title, shift=1)
+    plot_sgm_relative_to_mixed(sgm, title, shift=1.0)
 
 def clean_scip_data(data_set_file_path="/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/scip_data_reduced_columns_no_nan.xlsx",
                     requirement_file_path="/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/scip_requirements.xlsx",
@@ -101,5 +111,7 @@ def clean_scip_data(data_set_file_path="/Users/fritz/Downloads/ZIB/Master/GitCod
     sauberer_darter, broken = main(data_set_file_path, requirement_file_path, to_excel)
     return sauberer_darter, broken
 
-
+regression()
 plot_acc()
+plot_sgm_acc()
+

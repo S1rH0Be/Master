@@ -11,7 +11,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 # plotting
-from visualize_erfolg import shifted_geometric_mean
+from visualize_erfolg import shifted_geo_mean
 
 # Get the current date
 current_date = datetime.now()
@@ -70,7 +70,6 @@ def get_accuracy(prediction, actual, extreme_value):
     correct_extreme_signs = np.sum(np.sign(y_test_extreme) == np.sign(y_pred_extreme))
     percent_correct_extreme_signs = correct_extreme_signs / len(y_test_extreme) * 100 if len(
         y_test_extreme) > 0 else np.nan
-
     return percent_correct_signs, percent_correct_extreme_signs, number_extreme_signs
 
 def get_info(values:Series):
@@ -96,9 +95,9 @@ def predicted_time(time_df, prediction_df):
                                                        pred_df.loc[index, 'Final solution time (cumulative) Int'])
     pred_df['Time Save/Loss'] = abs(pred_df['Predicted Time'] - pred_df['Virtual Best'])
 
-    mixed_mean = shifted_geometric_mean(pred_df['Final solution time (cumulative) Mixed'], 0.5)
-    predicted_time_mean = shifted_geometric_mean(pred_df['Predicted Time'], 0.5)
-    vbs_mean = shifted_geometric_mean(pred_df['Virtual Best'], 0.5)
+    mixed_mean = shifted_geo_mean(pred_df['Final solution time (cumulative) Mixed'], 0.5)
+    predicted_time_mean = shifted_geo_mean(pred_df['Predicted Time'], 0.5)
+    vbs_mean = shifted_geo_mean(pred_df['Virtual Best'], 0.5)
     relative_to_mixed_mean = [mixed_mean, predicted_time_mean, vbs_mean]
     return relative_to_mixed_mean
 
@@ -113,15 +112,14 @@ def regression(full_data, features, label, scalers, imputations, models, random_
     forest_feature_importance_df = linear_feature_importance_df.copy()
     time_mixed_int_vbs = full_data[['Final solution time (cumulative) Mixed', 'Final solution time (cumulative) Int', 'Virtual Best']].copy()
     columns_for_collected_sgm = {}
-
-    count=0
+    count = 0
     start_time = time.time()
     for model_name, model in models.items():
         for imputation in imputations:
             for scaler in scalers:
                 for seed in random_seeds:
-                    count+=1
-                    X_train, X_test, y_train, y_test = train_test_split(features, label, test_size=0.2,random_state=seed)
+                    count += 1
+                    X_train, X_test, y_train, y_test = train_test_split(features, label, test_size=0.2, random_state=seed)
 
                     # Build pipeline
                     steps = []
@@ -238,6 +236,7 @@ def regress_on_different_sets_based_on_label_magnitude(number_of_seeds:str, regr
     if log_label:
         feat_below_threshold, target_below_threshold = kick_outlier(feat, target, outlier_threshold)
         target_below_threshold = scale_label(target_below_threshold)
+
         result_below_threshold_df, linear_importance, forest_importance, sgm_df = regression(full_data=d,
                                                                                              features=feat_below_threshold,
                                                                                              label=target_below_threshold,
@@ -245,7 +244,7 @@ def regress_on_different_sets_based_on_label_magnitude(number_of_seeds:str, regr
                                                                                              imputations=imputations,
                                                                                              models=regressors,
                                                                                              random_seeds=seed_dict[number_of_seeds],
-                                                                                             extreme_threshold=1.6)
+                                                                                             extreme_threshold=1.38)
         if sgm:
             sgm_df.to_excel(directory_for_excels+f'/Logged/SGM/sgm_logged_{preset_name}_{regressor_names_for_excel}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{date_string}.xlsx', index=False)
 
