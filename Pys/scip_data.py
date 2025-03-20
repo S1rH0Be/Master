@@ -122,6 +122,7 @@ def create_compatible_dataframe(df, fico_only=False):
                 'Status Mixed', 'Status Int', 'Final solution time (cumulative) Mixed',
                 'Final solution time (cumulative) Int', 'Cmp Final solution time (cumulative)' , 'Virtual Best'],
             index=df.index)
+
         for col_name in compa_df.columns:
             if col_name not in name_mapping_with_more_scip_features:
                 compa_df[col_name] = df[col_name]
@@ -289,6 +290,13 @@ def calculate_label(df):
             df.loc[index, 'Cmp Final solution time (cumulative)'] = (row['Final solution time (cumulative) Int']/row['Final solution time (cumulative) Mixed'])-1
             df.loc[index, 'Virtual Best'] = row['Final solution time (cumulative) Mixed']
 
+    for index, row in df.iterrows():
+        if abs(row['Final solution time (cumulative) Mixed'] - row['Final solution time (cumulative) Int']) <= 0.5:
+            df.loc[index, 'Cmp Final solution time (cumulative)'] = 0.0
+
+        if abs(row['Cmp Final solution time (cumulative)']) <= 0.01:
+            # 1% doesnt matter as well
+            df.loc[index, 'Cmp Final solution time (cumulative)'] = 0.0
     return df
 
 def process_directory(directory):
@@ -390,6 +398,4 @@ def read_in_and_call_process(directory_path = "/Users/fritz/Downloads/ZIB/Master
             '/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/stefans_feats_no_nan.xlsx',
             index=False)
 
-
-read_in_and_call_process()
 

@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.preprocessing import PowerTransformer, StandardScaler
 
-from Pys.data_cleaning import features
-from data_cleaning import date_string
+from Pys.data_cleaning_fico import features
+from data_cleaning_fico import date_string
 
 
 def update_cmp(df, col_list):

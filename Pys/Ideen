@@ -1,0 +1,2 @@
+Problem: SCIP zu wenig instanzen label>=4
+Idee: Extrem_threshhold auf 2 (log(2)) runtersetzen

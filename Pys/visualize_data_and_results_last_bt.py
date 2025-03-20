@@ -113,7 +113,13 @@ def plot_sgm_feature_importance(df, title):
     df["ShiftedGeometricMean"] = df.iloc[:, 1:].apply(lambda row: shifted_geometric_mean(row, shift), axis=1)
     # Create the bar plot
     plt.figure(figsize=(10, 6))
-    plt.bar(df['Feature'], df['ShiftedGeometricMean'], color='skyblue')
+    bar_color = 'lightcoral'
+    if 'logged' in title:
+        bar_color = 'orchid'
+    elif 'unscaled' in title:
+        bar_color = 'lightseagreen'
+
+    plt.bar(df['Feature'], df['ShiftedGeometricMean'], color=bar_color)
 
     # Add labels and title
     plt.ylabel('SGM Feature Importance')
@@ -128,6 +134,7 @@ def plot_sgm_accuracy(accuracy_df, title, shift_value=0.0):
     shift=shift_value
     lin_mean = shifted_geometric_mean(accuracy_df['Accuracy'][accuracy_df['Model'] == 'LinearRegression'], shift)
     for_mean = shifted_geometric_mean(accuracy_df['Accuracy'][accuracy_df['Model'] == 'RandomForest'], shift)
+
     lin_ex_mean = shifted_geometric_mean(accuracy_df['Extreme Accuracy'][accuracy_df['Model'] == 'LinearRegression'], shift)
     for_ex_mean = shifted_geometric_mean(accuracy_df['Extreme Accuracy'][accuracy_df['Model'] == 'RandomForest'], shift)
     values_seperated = np.array([lin_mean, lin_ex_mean, for_mean, for_ex_mean])

@@ -25,13 +25,12 @@ def read_data(file_path_data, file_path_requirements):
 
     return data, requirement_df
 
-def main(file_path_dataset, file_path_requirements_xlsx, to_excel=False):
+def main(file_path_dataset, file_path_requirements_xlsx, to_excel=True):
     data, requirements = read_data(file_path_dataset, file_path_requirements_xlsx)
 
     broken_instances_and_reason = find_broken_instances(data, requirements)
     broken_names = [name[0] for name in broken_instances_and_reason]
     clean_data = data[~data['Matrix Name'].isin(broken_names)]
-
     clean_feats = clean_data[['#integer violations at root Mixed',
                                '#nodes in DAG Mixed',
                                'Avg coefficient spread for convexification cuts Mixed',
@@ -41,7 +40,8 @@ def main(file_path_dataset, file_path_requirements_xlsx, to_excel=False):
                                '% vars in DAG integer (out of vars in DAG) Mixed',
                                'Matrix Quadratic Elements',
                                '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG) Mixed',
-                               '% vars in DAG unbounded (out of vars in DAG) Mixed']].copy()
+                               '% vars in DAG unbounded (out of vars in DAG) Mixed',
+                               'Avg pseudocosts of integer variables Mixed']].copy()
 
     if to_excel:
         clean_data.to_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/clean_stefan.xlsx',
