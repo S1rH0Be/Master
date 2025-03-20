@@ -10,14 +10,35 @@ from das_ist_die_richtige_regression import scale_label
 # plotting
 import matplotlib.pyplot as plt
 
+def plot_sgms(df, labels, title: str) -> None:
+    #tuples: (Name of column, float)
+    values =df['SGMs']
+    # Determine bar colors based on conditions
+    bar_colors = ['turquoise','magenta','turquoise']+['green' if value >= 0.8 else 'red' if value <= 0.6 else 'blue' for value in values[3:7]]
+
+    # Create the plot
+    plt.figure(figsize=(8, 5))
+    plt.bar(labels, values, color=bar_colors)
+    plt.title(title)
+    plt.ylim(min(0.5, min(values)*0.9), max(values)*1.01)  # Set y-axis limits for visibility
+    plt.xticks(rotation=45, fontsize=6)
+    # Create custom legend entries with value annotations
+    # legend_labels = [f"{label}: {value}" for label, value in zip(labels, values)]
+    # plt.legend(bars, legend_labels, title="Values")
+    # Display the plot
+    plt.show()
+    plt.close()
+
 def shifted_geometric_mean(values, shift):
     values = np.array(values)
+    # delete all instances who do naot have extrem instances aka contain nan values
+    values_no_nan = values[~np.isnan(values)]
     # Shift the values by the constant and check for any negative values after shifting
-    shifted_values = values + shift
+    shifted_values = values_no_nan + shift
+    print(len(shifted_values), shifted_values.min(), shifted_values.max())
     if shifted_values.dtype == 'object':
         # Attempt to convert to float
         shifted_values = shifted_values.astype(float)
-
     shifted_values_log = np.log(shifted_values)  # Step 1: Log of each element in shifted_values
     log_mean = np.mean(shifted_values_log)  # Step 2: Compute the mean of the log values
     geo_mean = np.exp(log_mean) - shift
@@ -102,13 +123,14 @@ def plot_sgm_feature_importance(df, title):
     plt.tight_layout()
     plt.show()
 
-def plot_sgm_accuracy(accuracy_df, title):
-    shift=0
+def plot_sgm_accuracy(accuracy_df, title, shift_value=0):
+    shift=shift_value
     lin_mean = shifted_geometric_mean(accuracy_df['Accuracy'][accuracy_df['Model'] == 'LinearRegression'], shift)
     for_mean = shifted_geometric_mean(accuracy_df['Accuracy'][accuracy_df['Model'] == 'RandomForest'], shift)
     lin_ex_mean = shifted_geometric_mean(accuracy_df['Extreme Accuracy'][accuracy_df['Model'] == 'LinearRegression'], shift)
     for_ex_mean = shifted_geometric_mean(accuracy_df['Extreme Accuracy'][accuracy_df['Model'] == 'RandomForest'], shift)
     values_seperated = [lin_mean, lin_ex_mean, for_mean, for_ex_mean]
+    print(values_seperated)
 
     values_seperated_names = ['LinReg Total', 'LinReg Extreme', 'RandomForest Total', 'RandomForest Extreme']
     colors = ['orange', 'orange', 'limegreen', 'limegreen']
@@ -144,16 +166,16 @@ def comp_box_plot(values, title):
     plt.show()
     plt.close()
 
-def plot_sgm_relative_to_mixed(df, title:str):
+def plot_sgm_relative_to_mixed(df, title:str, shift=0):
     lin_df = df[[col for col in df.columns if 'Linear' in col]]
     for_df = df[[col for col in df.columns if 'Forest' in col]]
 
-    sgm_lin = lin_df.iloc[:, 1:].apply(lambda row: shifted_geometric_mean(row, 0), axis=1)
-    sgm_for = for_df.iloc[:, 1:].apply(lambda row: shifted_geometric_mean(row, 0), axis=1)
+    sgm_lin = lin_df.iloc[:, 1:].apply(lambda row: shifted_geometric_mean(row, shift), axis=1)
+    sgm_for = for_df.iloc[:, 1:].apply(lambda row: shifted_geometric_mean(row, shift), axis=1)
     sgm_mixed = sgm_lin.iloc[0]
 
     relative_values = [1.0, np.round(sgm_lin.iloc[1]/sgm_mixed, 6), np.round(sgm_for.iloc[1]/sgm_mixed, 6), np.round(sgm_for.iloc[2]/sgm_mixed, 6)]
-    print(relative_values)
+    print('SGM relative to Mixed: ', relative_values)
     bar_names = ['Mixed', 'Linear', 'Forest', 'Virtual Best']
     colors = ['lightblue', 'orange', 'limegreen', 'lightblue']
 
@@ -173,20 +195,20 @@ def plot_sgm_relative_to_mixed(df, title:str):
     # Show the plot
     plt.show()
 
-def create_accuracy_bars(df=None, title=None):
-    if df is None:
-        # unscaled label
-        acc_t18_unscaled_label = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/Tester/Accuracy/unscaled/unscaled_t18_both_below_1000_hundred_seeds_28_01.xlsx')
-        plot_sgm_accuracy(acc_t18_unscaled_label, 'Accuracy on All Features and unscaled Label')
-        acc_t3_unscaled_label = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/Tester/Accuracy/unscaled/unscaled_t3_both_below_1000_hundred_seeds_28_01.xlsx')
-        plot_sgm_accuracy(acc_t3_unscaled_label, 'Accuracy on Top3 Features and unscaled Label')
-        # logged label
-        acc_t18_logged_label = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/Tester/Accuracy/logged/logged_t18_both_below_1000_hundred_seeds_28_01.xlsx')
-        plot_sgm_accuracy(acc_t18_logged_label, 'Accuracy on All Features and logged Label')
-        acc_t3_logged_label = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/Tester/Accuracy/logged/logged_t3_both_below_1000_hundred_seeds_29_01.xlsx')
-        plot_sgm_accuracy(acc_t3_logged_label, 'Accuracy on Top3 Features and logged Label')
-    else:
-        plot_sgm_accuracy(df, title)
+# def create_accuracy_bars(df, title=None):
+#     if df is None:
+#         # unscaled label
+#         acc_t18_unscaled_label = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/Tester/Accuracy/unscaled/unscaled_t18_both_below_1000_hundred_seeds_28_01.xlsx')
+#         plot_sgm_accuracy(acc_t18_unscaled_label, 'Accuracy on All Features and unscaled Label')
+#         acc_t3_unscaled_label = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/Tester/Accuracy/unscaled/unscaled_t3_both_below_1000_hundred_seeds_28_01.xlsx')
+#         plot_sgm_accuracy(acc_t3_unscaled_label, 'Accuracy on Top3 Features and unscaled Label')
+#         # logged label
+#         acc_t18_logged_label = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/Tester/Accuracy/logged/logged_t18_both_below_1000_hundred_seeds_28_01.xlsx')
+#         plot_sgm_accuracy(acc_t18_logged_label, 'Accuracy on All Features and logged Label')
+#         acc_t3_logged_label = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/Tester/Accuracy/logged/logged_t3_both_below_1000_hundred_seeds_29_01.xlsx')
+#         plot_sgm_accuracy(acc_t3_logged_label, 'Accuracy on Top3 Features and logged Label')
+#     else:
+#         plot_sgm_accuracy(df, title)
 
 def feature_histo(df, columns: list, number_bins=10):
     """
@@ -280,24 +302,12 @@ def scaling(feat_df, label_series):
     qt = QuantileTransformer(n_quantiles=100, output_distribution="normal", random_state=42)
     # Fit and transform the data
     feature_df_transformed = qt.fit_transform(feat_df)
-    feature_df_transformed = pd.DataFrame(feature_df_transformed, columns=feature_df.columns)
+    feature_df_transformed = pd.DataFrame(feature_df_transformed, columns=feature_df_transformed.columns)
     logged_label = scale_label(label_series)
     return feature_df_transformed, logged_label
 
-data = pd.read_excel("/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/stefan_outs/stefan_merged_complete.xlsx")
-feature_df = pd.read_excel("/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/stefan_outs/stefans_feats.xlsx")
-label = data['Cmp Final solution time (cumulative)'].copy()
 
-accuracy = pd.read_excel("/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/stefan_outs/Testrun1/Logged/Accuracy/logged_STEFAN_both_below_1000_hundred_seeds_1_13_03.xlsx")
-sgm = pd.read_excel("/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/stefan_outs/Testrun1/Logged/SGM/sgm_logged_STEFAN_both_below_1000_hundred_seeds_1_13_03.xlsx")
-# plot_sgm_accuracy(accuracy, 'Accuracy on Top3 Features and logged Label')
-plot_sgm_relative_to_mixed(sgm, "First SGM of Stefan")
-# imputed_feature = imputation(feature_df)
-# scaled_feature, logged_label = scaling(imputed_feature, label)
 
-# imputed_feature.to_excel("/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/base_feats_no_cmp_imputed.xlsx", index=False)
-# scaled_feature.to_excel("/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/base_feats_no_cmp_imputed_Scaled.xlsx", index=False)
-# logged_label.to_excel("/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/label_scaled.xlsx", index=False)
 
-# for col in feature_df.columns:
-#     box_plot(scaled_feature[col], col)
+
+

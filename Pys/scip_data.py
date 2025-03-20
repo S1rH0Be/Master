@@ -70,41 +70,41 @@ def map_raw_scip_to_feature(df, compper_df, operation_dict):
 
 def create_compatible_dataframe(df, fico_only=False):
 
-    name_mapping_fico_only = {'#integer violations at root': 'nintpseudocost',
-                    '#nodes in DAG': 'nnonlinearvars+nauxvars',#weiß nicht warum ich nur nauxvars bisher hatte #aber vielleicht sind auch nnonlinearexpr oder nnonconvexexpr interessant
+    name_mapping_fico_only = {'#integer violations at root Mixed': 'nintpseudocost',
+                    '#nodes in DAG Mixed': 'nnonlinearvars+nauxvars',#weiß nicht warum ich nur nauxvars bisher hatte #aber vielleicht sind auch nnonlinearexpr oder nnonconvexexpr interessant
                     'Avg coefficient spread for convexification cuts Mixed': 'sumcoefspreadnonlinrows / nnonlinrows',#aber vielleicht ist auch sumcoefspreadactnonlinrows / nactnonlinrows interessant.
-                    'Presolve Global Entities': 'nintegervars',
-                    'Presolve Columns': 'ncontinuousvars + nbinaryvars + nintegervars',
-                    '#nonlinear violations at root': 'nviolconss', #'nnlviolcands waeren die anzahl der branching candidates fuers spatial branching, also die anzahl von variables in nichtkonvexen termen in verletzen nichtlinear constraints',
+                    'Presolve Global Entities Mixed': 'nintegervars',
+                    'Presolve Columns Mixed': 'ncontinuousvars + nbinaryvars + nintegervars',
+                    '#nonlinear violations at root Mixed': 'nviolconss', #'nnlviolcands waeren die anzahl der branching candidates fuers spatial branching, also die anzahl von variables in nichtkonvexen termen in verletzen nichtlinear constraints',
                     #'Avg work for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed': 'avgstrongbranchrootiter' ist die Anzahl der LP iter, but including infeasible ones',
                     'Matrix Equality Constraints': 'nlinearequconss + nnonlinearequconss',
                     'Matrix NLP Formula': 'nnonlinearconss',
                     #'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed': 'sumintpseudocost / nintpseudocost kann ich als Alternative anbieten',
-                    '% vars in DAG (out of all vars)': '(nnonlinearvars + nauxvars) / (ncontinuousvars+nbinaryvars+nintegervars+nauxvars)',
-                    '% vars in DAG integer (out of vars in DAG)': '(nnonlinearbinvars + nnonlinearintvars + nintauxvars) / (nnonlinearvars+nauxvars)',
-                    '% vars in DAG unbounded (out of vars in DAG)': '(nnonlinearunboundedvars + nunboundedauxvars) / (nnonlinearvars+nauxvars)',
-                    '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)': 'nquadexpr / (nquadexpr + nsuperquadexpr)',
+                    '% vars in DAG (out of all vars) Mixed': '(nnonlinearvars + nauxvars) / (ncontinuousvars+nbinaryvars+nintegervars+nauxvars)',
+                    '% vars in DAG integer (out of vars in DAG) Mixed': '(nnonlinearbinvars + nnonlinearintvars + nintauxvars) / (nnonlinearvars+nauxvars)',
+                    '% vars in DAG unbounded (out of vars in DAG) Mixed': '(nnonlinearunboundedvars + nunboundedauxvars) / (nnonlinearvars+nauxvars)',
+                    '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG) Mixed': 'nquadexpr / (nquadexpr + nsuperquadexpr)',
                     'Matrix Quadratic Elements': 'nquadcons'
                     }
 
-    name_mapping_with_more_scip_features = {'#integer violations at root': 'nintpseudocost',
-                                            '#nodes in DAG': 'nnonlinearvars+nauxvars',
+    name_mapping_with_more_scip_features = {'#integer violations at root Mixed': 'nintpseudocost',
+                                            '#nodes in DAG Mixed': 'nnonlinearvars+nauxvars',
                                             # weiß nicht warum ich nur nauxvars bisher hatte #aber vielleicht sind auch nnonlinearexpr oder nnonconvexexpr interessant
                                             'Avg coefficient spread for convexification cuts Mixed': 'sumcoefspreadnonlinrows / nnonlinrows',
                                             # aber vielleicht ist auch sumcoefspreadactnonlinrows / nactnonlinrows interessant.
-                                            'Presolve Global Entities': 'nintegervars',
-                                            'Presolve Columns': 'ncontinuousvars + nbinaryvars + nintegervars',
-                                            '#nonlinear violations at root': 'nviolconss',
+                                            'Presolve Global Entities Mixed': 'nintegervars',
+                                            'Presolve Columns Mixed': 'ncontinuousvars + nbinaryvars + nintegervars',
+                                            '#nonlinear violations at root Mixed': 'nviolconss',
                                             # 'nnlviolcands waeren die anzahl der branching candidates fuers spatial branching, also die anzahl von variables in nichtkonvexen termen in verletzen nichtlinear constraints',
                                             # 'Avg work for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed': 'avgstrongbranchrootiter' ist die Anzahl der LP iter, but including infeasible ones',
                                             'Matrix Equality Constraints': 'nlinearequconss + nnonlinearequconss',
                                             'Matrix NLP Formula': 'nnonlinearconss',
                                             # 'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed': 'sumintpseudocost / nintpseudocost kann ich als Alternative anbieten',
-                                            'Avg pseudocosts of integer variables': 'sumintpseudocost / nintpseudocost',
-                                            '% vars in DAG (out of all vars)': '(nnonlinearvars + nauxvars) / (ncontinuousvars+nbinaryvars+nintegervars+nauxvars)',
-                                            '% vars in DAG integer (out of vars in DAG)': '(nnonlinearbinvars + nnonlinearintvars + nintauxvars) / (nnonlinearvars+nauxvars)',
-                                            '% vars in DAG unbounded (out of vars in DAG)': '(nnonlinearunboundedvars + nunboundedauxvars) / (nnonlinearvars+nauxvars)',
-                                            '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)': 'nquadexpr / (nquadexpr + nsuperquadexpr)',
+                                            'Avg pseudocosts of integer variables Mixed': 'sumintpseudocost / nintpseudocost',
+                                            '% vars in DAG (out of all vars) Mixed': '(nnonlinearvars + nauxvars) / (ncontinuousvars+nbinaryvars+nintegervars+nauxvars)',
+                                            '% vars in DAG integer (out of vars in DAG) Mixed': '(nnonlinearbinvars + nnonlinearintvars + nintauxvars) / (nnonlinearvars+nauxvars)',
+                                            '% vars in DAG unbounded (out of vars in DAG) Mixed': '(nnonlinearunboundedvars + nunboundedauxvars) / (nnonlinearvars+nauxvars)',
+                                            '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG) Mixed': 'nquadexpr / (nquadexpr + nsuperquadexpr)',
                                             'Matrix Quadratic Elements': 'nquadcons'
                                             }
 
@@ -120,7 +120,8 @@ def create_compatible_dataframe(df, fico_only=False):
         compa_df = pd.DataFrame(
             columns=['Matrix Name', 'Random Seed Shift'] + [name for name in name_mapping_with_more_scip_features.keys()] + [
                 'Status Mixed', 'Status Int', 'Final solution time (cumulative) Mixed',
-                'Final solution time (cumulative) Int', 'Virtual Best'], index=df.index)
+                'Final solution time (cumulative) Int', 'Cmp Final solution time (cumulative)' , 'Virtual Best'],
+            index=df.index)
         for col_name in compa_df.columns:
             if col_name not in name_mapping_with_more_scip_features:
                 compa_df[col_name] = df[col_name]
@@ -342,26 +343,9 @@ def read_in_and_call_process(directory_path = "/Users/fritz/Downloads/ZIB/Master
                                index=False)
         stefans_data_merged_all_have_features.to_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/stefans_data_merged_all_with_feature.xlsx',
                                index=False)
-
-        stefan_scip_feats_no_nan = create_compatible_dataframe(stefans_data_merged_all_have_features)
-        stefan_scip_feats_no_nan.to_excel(
+        stefan_data_reduced_cols_no_nan = create_compatible_dataframe(stefans_data_merged_all_have_features)
+        stefan_data_reduced_cols_no_nan.to_excel(
             "/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/scip_data_reduced_columns_no_nan.xlsx",
-            index=False)
-
-        stefans_feats = stefan_scip_feats_no_nan[['#integer violations at root',
-                                            '#nodes in DAG',
-                                            'Avg coefficient spread for convexification cuts Mixed',
-                                            'Presolve Global Entities', 'Presolve Columns',
-                                            '#nonlinear violations at root', 'Matrix Equality Constraints',
-                                            'Matrix NLP Formula', '% vars in DAG (out of all vars)',
-                                            '% vars in DAG integer (out of vars in DAG)',
-                                            'Matrix Quadratic Elements',
-                                            '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
-                                            '% vars in DAG unbounded (out of vars in DAG)',
-                                            'Avg pseudocosts of integer variables']].copy()
-
-        stefans_feats.to_excel(
-            '/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/stefans_feats_scip_no_nan.xlsx',
             index=False)
 
 
@@ -371,16 +355,16 @@ def read_in_and_call_process(directory_path = "/Users/fritz/Downloads/ZIB/Master
         scip_to_fic_df.to_excel("/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_instances/scip_to_fic.xlsx",
                                 index=False)
 
-        stefans_feats = scip_to_fic_df[['#integer violations at root',
-               '#nodes in DAG',
+        stefans_feats = scip_to_fic_df[['#integer violations at root Mixed',
+               '#nodes in DAG Mixed',
                'Avg coefficient spread for convexification cuts Mixed',
-               'Presolve Global Entities', 'Presolve Columns',
-               '#nonlinear violations at root', 'Matrix Equality Constraints',
-               'Matrix NLP Formula', '% vars in DAG (out of all vars)',
-               '% vars in DAG integer (out of vars in DAG)',
+               'Presolve Global Entities Mixed', 'Presolve Columns Mixed',
+               '#nonlinear violations at root Mixed', 'Matrix Equality Constraints',
+               'Matrix NLP Formula', '% vars in DAG (out of all vars) Mixed',
+               '% vars in DAG integer (out of vars in DAG) Mixed',
                'Matrix Quadratic Elements',
-               '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
-               '% vars in DAG unbounded (out of vars in DAG)']].copy()
+               '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG) Mixed',
+               '% vars in DAG unbounded (out of vars in DAG) Mixed']].copy()
 
         stefans_feats.to_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_instances/stefans_feats.xlsx',
                                    index=False)
@@ -391,16 +375,16 @@ def read_in_and_call_process(directory_path = "/Users/fritz/Downloads/ZIB/Master
             "/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/scip_to_fic_no_nan.xlsx",
             index=False)
 
-        stefans_feats = stefan_fico_no_nan[['#integer violations at root',
-                                        '#nodes in DAG',
+        stefans_feats = stefan_fico_no_nan[['#integer violations at root Mixed',
+                                        '#nodes in DAG Mixed',
                                         'Avg coefficient spread for convexification cuts Mixed',
-                                        'Presolve Global Entities', 'Presolve Columns',
-                                        '#nonlinear violations at root', 'Matrix Equality Constraints',
-                                        'Matrix NLP Formula', '% vars in DAG (out of all vars)',
-                                        '% vars in DAG integer (out of vars in DAG)',
+                                        'Presolve Global Entities Mixed', 'Presolve Columns Mixed',
+                                        '#nonlinear violations at root Mixed', 'Matrix Equality Constraints',
+                                        'Matrix NLP Formula', '% vars in DAG (out of all vars) Mixed',
+                                        '% vars in DAG integer (out of vars in DAG) Mixed',
                                         'Matrix Quadratic Elements',
-                                        '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
-                                        '% vars in DAG unbounded (out of vars in DAG)']].copy()
+                                        '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG) Mixed',
+                                        '% vars in DAG unbounded (out of vars in DAG) Mixed']].copy()
 
         stefans_feats.to_excel(
             '/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/stefans_feats_no_nan.xlsx',

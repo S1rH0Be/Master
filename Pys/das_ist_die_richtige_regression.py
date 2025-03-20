@@ -25,9 +25,10 @@ def read_data(data_set:str):
         feats.replace(-1, np.nan, inplace=True)
         label = data['Cmp Final solution time (cumulative)'].copy()
     elif data_set == 'Stefan':
-        data = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/stefan_outs/stefan_merged_complete.xlsx')
-        feats = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/stefan_outs/stefans_feats.xlsx')
+        data = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/clean_stefan.xlsx')
+        feats = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/clean_feats_stefan.xlsx')
         label = data['Cmp Final solution time (cumulative)'].copy()
+
     else:
         print('Invalid data set')
         return 1
@@ -110,7 +111,6 @@ def regression(full_data, features, label, scalers, imputations, models, random_
 
     linear_feature_importance_df = pd.DataFrame({'Feature': features.columns})
     forest_feature_importance_df = linear_feature_importance_df.copy()
-
     time_mixed_int_vbs = full_data[['Final solution time (cumulative) Mixed', 'Final solution time (cumulative) Int', 'Virtual Best']].copy()
     columns_for_collected_sgm = {}
 
@@ -192,7 +192,7 @@ def regression(full_data, features, label, scalers, imputations, models, random_
     print(f"Execution time: {elapsed_time:.2f} seconds")
     return results_df, linear_feature_importance_df, forest_feature_importance_df, sgm_run_time_df
 
-def regress_on_different_sets_based_on_label_magnitude(number_of_seeds:str, regressors, scalers, imputations, feature_names,
+def regress_on_different_sets_based_on_label_magnitude(number_of_seeds:str, regressors, scalers, imputations,
                                                        preset_name:str, data_set_name:str, outlier_threshold=1000,  log_label=False, to_excel=False, sgm=False,
                                                        directory_for_excels='/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/stefan_outs/Testrun1'):
     d, feat, target = read_data(data_set_name)
@@ -278,84 +278,3 @@ def regress_on_different_sets_based_on_label_magnitude(number_of_seeds:str, regr
                 directory_for_excels+f'/Unscaled/Importance/Forest/unscaled_forest_impo_{preset_name}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{date_string}.xlsx',
                 index=False)
 
-
-imputators = ['median'] # ['constant', 'median', 'mean']
-scaling = [QuantileTransformer(n_quantiles=100,output_distribution="normal",random_state=42)] # PowerTransformer('yeo-johnson'),
-regression_models = {"LinearRegression": LinearRegression(),
-                     "RandomForest": RandomForestRegressor(n_estimators=100, random_state=729154)}
-
-all_features = ['Matrix Equality Constraints', 'Matrix Quadratic Elements',
-       'Matrix NLP Formula', 'Presolve Columns', 'Presolve Global Entities',
-       '#nodes in DAG', '#integer violations at root',
-       '#nonlinear violations at root', '% vars in DAG (out of all vars)',
-       '% vars in DAG unbounded (out of vars in DAG)',
-       '% vars in DAG integer (out of vars in DAG)',
-       '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
-       'Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
-       'Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
-       'Avg relative bound change for solving strong branching LPs for spatial branchings (not including infeasible ones) Mixed',
-       'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
-       '#spatial branching entities fixed (at the root) Mixed',
-       'Avg coefficient spread for convexification cuts Mixed']
-
-integer_feature = ['Matrix Equality Constraints', 'Matrix Quadratic Elements',
-       'Matrix NLP Formula', 'Presolve Columns', 'Presolve Global Entities',
-       '#nodes in DAG', '#integer violations at root',
-       '#nonlinear violations at root', '#spatial branching entities fixed (at the root) Mixed']
-
-float_feature = ['% vars in DAG (out of all vars)',
-       '% vars in DAG unbounded (out of vars in DAG)',
-       '% vars in DAG integer (out of vars in DAG)',
-       '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
-       'Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
-       'Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
-       'Avg relative bound change for solving strong branching LPs for spatial branchings (not including infeasible ones) Mixed',
-       'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
-       'Avg coefficient spread for convexification cuts Mixed']
-
-t3_feats_combined = ['Avg coefficient spread for convexification cuts Mixed',
-                     'Presolve Global Entities',
-                     '#integer violations at root']
-
-t3_linear = ['#nodes in DAG',
-             'Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
-             '#integer violations at root']
-
-t2_linear = ['#nodes in DAG',
-             'Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed']
-
-t1_linear = ['#nodes in DAG']
-
-t2_forest = ['Avg coefficient spread for convexification cuts Mixed',
-             'Presolve Global Entities']
-
-t3_forest = ['Avg coefficient spread for convexification cuts Mixed',
-             'Presolve Global Entities',
-             '#integer violations at root']
-
-setup_for_now = ['hundred', regression_models,
-                 [QuantileTransformer(n_quantiles=100,output_distribution="normal",random_state=42)],
-                 ['median'], all_features, 1000]
-
-preset_everything = ['hundred', regression_models, scaling, imputators, all_features, 1000]
-
-preset_combined_t3 = ['hundred', regression_models, scaling, imputators, t3_feats_combined, 1000]
-
-preset_linear_t3 = ['hundred', regression_models, scaling, imputators, t3_linear, 1000]
-
-preset_linear_t2 = ['hundred', regression_models, scaling, imputators, t2_linear, 1000]
-
-preset_linear_t1 = ['hundred', regression_models, scaling, imputators, t1_linear, 1000]
-
-preset_forest_t2 = ['hundred', regression_models, scaling, imputators, t2_forest, 1000]
-
-all_top_presets = [preset_combined_t3, preset_linear_t3, preset_forest_t2]
-preset_names = ['GlobTop3', 'LinearTop3', 'ForestTop2']
-count=0
-
-regress_on_different_sets_based_on_label_magnitude(preset_everything[0], preset_everything[1], preset_everything[2],
-                                                   preset_everything[3], preset_everything[4], 'STEFAN',
-                                                   data_set_name='Stefan', outlier_threshold=preset_everything[5],
-                                                   directory_for_excels='/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/stefan_outs/Testrun1',
-                                                   log_label=True, to_excel=True, sgm=True
-                                                   )

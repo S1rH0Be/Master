@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 
+DEBUG = False
 '''READ AND RENAME COLUMNS'''
 # input: df, list. Renames columns of df to strings in lst
 def rename_cols(df, int_cols, dbl_cols):
@@ -167,7 +168,7 @@ def check_col_consistency(df, requirement_df, SCIP=False):
             try:
                 float(value)  # Try converting to float
             except ValueError:
-                broken_instances.append(df.loc[index, 'Matrix Name'])  # Collect corresponding 'Matrix Name'
+                broken_instances.append((df.loc[index, 'Matrix Name'], 'not float'))  # Collect corresponding 'Matrix Name'
 
         if not broken_instances:
             df.loc[:, column_name] = df[column_name].astype(float)  # Convert if all values are valid
@@ -181,7 +182,7 @@ def check_col_consistency(df, requirement_df, SCIP=False):
             try:
                 int(value)  # Try converting to integer
             except ValueError:
-                broken_instances.append(df.loc[index, 'Matrix Name'])  # Collect corresponding 'Matrix Name'
+                broken_instances.append((df.loc[index, 'Matrix Name'], 'not int'))  # Collect corresponding 'Matrix Name'
 
         if not broken_instances:
             df.loc[:,column_name] = df[column_name].astype(int)  # Convert if all values are valid
@@ -196,7 +197,8 @@ def check_col_consistency(df, requirement_df, SCIP=False):
         if minimum < 0:
             for index, row in df.iterrows():
                 if row[column_name] < 0:
-                    print(f"Instance '{df.loc[index, 'Matrix Name']}' in '{column_name}' is negative.")
+                    if DEBUG:
+                        print(f"Instance '{df.loc[index, 'Matrix Name']}' in '{column_name}' is negative.")
                     broken_instances.append((row['Matrix Name'], 'Negative'))
             return broken_instances
         return broken_instances
@@ -209,7 +211,8 @@ def check_col_consistency(df, requirement_df, SCIP=False):
         if minimum <= 0:
             for index, row in df.iterrows():
                 if row[column_name] <= 0:
-                    print(f"Instance '{df.loc[index, 'Matrix Name']}' in '{column_name}' is nonpositive.")
+                    if DEBUG:
+                        print(f"Instance '{df.loc[index, 'Matrix Name']}' in '{column_name}' is nonpositive.")
                     broken_instances.append((row['Matrix Name'], 'nonpositive'))
             return broken_instances
         return broken_instances
@@ -218,7 +221,8 @@ def check_col_consistency(df, requirement_df, SCIP=False):
         broken_instances = []
         for index, row in df.iterrows():
             if type(row[column_name]) != str:
-                print(f"Instance '{row['Matrix Name']}' is not a string.")
+                if DEBUG:
+                    print(f"Instance '{row['Matrix Name']}' is not a string.")
                 broken_instances.append((row['Matrix Name'], 'Not string'))
         return broken_instances
     #check if instance terminates in a valid state
@@ -227,7 +231,8 @@ def check_col_consistency(df, requirement_df, SCIP=False):
         broken_instances = []
         for index, row in df.iterrows():
             if row[column_name] not in valid_states:
-                print(f"Instance '{row['Matrix Name']}' has an invalid final state.")
+                if DEBUG:
+                    print(f"Instance '{row['Matrix Name']}' has an invalid final state.")
                 broken_instances.append((row['Matrix Name'], 'Invalid final state'))
         return broken_instances
 
@@ -236,7 +241,8 @@ def check_col_consistency(df, requirement_df, SCIP=False):
         broken_instances = []
         for index, row in df.iterrows():
             if row[column_name] not in valid_states:
-                print(f"Instance '{row['Matrix Name']}' has an invalid final state.")
+                if DEBUG:
+                    print(f"Instance '{row['Matrix Name']}' has an invalid final state.")
                 broken_instances.append((row['Matrix Name'], 'Invalid final state'))
         return broken_instances
     #check if all values are in the intervall [0,1]
@@ -249,7 +255,8 @@ def check_col_consistency(df, requirement_df, SCIP=False):
 
             for index, row in df.iterrows():
                 if row[column_name] < 0 | row[column_name] > 1:
-                    print(f"Instance '{df.loc[index, 'Matrix Name']}' in '{column_name}' is not in [0,1].")
+                    if DEBUG:
+                        print(f"Instance '{df.loc[index, 'Matrix Name']}' in '{column_name}' is not in [0,1].")
                     broken_instances.append((row['Matrix Name'], 'Not in [0,1]'))
             return broken_instances
         return broken_instances
@@ -259,7 +266,8 @@ def check_col_consistency(df, requirement_df, SCIP=False):
         broken_instances = []
         for index, row in df.iterrows():
             if row[column_name] not in valid_perms:
-                print(f"Instance '{row['Matrix Name']}' has an invalid permutation seed.")
+                if DEBUG:
+                    print(f"Instance '{row['Matrix Name']}' has an invalid permutation seed.")
                 broken_instances.append((row['Matrix Name'], 'Invalid permutation seed'))
         return broken_instances
 
@@ -268,10 +276,11 @@ def check_col_consistency(df, requirement_df, SCIP=False):
         broken_instances = []
         for index,row in df.iterrows():
             if row[column_name] not in valid_perms:
-                print(f"Instance '{row['Matrix Name']}' has an invalid permutation seed.")
+                if DEBUG:
+                    print(f"Instance '{row['Matrix Name']}' has an invalid permutation seed.")
                 broken_instances.append((row['Matrix Name'], 'Invalid permutation seed'))
         return broken_instances
-    #will think about it later
+    # will think about it later
     def perms_have_same_entries(df, column_name):
         #first sort instances by name so that all entries which should be equal are together
         sorted_df = df.sort_values(by='Matrix Name')
@@ -280,18 +289,20 @@ def check_col_consistency(df, requirement_df, SCIP=False):
             if sorted_df[column_name].iloc[index]==sorted_df[column_name].iloc[index+1]==sorted_df[column_name].iloc[index+2]:
                 continue
             else:
-                print('Permutation not consistent', column_name, sorted_df['Matrix Name'].iloc[index])
+                if DEBUG:
+                    print('Permutation not consistent', column_name, sorted_df['Matrix Name'].iloc[index])
                 broken_instances.append((sorted_df['Matrix Name'].iloc[index], f'Permutation not consistent: {column_name}'))
         return broken_instances
-    #some float columns are nonnegative floats but have -1 if this action did not happen
+    # some float columns are nonnegative floats but have -1 if this action did not happen
     def nonneg_or_minus_one(df, column_name):
         broken_instances = []
         for index in df[column_name].index:
             if (df[column_name].loc[index]<0) & (df[column_name].loc[index]!=-1):
-                print(f"Instance '{df['Matrix Name'].loc[index]}' not a float or -1.")
+                if DEBUG:
+                    print(f"Instance '{df['Matrix Name'].loc[index]}' not a float or -1.")
                 broken_instances.append((df['Matrix Name'].loc[index], 'Not float nor -1'))
         return broken_instances
-
+    # each instance name should appear three times; once for each permutaion
     def each_name_thrice(df, column_name):
         broken_instances = []
 
