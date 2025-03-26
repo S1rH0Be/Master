@@ -172,18 +172,3 @@ def compare_time(df, reference:str, plot=True, plot_all=True, title_add_on=''):
 
     return to_be_plotted
 
-# df = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/CSV/SecondIteration/Jetzt Ernst/CSVs/Master_Excel/ready_to_ml.xlsx')
-df = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/CSV/SecondIteration/Jetzt Ernst/CSVs/data_raw_august.xlsx')
-# df['Final solution time (cumulative) Predicted'] = 0.0
-# cmp_time = compare_time(df, 'Mixed')
-fin_time_df = df[['Final_solution_time_(cumulative)_Mixed', 'Final_solution_time_(cumulative)_Int']]
-shifted_times = []
-for i in ['Final_solution_time_(cumulative)_Mixed', 'Final_solution_time_(cumulative)_Int']:
-    shifted_times.append(shifted_geo_mean(df[i], 0.5))
-
-
-feats = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/CSVs/NoCmpFeats/base_feats_no_cmp_24_01.xlsx')
-feature_names = feats.columns
-
-feature_name_df = pd.DataFrame({'Feature Name': feature_names})
-# feature_name_df.to_csv('/Users/fritz/Downloads/ZIB/Master/GitCode/PräsiTristan/Präsi/CSV/final_features.csv', index=False)

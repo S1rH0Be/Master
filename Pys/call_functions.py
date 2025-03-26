@@ -1,3 +1,5 @@
+from sklearn.preprocessing import MinMaxScaler
+
 from visualize_data_and_results_last_bt import *
 from das_ist_die_richtige_regression import *
 from scip_data_cleaner import *
@@ -79,6 +81,8 @@ def regression(feature_space, preset_name='STEFAN', data_set_name='Stefan',
     preset_linear_t1 = ['hundred', regression_models, scaling, imputators, t1_linear, 1000]
 
     preset_forest_t2 = ['hundred', regression_models, scaling, imputators, t2_forest, 1000]
+
+    preset_example_order_of_magnitude = ['hundred', {"LinearRegression": LinearRegression()}, [MinMaxScaler()], imputators, ['#MIP nodes Mixed', '% vars in DAG (out of all vars)'], 1000]
 
     all_top_presets = [preset_combined_t3, preset_linear_t3, preset_forest_t2]
     preset_names = ['GlobTop3', 'LinearTop3', 'ForestTop2']
@@ -165,12 +169,10 @@ def call_importance_scores(title:str, unscaled_or_logged:str,
 # call_scip_data()
 # clean_scip_data()
 
-regression('preset_everything', log_label=True)
-regression('preset_everything', log_label=False)
-# call_importance_scores(title='Unscaled Ranking', unscaled_or_logged='Unscaled')
-# call_importance_scores(title='Logged Ranking', unscaled_or_logged='Logged')
+# regression('preset_example_order_of_magnitude', data_set_name='Timo', log_label=False)
 
-plot_acc()
-plot_sgm_acc()
+example_importances = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/Testruns/Testrun2/Unscaled/Importance/Linear/unscaled_lin_impo_STEFAN_below_1000_hundred_seeds_1_2_24_03.csv')
+
+print((example_importances.iloc[:,1:]).mean(axis=1), abs(example_importances.iloc[:,1:]).max(axis=1))
 
 

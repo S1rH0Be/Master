@@ -196,14 +196,14 @@ def regression(full_data, features, label, scalers, imputations, models, random_
     return results_df, linear_feature_importance_df, forest_feature_importance_df, sgm_run_time_df
 
 def regress_on_different_sets_based_on_label_magnitude(number_of_seeds:str, regressors, scalers, imputations, features,
-                                                       preset_name:str, data_set_name:str, outlier_threshold=1000,  log_label=False, to_excel=False, sgm=False,
-                                                       directory_for_excels='/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/Testruns/Testrun2'):
+                                                       preset_name:str, data_set_name:str, outlier_threshold=1000,  log_label=False, to_csv=False, sgm=False,
+                                                       directory_for_csvs='/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/Testruns/Testrun2'):
     d, feat, target = read_data(data_set_name, features)
 
     if len(regressors) == 2:
-        regressor_names_for_excel = 'both'
+        regressor_names_for_csv = 'both'
     elif len(regressors) == 1:
-        regressor_names_for_excel = next(iter(regressors.keys()))
+        regressor_names_for_csv = next(iter(regressors.keys()))
     else:
         print('Either no or too many regressors selected')
         return 1
@@ -251,34 +251,34 @@ def regress_on_different_sets_based_on_label_magnitude(number_of_seeds:str, regr
                                                                                              random_seeds=seed_dict[number_of_seeds],
                                                                                              extreme_threshold=1.38)
         if sgm:
-            sgm_df.to_excel(directory_for_excels+f'/Logged/SGM/sgm_logged_{preset_name}_{regressor_names_for_excel}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}.xlsx', index=False)
+            sgm_df.to_csv(directory_for_csvs+f'/Logged/SGM/sgm_logged_{preset_name}_{regressor_names_for_csv}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}.csv', index=False)
 
-        if to_excel:
-            result_below_threshold_df.to_excel(
-                directory_for_excels + f'/Logged/Accuracy/logged_{preset_name}_{regressor_names_for_excel}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}.xlsx',
+        if to_csv:
+            result_below_threshold_df.to_csv(
+                directory_for_csvs + f'/Logged/Accuracy/logged_{preset_name}_{regressor_names_for_csv}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}.csv',
                 index=False)
-            linear_importance.to_excel(
-                directory_for_excels + f'/Logged/Importance/Linear/logged_lin_impo_{preset_name}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}.xlsx',
+            linear_importance.to_csv(
+                directory_for_csvs + f'/Logged/Importance/Linear/logged_lin_impo_{preset_name}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}.csv',
                 index=False)
-            forest_importance.to_excel(
-                directory_for_excels + f'/Logged/Importance/Forest/logged_forest_impo_{preset_name}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}.xlsx',
+            forest_importance.to_csv(
+                directory_for_csvs + f'/Logged/Importance/Forest/logged_forest_impo_{preset_name}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}.csv',
                 index=False)
 
     else:
         feat_below_threshold, target_below_threshold = kick_outlier(feat, target, outlier_threshold)
         result_below_threshold_df, linear_importance, forest_importance, sgm_df = regression(d, feat_below_threshold, target_below_threshold, scalers, imputations, regressors, random_seeds=seed_dict[number_of_seeds])
         if sgm:
-            # sgm_unscaled.to_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/PräsiTristan/Präsi/CSV/t3_unscaled_sgm.xlsx', index=False)
-            sgm_df.to_excel(directory_for_excels+'/Unscaled/SGM/sgm_unscaled'+f'_{preset_name}_{regressor_names_for_excel}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}.xlsx', index=False)
+            # sgm_unscaled.to_csv('/Users/fritz/Downloads/ZIB/Master/GitCode/PräsiTristan/Präsi/CSV/t3_unscaled_sgmcsv', index=False)
+            sgm_df.to_csv(directory_for_csvs+'/Unscaled/SGM/sgm_unscaled'+f'_{preset_name}_{regressor_names_for_csv}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}.csv', index=False)
 
-        if to_excel:
-            result_below_threshold_df.to_excel(
-                directory_for_excels+f'/Unscaled/Accuracy/unscaled_{preset_name}_{regressor_names_for_excel}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}.xlsx',
+        if to_csv:
+            result_below_threshold_df.to_csv(
+                directory_for_csvs+f'/Unscaled/Accuracy/unscaled_{preset_name}_{regressor_names_for_csv}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}.csv',
                 index=False)
-            linear_importance.to_excel(
-                directory_for_excels+f'/Unscaled/Importance/Linear/unscaled_lin_impo_{preset_name}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}.xlsx',
+            linear_importance.to_csv(
+                directory_for_csvs+f'/Unscaled/Importance/Linear/unscaled_lin_impo_{preset_name}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}.csv',
                 index=False)
-            forest_importance.to_excel(
-                directory_for_excels+f'/Unscaled/Importance/Forest/unscaled_forest_impo_{preset_name}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}.xlsx',
+            forest_importance.to_csv(
+                directory_for_csvs+f'/Unscaled/Importance/Forest/unscaled_forest_impo_{preset_name}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}.csv',
                 index=False)
 
