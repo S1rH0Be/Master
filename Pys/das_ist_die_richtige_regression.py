@@ -6,6 +6,10 @@ from datetime import datetime
 # scikitlearn
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
+import matplotlib.pyplot as plt
+from sklearn.tree import plot_tree
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.datasets import make_regression
 from sklearn.preprocessing import QuantileTransformer, PowerTransformer
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
@@ -22,7 +26,7 @@ def read_data(data_set:str, feature_names):
     if data_set == 'Timo':
         data = pd.read_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/clean_data_final_06_03.xlsx').drop(columns='Matrix Name')
         if feature_names==['all']:
-            feats = pd.read_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/base_feats_no_cmp_24_01.xlsx')
+            feats = pd.read_excel(f'/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/base_feats_no_cmp_918_24_01.xlsx')
         else:
             feats = data[feature_names].copy()
         feats.replace(-1, np.nan, inplace=True)
@@ -172,6 +176,13 @@ def regression(full_data, features, label, scalers, imputations, models, random_
                         # forest_feature_importance_df[str(model_name)+str(imputation)+str(scaler)+str(count)] = importance
                         mean_to_mixed = predicted_time(time_mixed_int_vbs, pred_df)
                         columns_for_collected_sgm['Forest: ' + str(count)] = mean_to_mixed
+                        # Select the first tree from the forest
+                        tree = model.estimators_[0]
+
+                        # Plot the tree
+                        plt.figure(figsize=(12, 8))
+                        plot_tree(tree, feature_names=[f"{feat}" for feat in features.columns], filled=True)
+                        plt.show()
 
                     results.append({
                         "Model": model_name,

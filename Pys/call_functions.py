@@ -7,7 +7,7 @@ from scip_data import *
 from feature_importance import *
 
 import ast
-
+'''DEPTH OF RANFOR ANGEPASST!!!!!!!!!!!!!!!!!!!!!!'''
 def regression(feature_space, preset_name='STEFAN', data_set_name='Stefan',
               directory_for_excels='/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/Testruns/Testrun2',
               log_label=True, to_excel=True, sgm=True):
@@ -15,7 +15,7 @@ def regression(feature_space, preset_name='STEFAN', data_set_name='Stefan',
     scaling = [QuantileTransformer(n_quantiles=100, output_distribution="normal", random_state=42),
                PowerTransformer('yeo-johnson')]
     regression_models = {"LinearRegression": LinearRegression(),
-                         "RandomForest": RandomForestRegressor(n_estimators=100, random_state=729154)}
+                         "RandomForest": RandomForestRegressor(n_estimators=100, random_state=729154, max_depth=3)}
 
     all_features = ['Matrix Equality Constraints', 'Matrix Quadratic Elements',
                     'Matrix NLP Formula', 'Presolve Columns', 'Presolve Global Entities',
@@ -165,14 +165,12 @@ def call_importance_scores(title:str, unscaled_or_logged:str,
     importance_ranking = create_importance_score_df(lin_df, for_df)
     importance_ranking.to_excel(f'{directory}{unscaled_or_logged}/Importance/{unscaled_or_logged}Ranking/{unscaled_or_logged}_importance_ranking.xlsx', index=False)
 
+def create_fico_feat_sheet(clean_darter:pd.DataFrame):
+    feature_cols = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/921/base_feats_no_cmp_24_01.xlsx').columns
+    clean_feats = clean_darter[feature_cols].copy()
+    if len(clean_feats) == 918:
+        clean_feats.to_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/base_feats_no_cmp_918_24_01.xlsx')
 
-# call_scip_data()
-# clean_scip_data()
+create_fico_feat_sheet(pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/clean_data_final_06_03.xlsx'))
 
-# regression('preset_example_order_of_magnitude', data_set_name='Timo', log_label=False)
-
-example_importances = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/Testruns/Testrun2/Unscaled/Importance/Linear/unscaled_lin_impo_STEFAN_below_1000_hundred_seeds_1_2_24_03.csv')
-
-print((example_importances.iloc[:,1:]).mean(axis=1), abs(example_importances.iloc[:,1:]).max(axis=1))
-
-
+regression('preset_everything', data_set_name='Timo', log_label=False)
