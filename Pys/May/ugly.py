@@ -254,7 +254,7 @@ def check_col_consistency(df, requirement_df, SCIP=False):
         if minimum < 0 or maximum > 1:
 
             for index, row in df.iterrows():
-                if row[column_name] < 0 | row[column_name] > 1:
+                if (row[column_name] < 0) | (row[column_name] > 1):
                     if DEBUG:
                         print(f"Instance '{df.loc[index, 'Matrix Name']}' in '{column_name}' is not in [0,1].")
                     broken_instances.append((row['Matrix Name'], 'Not in [0,1]'))

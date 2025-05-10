@@ -1,9 +1,7 @@
-from sklearn.preprocessing import MinMaxScaler
-
 from visualize_data_and_results_last_bt import *
 from das_ist_die_richtige_regression import *
-from scip_data_cleaner import *
-from scip_data import *
+from Pys.May.scip_data_cleaner import *
+from Pys.May.scip_data import *
 from feature_importance import *
 
 import ast
@@ -95,10 +93,8 @@ def regression(feature_space, preset_name='STEFAN', data_set_name='Stefan',
     def get_list_by_name(feature_space, namespace):
         return namespace.get(feature_space, f"Preset {feature_space} not found!")
     preset = get_list_by_name(feature_space, locals())
-    regress_on_different_sets_based_on_label_magnitude(preset[0], preset[1], preset[2],
-                                                       preset[3], preset[4], preset_name,
-                                                       data_set_name, preset[5],
-                                                       log_label, to_excel, sgm,
+    regress_on_different_sets_based_on_label_magnitude(preset[0], preset[1], preset[2], preset[3], preset[4],
+                                                       preset_name, data_set_name, preset[5], log_label, to_excel, sgm,
                                                        directory_for_excels)
 
 def plot_acc(file_path="/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/Testruns/Testrun2/Logged/Accuracy/logged_STEFAN_both_below_1000_hundred_seeds_2_1_20_03.xlsx",
@@ -171,6 +167,6 @@ def create_fico_feat_sheet(clean_darter:pd.DataFrame):
     if len(clean_feats) == 918:
         clean_feats.to_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/base_feats_no_cmp_918_24_01.xlsx')
 
-create_fico_feat_sheet(pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/clean_data_final_06_03.xlsx'))
+# create_fico_feat_sheet(pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/clean_data_final_06_03.xlsx'))
 
 regression('preset_everything', data_set_name='Timo', log_label=False)

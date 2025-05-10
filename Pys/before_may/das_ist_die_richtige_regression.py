@@ -6,11 +6,12 @@ from datetime import datetime
 # scikitlearn
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
 import matplotlib.pyplot as plt
 from sklearn.tree import plot_tree
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor
 from sklearn.datasets import make_regression
-from sklearn.preprocessing import QuantileTransformer, PowerTransformer
+from sklearn.preprocessing import QuantileTransformer, PowerTransformer, StandardScaler
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
@@ -35,6 +36,16 @@ def read_data(data_set:str, feature_names):
         data = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/clean_stefan.xlsx')
         if feature_names==['all']:
             feats = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/clean_feats_stefan.xlsx')
+        else:
+            feats = data[feature_names].copy()
+        feats.replace(-1, np.nan, inplace=True)
+        label = data['Cmp Final solution time (cumulative)'].copy()
+    elif data_set=='no_pseudocosts':
+        data = pd.read_csv(
+            '/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/no_pseudocosts/ready_to_ml/all_with_feature/stefans_data_merged_all_with_feature.csv')
+        if feature_names == ['all']:
+            feats = pd.read_csv(
+                '/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/no_pseudocosts/ready_to_ml/all_with_feature/stefans_feats_no_nan.csv')
         else:
             feats = data[feature_names].copy()
         feats.replace(-1, np.nan, inplace=True)
@@ -121,8 +132,8 @@ def regression(full_data, features, label, scalers, imputations, models, random_
     forest_feature_importance_df = linear_feature_importance_df.copy()
     time_mixed_int_vbs = full_data[['Final solution time (cumulative) Mixed', 'Final solution time (cumulative) Int', 'Virtual Best']].copy()
     columns_for_collected_sgm = {}
-    count = 0
     start_time = time.time()
+    count = 0
     for model_name, model in models.items():
         for imputation in imputations:
             for scaler in scalers:
@@ -177,12 +188,12 @@ def regression(full_data, features, label, scalers, imputations, models, random_
                         mean_to_mixed = predicted_time(time_mixed_int_vbs, pred_df)
                         columns_for_collected_sgm['Forest: ' + str(count)] = mean_to_mixed
                         # Select the first tree from the forest
-                        tree = model.estimators_[0]
+                        # tree = model.estimators_[0]
 
                         # Plot the tree
-                        plt.figure(figsize=(12, 8))
-                        plot_tree(tree, feature_names=[f"{feat}" for feat in features.columns], filled=True)
-                        plt.show()
+                        # plt.figure(figsize=(12, 8))
+                        # plot_tree(tree, feature_names=[f"{feat}" for feat in features.columns], filled=True)
+                        # plt.show()
 
                     results.append({
                         "Model": model_name,
@@ -192,6 +203,7 @@ def regression(full_data, features, label, scalers, imputations, models, random_
                         "Extreme Accuracy": extreme_accuracy,
                         "Number Extreme Instances": number_ex_instances
                     })
+
 
     # Calculate elapsed time
     elapsed_time = time.time() - start_time
@@ -204,11 +216,12 @@ def regression(full_data, features, label, scalers, imputations, models, random_
     collected_sgm_df = pd.DataFrame({'TimeShiftedGeoMean': ['Mixed', 'Predicted', 'Virtual Best']})
     sgm_run_time_df = pd.concat([collected_sgm_df, pd.DataFrame(columns_for_collected_sgm)], axis=1)
     print(f"Execution time: {elapsed_time:.2f} seconds")
+    print(results_df)
     return results_df, linear_feature_importance_df, forest_feature_importance_df, sgm_run_time_df
 
-def regress_on_different_sets_based_on_label_magnitude(number_of_seeds:str, regressors, scalers, imputations, features,
-                                                       preset_name:str, data_set_name:str, outlier_threshold=1000,  log_label=False, to_csv=False, sgm=False,
-                                                       directory_for_csvs='/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/Testruns/Testrun2'):
+def regress_on_different_sets_based_on_label_magnitude(number_of_seeds:str, regressors, scalers, imputations, features:[str],
+                                                       preset_name:str, data_set_name:str, outlier_threshold=1000, log_label=False, to_csv=False, sgm=False,
+                                                       directory_for_csvs='/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/Runs/Testruns/'):
     d, feat, target = read_data(data_set_name, features)
 
     if len(regressors) == 2:
@@ -262,34 +275,46 @@ def regress_on_different_sets_based_on_label_magnitude(number_of_seeds:str, regr
                                                                                              random_seeds=seed_dict[number_of_seeds],
                                                                                              extreme_threshold=1.38)
         if sgm:
-            sgm_df.to_csv(directory_for_csvs+f'/Logged/SGM/sgm_logged_{preset_name}_{regressor_names_for_csv}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}.csv', index=False)
+            sgm_df.to_csv(directory_for_csvs+f'{preset_name}/Logged/SGM/sgm_logged_{preset_name}_{regressor_names_for_csv}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}_{data_set_name}.csv', index=False)
 
         if to_csv:
             result_below_threshold_df.to_csv(
-                directory_for_csvs + f'/Logged/Accuracy/logged_{preset_name}_{regressor_names_for_csv}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}.csv',
+                directory_for_csvs + f'{preset_name}/Logged/Accuracy/logged_{preset_name}_{regressor_names_for_csv}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}_{data_set_name}.csv',
                 index=False)
             linear_importance.to_csv(
-                directory_for_csvs + f'/Logged/Importance/Linear/logged_lin_impo_{preset_name}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}.csv',
+                directory_for_csvs + f'{preset_name}/Logged/Importance/Linear/logged_lin_impo_{preset_name}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}_{data_set_name}.csv',
                 index=False)
             forest_importance.to_csv(
-                directory_for_csvs + f'/Logged/Importance/Forest/logged_forest_impo_{preset_name}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}.csv',
+                directory_for_csvs + f'{preset_name}/Logged/Importance/Forest/logged_forest_impo_{preset_name}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}_{data_set_name}.csv',
                 index=False)
 
     else:
         feat_below_threshold, target_below_threshold = kick_outlier(feat, target, outlier_threshold)
         result_below_threshold_df, linear_importance, forest_importance, sgm_df = regression(d, feat_below_threshold, target_below_threshold, scalers, imputations, regressors, random_seeds=seed_dict[number_of_seeds])
         if sgm:
-            # sgm_unscaled.to_csv('/Users/fritz/Downloads/ZIB/Master/GitCode/PräsiTristan/Präsi/CSV/t3_unscaled_sgmcsv', index=False)
-            sgm_df.to_csv(directory_for_csvs+'/Unscaled/SGM/sgm_unscaled'+f'_{preset_name}_{regressor_names_for_csv}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}.csv', index=False)
+            # sgm_unscaled.to_csv('/Users/fritz/Downloads/ZIB/Master/GitCode/PräsiTristan/Präsi/CSV/t3_unscaled_sgm.csv', index=False)
+            sgm_df.to_csv(directory_for_csvs+f'{preset_name}/Unscaled/SGM/sgm_unscaled'+f'_{preset_name}_{regressor_names_for_csv}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}_{data_set_name}.csv', index=False)
 
         if to_csv:
             result_below_threshold_df.to_csv(
-                directory_for_csvs+f'/Unscaled/Accuracy/unscaled_{preset_name}_{regressor_names_for_csv}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}.csv',
+                directory_for_csvs+f'{preset_name}/Unscaled/Accuracy/unscaled_{preset_name}_{regressor_names_for_csv}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}_{data_set_name}.csv',
                 index=False)
             linear_importance.to_csv(
-                directory_for_csvs+f'/Unscaled/Importance/Linear/unscaled_lin_impo_{preset_name}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}.csv',
+                directory_for_csvs+f'{preset_name}/Unscaled/Importance/Linear/unscaled_lin_impo_{preset_name}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}_{data_set_name}.csv',
                 index=False)
             forest_importance.to_csv(
-                directory_for_csvs+f'/Unscaled/Importance/Forest/unscaled_forest_impo_{preset_name}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}.csv',
+                directory_for_csvs+f'{preset_name}/Unscaled/Importance/Forest/unscaled_forest_impo_{preset_name}_below_{outlier_threshold}_{number_of_seeds}_seeds_{len(scalers)}_{len(features)}_{date_string}_{data_set_name}.csv',
                 index=False)
+
+
+regress_on_different_sets_based_on_label_magnitude('hundred', {'RandomForest': RandomForestRegressor(n_estimators=100, random_state=42),
+                                                               'LinearRegression': LinearRegression()},
+                                                   [StandardScaler(), MinMaxScaler(), RobustScaler(), PowerTransformer(method='yeo-johnson')], ['mean', 'median'],
+                                                   ['all'], 'TestrunNoPseudo', 'no_pseudocosts', to_csv=True, sgm=True)
+
+# regress_on_different_sets_based_on_label_magnitude('hundred', {'RandomForest': RandomForestRegressor(n_estimators=100, random_state=42),
+#                                                                'LinearRegression': LinearRegression()},
+#                                                    [StandardScaler(), MinMaxScaler(), RobustScaler(), PowerTransformer(method='yeo-johnson')], ['mean', 'median'],
+#                                                    ['all'], 'TestrunTimo', 'Timo', to_csv=True, sgm=True,
+#                                                    directory_for_csvs='/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/')
 

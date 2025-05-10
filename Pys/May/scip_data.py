@@ -318,7 +318,7 @@ def process_directory(directory):
             mix0_df = mix0_df.loc[:, ~mix0_df.columns.str.endswith('_descr')]
             mix0_df = mix0_df.drop('Random Seed Shift', axis=1)
 
-        mix0_df.to_excel(f'{directory}/mixo_s{group_id}.xlsx', index=False)
+        mix0_df.to_csv(f'{directory}/mixo_s{group_id}.csv', index=False)
         minlp_df = extract_instance_data_minlp(files.get('minlp')) if 'minlp' in files else None
 
 
@@ -333,8 +333,8 @@ def process_directory(directory):
 
     return complete_df
 
-def read_in_and_call_process(directory_path = "/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/Outs",
-                             fico=True, to_excel=True):
+def read_in_and_call_process(directory_path = "/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/no_pseudocosts/Outs",
+                             fico=True, to_csv=True):
 
     stefans_data_merged = process_directory(directory_path)
 
@@ -346,21 +346,21 @@ def read_in_and_call_process(directory_path = "/Users/fritz/Downloads/ZIB/Master
     stefans_data_merged_all_have_features = stefans_data_merged[~stefans_data_merged['Matrix Name'].isin(matrices_with_nan)]
 
     # save dataframes in excel once with all instances and once only with instances having features
-    if to_excel:
-        stefans_data_merged.to_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_instances/stefans_data_merged.xlsx',
+    if to_csv:
+        stefans_data_merged.to_csv('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/no_pseudocosts/ready_to_ml/all_instances/stefans_data_merged.csv',
                                index=False)
-        stefans_data_merged_all_have_features.to_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/stefans_data_merged_all_with_feature.xlsx',
+        stefans_data_merged_all_have_features.to_csv('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/no_pseudocosts/ready_to_ml/all_with_feature/stefans_data_merged_all_with_feature.csv',
                                index=False)
         stefan_data_reduced_cols_no_nan = create_compatible_dataframe(stefans_data_merged_all_have_features)
-        stefan_data_reduced_cols_no_nan.to_excel(
-            "/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/scip_data_reduced_columns_no_nan.xlsx",
+        stefan_data_reduced_cols_no_nan.to_csv(
+            "/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/no_pseudocosts/ready_to_ml/all_with_feature/scip_data_reduced_columns_no_nan.csv",
             index=False)
 
 
     if fico:
         # all instances
         scip_to_fic_df = create_compatible_dataframe(stefans_data_merged, fico_only=True)
-        scip_to_fic_df.to_excel("/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_instances/scip_to_fic.xlsx",
+        scip_to_fic_df.to_csv("/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/no_pseudocosts/ready_to_ml/all_instances/scip_to_fic.csv",
                                 index=False)
 
         stefans_feats = scip_to_fic_df[['#integer violations at root Mixed',
@@ -374,13 +374,13 @@ def read_in_and_call_process(directory_path = "/Users/fritz/Downloads/ZIB/Master
                '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG) Mixed',
                '% vars in DAG unbounded (out of vars in DAG) Mixed']].copy()
 
-        stefans_feats.to_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_instances/stefans_feats.xlsx',
+        stefans_feats.to_csv('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/no_pseudocosts/ready_to_ml/all_instances/stefans_feats.csv',
                                    index=False)
 
         # only instances with feature
         stefan_fico_no_nan = create_compatible_dataframe(stefans_data_merged_all_have_features)
-        stefan_fico_no_nan.to_excel(
-            "/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/scip_to_fic_no_nan.xlsx",
+        stefan_fico_no_nan.to_csv(
+            "/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/no_pseudocosts/ready_to_ml/all_with_feature/scip_to_fic_no_nan.csv",
             index=False)
 
         stefans_feats = stefan_fico_no_nan[['#integer violations at root Mixed',
@@ -393,9 +393,7 @@ def read_in_and_call_process(directory_path = "/Users/fritz/Downloads/ZIB/Master
                                         'Matrix Quadratic Elements',
                                         '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG) Mixed',
                                         '% vars in DAG unbounded (out of vars in DAG) Mixed']].copy()
-
-        stefans_feats.to_excel(
-            '/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/ready_to_ml/all_with_feature/stefans_feats_no_nan.xlsx',
+        # no_pseudocosts
+        stefans_feats.to_csv(
+            '/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/no_pseudocosts/ready_to_ml/all_with_feature/stefans_feats_no_nan.csv',
             index=False)
-
-

@@ -1,10 +1,6 @@
-import pandas as pd
-import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.preprocessing import PowerTransformer, StandardScaler
 
-from Pys.data_cleaning_fico import features
-from data_cleaning_fico import date_string
+from Pys.before_may.data_cleaning_fico import features
 
 
 def update_cmp(df, col_list):

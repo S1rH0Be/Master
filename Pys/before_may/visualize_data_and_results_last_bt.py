@@ -130,13 +130,15 @@ def plot_sgm_feature_importance(df, title):
     plt.tight_layout()
     plt.show()
 
-def plot_sgm_accuracy(accuracy_df, title, shift_value=0.0):
+def plot_sgm_accuracy(accuracy_df, title, shift_value=50):
     shift=shift_value
     lin_mean = shifted_geometric_mean(accuracy_df['Accuracy'][accuracy_df['Model'] == 'LinearRegression'], shift)
     for_mean = shifted_geometric_mean(accuracy_df['Accuracy'][accuracy_df['Model'] == 'RandomForest'], shift)
 
-    lin_ex_mean = shifted_geometric_mean(accuracy_df['Extreme Accuracy'][accuracy_df['Model'] == 'LinearRegression'], shift)
-    for_ex_mean = shifted_geometric_mean(accuracy_df['Extreme Accuracy'][accuracy_df['Model'] == 'RandomForest'], shift)
+    no_nans = accuracy_df.dropna(axis=0, how='any')
+    lin_ex_mean = shifted_geometric_mean(no_nans['Extreme Accuracy'][no_nans['Model'] == 'LinearRegression'], shift)
+    for_ex_mean = shifted_geometric_mean(no_nans['Extreme Accuracy'][no_nans['Model'] == 'RandomForest'], shift)
+
     values_seperated = np.array([lin_mean, lin_ex_mean, for_mean, for_ex_mean])
 
     values_seperated_names = ['LinReg Total', 'LinReg Extreme', 'RandomForest Total', 'RandomForest Extreme']
@@ -299,6 +301,12 @@ def scaling(feat_df, label_series):
     return feature_df_transformed, logged_label
 
 
+sgm_no_pseudo = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/Runs/Testruns/TestrunNoPseudo/Unscaled/SGM/sgm_unscaled_TestrunNoPseudo_both_below_1000_hundred_seeds_4_1_25_04_no_pseudocosts.csv')
+acc_no_pseudo = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/Runs/Testruns/TestrunNoPseudo/Unscaled/Accuracy/unscaled_TestrunNoPseudo_both_below_1000_hundred_seeds_4_1_25_04_no_pseudocosts.csv')
+acc_con_pseudo = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/standard_scip/ready_to_ml/all_with_feature/Testruns/Testrun2/Unscaled/Accuracy/unscaled_STEFAN_both_below_1000_hundred_seeds_2_1_20_03.xlsx')
+plot_sgm_accuracy(acc_con_pseudo, 'ConPseudo')
+plot_sgm_accuracy(acc_no_pseudo, 'NoPseudo')
+# plot_sgm_relative_to_mixed(sgm_no_pseudo,  'NoPseudo')
 
 
 
