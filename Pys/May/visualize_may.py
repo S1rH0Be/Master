@@ -253,23 +253,22 @@ def time_save():
 
     def visualize_time_save(data_frame):
         tdf = create_time_save_df(data_frame)
-        print(tdf.columns)
         sgm_mixed = shifted_geometric_mean(tdf['Final solution time (cumulative) Mixed'],
                                            tdf['Final solution time (cumulative) Mixed'].mean())
         sgm_int = shifted_geometric_mean(tdf['Final solution time (cumulative) Int'],
                                          tdf['Final solution time (cumulative) Mixed'].mean())
         sgm_time_save = shifted_geometric_mean(tdf['Possible Time Save'], tdf['Possible Time Save'].mean())
 
-
+        print(sgm_mixed, sgm_int, sgm_time_save)
+        print(tdf['Final solution time (cumulative) Mixed'].sum(), tdf['Final solution time (cumulative) Int'].sum(), tdf['Possible Time Save'].sum())
 
     scip_default_data = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_default_clean_data.csv')
     scip_no_pseudocosts_data = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_no_pseudocosts_clean_data.csv')
     fico_data = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/clean_data_final_06_03.xlsx')
 
     visualize_time_save(scip_default_data)
-
-time_save()
-
+    visualize_time_save(scip_no_pseudocosts_data)
+    visualize_time_save(fico_data)
 
 
 # label analysis
