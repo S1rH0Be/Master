@@ -10,6 +10,16 @@ from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
 
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler, QuantileTransformer, PowerTransformer
+import logging
+
+treffplustage = 'TreffenMasQuat'
+
+# Setup logging configuration
+logging.basicConfig(
+    filename=f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffplustage}/regression_log.txt',  # Log file name
+    level=logging.INFO,             # Minimum level to log
+    format='%(asctime)s - %(levelname)s - %(message)s'  # Log format
+)
 
 def create_directory(parent_name):
     base_path = f'/Users/fritz/Downloads/ZIB/Master/Treffen/{parent_name}'
@@ -20,16 +30,21 @@ def create_directory(parent_name):
 
 def shifted_geometric_mean(values, shift):
     values = np.array(values)
-    # Shift the values by the constant and check for any negative values after shifting
-    shifted_values = values + shift
-    if shifted_values.dtype == 'object':
+    if values.dtype == 'object':
         # Attempt to convert to float
-        shifted_values = shifted_values.astype(float)
+        values = values.astype(float)
+
+    # Shift the values by the constant
+    # Check if shift is large enough
+    if shift <= -values.min():
+        raise ValueError(f"Shift too small. Minimum value is {values.min()}, so shift must be > {-values.min()}")
+
+    shifted_values = values + shift
 
     shifted_values_log = np.log(shifted_values)  # Step 1: Log of each element in shifted_values
     log_mean = np.mean(shifted_values_log)  # Step 2: Compute the mean of the log values
     geo_mean = np.exp(log_mean) - shift
-    geo_mean = np.round(geo_mean, 2)
+    # geo_mean = np.round(geo_mean, 6)
     return geo_mean
 
 def get_features_label(data_frame, feature_df, chosen_features):
@@ -77,26 +92,16 @@ def get_predicted_run_time_sgm(y_pred, data, shift):
             predicted_time.loc[i] = data.loc[i, 'Final solution time (cumulative) Mixed']
         else:
             predicted_time.loc[i] = data.loc[i, 'Final solution time (cumulative) Int']
-    sgm_predicted = shifted_geometric_mean(predicted_time, shift)
-    sgm_mixed = shifted_geometric_mean(data['Final solution time (cumulative) Mixed'].loc[indices], shift)
-    sgm_int = shifted_geometric_mean(data['Final solution time (cumulative) Int'].loc[indices], shift)
-    sgm_vbs = shifted_geometric_mean(data['Virtual Best'].loc[indices], shift)
+
+    try:
+        sgm_predicted = shifted_geometric_mean(predicted_time, shift)
+        sgm_mixed = shifted_geometric_mean(data['Final solution time (cumulative) Mixed'].loc[indices], shift)
+        sgm_int = shifted_geometric_mean(data['Final solution time (cumulative) Int'].loc[indices], shift)
+        sgm_vbs = shifted_geometric_mean(data['Virtual Best'].loc[indices], shift)
+    except ValueError as e:
+        logging.error(f"SGM failed due to shift: {e}")
+        return None, None, None, None  # or raise again if you want the pipeline to crash
     return sgm_predicted, sgm_mixed, sgm_int, sgm_vbs
-
-def get_run_time_row(prediction, data, model_name, imputation, scaler, shift):
-    sgm_pred, sgm_mixed, sgm_int, sgm_vbs = get_predicted_run_time_sgm(prediction, data, shift=50)
-    new_row = pd.DataFrame([{'Model': model_name, 'Imputation': imputation,
-                   'Scaler': scaler, 'SGM Mixed': sgm_mixed,
-                   'SGM Int': sgm_int, 'SGM Prediction': sgm_pred,
-                   'SGM VBS': sgm_vbs}])
-    return new_row
-
-def get_acc_row(pred, test, model_name, imputation, scaler, extreme_threshold):
-    total_accuracy, extreme_accuracy, number_ex_instances = get_accuracy(pred, test, extreme_threshold)
-    acc_df =  pd.DataFrame([{'Model': model_name, 'Imputation': imputation, 'Scaler': scaler,
-                                                      'Accuracy': total_accuracy, 'Extreme Accuracy': extreme_accuracy,
-                                                      'Number of extreme instances': number_ex_instances}])
-    return acc_df
 
 def get_importance_col(importances, feature_names, model_name, imputation, scaler):
     importance_df = pd.DataFrame({f'{model_name}_{imputation}_{scaler}': importances}, index=feature_names)
@@ -110,11 +115,13 @@ def get_prediction_df(dictionary):
     return pd.DataFrame.from_dict(dictionary, orient='columns')
 
 def trainer(imputation, scaler, model, model_name, X_train, y_train, seed):
-
+    start = time.time()
     # Build pipeline
-    steps = []
+    # Update model-specific parameters
+    if model_name == "RandomForest":
+        model.random_state = seed
     # Add imputation
-    steps.append(('imputer', SimpleImputer(strategy=imputation)))
+    steps = [('imputer', SimpleImputer(strategy=imputation))]
     # Add scaling if applicable
     if scaler:
         steps.append(('scaler', scaler))
@@ -122,74 +129,126 @@ def trainer(imputation, scaler, model, model_name, X_train, y_train, seed):
     steps.append(('model', model))
     # Create pipeline
     pipeline = Pipeline(steps)
-    # Update model-specific parameters
-    if model_name == "RandomForest":
-        model.random_state = seed
     # Train the pipeline
     pipeline.fit(X_train, y_train)
-    return pipeline
+    end = time.time()
+    return pipeline, end-start
 
 def predict(pipeline, X_test, y_test):
+    start = time.time()
     # Evaluate on the test set
     relevant_indices = y_test[y_test != 0].index
     y_test_relevant = y_test.loc[relevant_indices]
     y_pred_relevant = pipeline.predict(X_test.loc[relevant_indices, :])
     y_pred_relevant = pd.Series(y_pred_relevant, index=relevant_indices, name='Prediction')
-    return y_pred_relevant, y_test_relevant
+    end = time.time()
+    return y_pred_relevant, y_test_relevant, end - start
 
-def regression(data, features_df, feature_names, models, scalers, imputer, random_seeds, extreme_threshold=4.0):
+def regression(data, data_set_name, features_df, feature_names, models, scalers, imputer, random_seeds, extreme_threshold=4.0):
     """
     Gets a csv file as input
     trains a ml model
     outputs csv files: Accuracy, Time save/loss, Feature Importance
     """
     start_time = time.time()
+    training_time = 0
+    prediction_time = 0
     features, label = get_features_label(data, features_df, feature_names)
-    accuracy_df = pd.DataFrame()
-    run_time_df = pd.DataFrame()
-    feature_importance_df = pd.DataFrame(index=feature_names)
+    accuracy_dictionary = {}
+    run_time_dictionary = {}
     prediction_dictionary = {}
-
+    importance_dictionary = {}
+    logging.info(f"{'-' * 80}\n{data_set_name}\n{'-' * 80}")
     for model_name, model in models.items():
         if model_name not in ['LinearRegression', 'RandomForest']:
-            print('AHHHHHHHHHHHHHHHHHHHHHHHH')
-            break
+            print(f'AHHHHHHHHHHHHHHHHHHHHHHHH. {model_name} is not a valid regressor!')
+            continue
         for imputation in imputer:
             for scaler in scalers:
                 for seed in random_seeds:
                     X_train, X_test, y_train, y_test = train_test_split(features, label, test_size=0.2,
                                                                         random_state=seed)
                     # train the model
-                    trained_model = trainer(imputation, scaler, model, model_name, X_train, y_train, seed)
+                    trained_model, tt = trainer(imputation, scaler, model, model_name, X_train, y_train, seed)
+                    training_time += tt
                     # let the model make predictions
-                    y_pred_relevant, y_test_relevant = predict(trained_model, X_test, y_test)
-
+                    y_pred_relevant, y_test_relevant, pt = predict(trained_model, X_test, y_test)
+                    prediction_time += pt
                     # get accuracy measure for the model
-                    new_acc_row = get_acc_row(y_pred_relevant, y_test_relevant, model_name, imputation, scaler, extreme_threshold)
-                    accuracy_df = pd.concat([accuracy_df, new_acc_row])
+                    accuracy_dictionary[model_name+'_'+imputation+'_'+str(scaler)+'_'+str(seed)] = [get_accuracy(y_pred_relevant, y_test_relevant, extreme_threshold)]
                     # add sgm of run time for this setting to run_time_df
-                    new_run_time_row = get_run_time_row(y_pred_relevant, data, model_name, imputation, scaler, shift=50)
-                    run_time_df = pd.concat([run_time_df, new_run_time_row])
+                    run_time_dictionary[model_name+'_'+imputation+'_'+str(scaler)+'_'+str(seed)] = [get_predicted_run_time_sgm(y_pred_relevant, data, shift=50)]
                     # return actual prediction
                     prediction_dictionary[model_name+'_'+imputation+'_'+str(scaler)+'_'+str(seed)] = y_pred_relevant.to_list()
                     # feature importance
-
                     if model_name == 'LinearRegression':
                         importances = trained_model.named_steps['model'].coef_
                     else:
                         importances = trained_model.named_steps['model'].feature_importances_
-                    # TODO: Mach das als dictionary, weil is slow af
-                    new_importance_col = get_importance_col(importances, feature_names, model_name, imputation, scaler)
-                    feature_importance_df = pd.concat([feature_importance_df, new_importance_col], axis=1)
+                    importance_dictionary[model_name+'_'+imputation+'_'+str(scaler)+'_'+str(seed)] = importances.tolist()
 
-    prediction_df = get_prediction_df(prediction_dictionary)
+    if any(len(d) == 0 for d in [importance_dictionary,prediction_dictionary,accuracy_dictionary,run_time_dictionary]):
+        # handle the empty case
+        dictionaries = [importance_dictionary, accuracy_dictionary, run_time_dictionary, prediction_dictionary]
+        dict_names = ['importance_dictionary', 'accuracy_dictionary', 'run_time_dictionary', 'prediction_dictionary']
+        empty_dicts = []
+        for i in range(len(dictionaries)):
+            if len(dictionaries[i]) == 0:
+                empty_dicts.append(dict_names[i])
+        print(f'Error while creating: {empty_dicts}')
+        end_time = time.time()
+        print(f'Final time: {end_time - start_time}')
+        return None
+
+    else:
+        feature_importance_df = pd.DataFrame.from_dict(importance_dictionary, orient='columns')
+        feature_importance_df.index = feature_names
+
+        prediction_df = get_prediction_df(prediction_dictionary)
+        accuracy_df = pd.DataFrame.from_dict(accuracy_dictionary, orient='columns')
+        run_time_df = pd.DataFrame.from_dict(run_time_dictionary, orient='columns')
+
     end_time = time.time()
-    print(f'Final time: {end_time - start_time}')
+    logging.info(f'Training time: {training_time}')
+    logging.info(f'Prediction time: {prediction_time}')
+    logging.info(f'Final time: {end_time - start_time}')
     return accuracy_df, run_time_df, prediction_df, feature_importance_df
 
-def main(scip_default=False, scip_no_pseudo=False, fico=False, treffplusx='Wurm'):
+def run_regression_pipeline(data_name, data_path, feats_path, is_excel, prefix, treffplusx, models, imputer, hundred_seeds):
+    # Load data
+    if is_excel:
+        data = pd.read_excel(data_path)
+        features = pd.read_excel(feats_path).iloc[:, 1:]
+    else:
+        data = pd.read_csv(data_path)
+        features = pd.read_csv(feats_path)
 
-    models = {'LinearRegression': LinearRegression(), 'RandomForest': RandomForestRegressor(n_estimators=100, random_state=0)}
+    # Set scalers
+    scalers = [
+        StandardScaler(),
+        MinMaxScaler(),
+        RobustScaler(),
+        PowerTransformer(method='yeo-johnson'),
+        QuantileTransformer(output_distribution='normal', n_quantiles=int(len(data) * 0.8))
+    ]
+
+    # Run regression
+    acc_df, runtime_df, prediction_df, importance_df = regression(
+        data, data_name, features, features.columns, models, scalers, imputer, hundred_seeds
+    )
+
+    # Save results
+    base_path = f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffplusx}'
+    acc_df.to_csv(f'{base_path}/Accuracy/{prefix}_acc_df.csv', index=False)
+    runtime_df.to_csv(f'{base_path}/RunTime/{prefix}_sgm_runtime.csv', index=False)
+    prediction_df.to_csv(f'{base_path}/Prediction/{prefix}_prediction_df.csv')
+    importance_df.to_csv(f'{base_path}/Importance/{prefix}_importance_df.csv')
+
+def main(scip_default=False, scip_no_pseudo=False, fico=False, treffplusx='Wurm'):
+    models = {
+        'LinearRegression': LinearRegression(),
+        'RandomForest': RandomForestRegressor(n_estimators=100, random_state=0, n_jobs=-1)
+    }
     imputer = ['mean', 'median']
     hundred_seeds = [2207168494, 288314836, 1280346069, 1968903417, 1417846724, 2942245439, 2177268096, 571870743,
                      1396620602, 3691808733, 4033267948, 3898118442, 24464804, 882010483, 2324915710, 316013333,
@@ -204,60 +263,55 @@ def main(scip_default=False, scip_no_pseudo=False, fico=False, treffplusx='Wurm'
                      1584118652, 1023587314, 666405231, 2782652704, 744281271, 3094311947, 3882962880, 325283101,
                      923999093, 4013370079, 2033245880, 289901203, 3049281880, 1507732364, 698625891, 1203175353,
                      1784663289, 2270465462, 537517556, 2411126429]
-    # create directory for current run
-    create_directory(f'{treffplusx}')
-    # TODO make the next part cleaner
+
+    create_directory(treffplusx)
+
     if scip_default:
-        # call regression
-        scip_data = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_default_clean_data.csv')
-        features_scip = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_default_clean_feats.csv')
-        scalers = [StandardScaler(), MinMaxScaler(), RobustScaler(), PowerTransformer(method='yeo-johnson'),
-                   QuantileTransformer(output_distribution='normal', n_quantiles=int(len(scip_data) * 0.8))]
-        scip_acc_df, scip_sgm_runtime, prediction_df, feature_importance_df = regression(scip_data, features_scip,
-                                                                                         features_scip.columns, models,
-                                                                                         scalers, imputer, hundred_seeds)
-        # to csv
-        scip_acc_df.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffplusx}/Accuracy/scip_acc_df.csv', index=False)
-        scip_sgm_runtime.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffplusx}/RunTime/scip_sgm_runtime.csv', index=False)
-        prediction_df.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffplusx}/Prediction/scip_prediction_df.csv')
-        feature_importance_df.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffplusx}/Importance/scip_importance_df.csv')
-
-    if fico:
-        # call regression
-        fico_data = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/clean_data_final_06_03.xlsx')
-        features_fico = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/base_feats_no_cmp_918_24_01.xlsx').iloc[:,1:]
-
-        scalers = [StandardScaler(), MinMaxScaler(), RobustScaler(), PowerTransformer(method='yeo-johnson'),
-                   QuantileTransformer(output_distribution='normal', n_quantiles=int(len(fico_data) * 0.8))]
-        fico_acc_df, fico_sgm_runtime, prediction_df, feature_importance_df = regression(fico_data, features_fico,
-                                                                                         features_fico.columns, models,
-                                                                                         scalers, imputer, hundred_seeds)
-        # to csv
-        fico_acc_df.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffplusx}/Accuracy/fico_acc_df.csv', index=False)
-        fico_sgm_runtime.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffplusx}/RunTime/fico_sgm_runtime.csv', index=False)
-        prediction_df.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffplusx}/Prediction/fico_prediction_df.csv')
-        feature_importance_df.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffplusx}/Importance/fico_importance_df.csv')
+        run_regression_pipeline(
+            data_name = 'scip_default',
+            data_path='/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_default_clean_data.csv',
+            feats_path='/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_default_clean_feats.csv',
+            is_excel=False,
+            prefix='scip',
+            treffplusx=treffplusx,
+            models=models,
+            imputer=imputer,
+            hundred_seeds=hundred_seeds
+        )
 
     if scip_no_pseudo:
-        # call regression
-        scip_data = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_no_pseudocosts_clean_data.csv')
-        features_scip = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_no_pseudocosts_clean_feats.csv')
-        scalers = [StandardScaler(), MinMaxScaler(), RobustScaler(), PowerTransformer(method='yeo-johnson'),
-                   QuantileTransformer(output_distribution='normal', n_quantiles=int(len(scip_data) * 0.8))]
-        scip_acc_df, scip_sgm_runtime, prediction_df, feature_importance_df = regression(scip_data, features_scip,
-                                                                                         features_scip.columns, models,
-                                                                                        scalers, imputer, hundred_seeds)
-        # to csv
-        scip_acc_df.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffplusx}/Accuracy/scip_no_pseudo_acc_df.csv', index=False)
-        scip_sgm_runtime.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffplusx}/RunTime/scip_no_pseudo_sgm_runtime.csv',
-                                index=False)
-        prediction_df.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffplusx}/Prediction/scip_no_pseudo_prediction_df.csv')
-        feature_importance_df.to_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffplusx}/Importance/scip_no_pseudo_importance_df.csv')
+        run_regression_pipeline(
+            data_name='scip_no_pseudo',
+            data_path='/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_no_pseudocosts_clean_data.csv',
+            feats_path='/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_no_pseudocosts_clean_feats.csv',
+            is_excel=False,
+            prefix='scip_no_pseudo',
+            treffplusx=treffplusx,
+            models=models,
+            imputer=imputer,
+            hundred_seeds=hundred_seeds
+        )
 
-# main(scip_default=True, fico=False, treffplusx='TreffMasDos')
-# main(scip_default=False, fico=True, treffplusx='TreffMasDos')
-# main(scip_default=True, scip_no_pseudo=True, fico=True, treffplusx='TreffenMasDos')
-# main(scip_default=True, scip_no_pseudo=True, fico=False, treffplusx='TreffenMasDos')
-# main(scip_default=True, scip_no_pseudo=True, fico=False, treffplusx='TreffenMasDos')
+    if fico:
+        run_regression_pipeline(
+            data_name='fico',
+            data_path='/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/clean_data_final_06_03.xlsx',
+            feats_path='/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/base_feats_no_cmp_918_24_01.xlsx',
+            is_excel=True,
+            prefix='fico',
+            treffplusx=treffplusx,
+            models=models,
+            imputer=imputer,
+            hundred_seeds=hundred_seeds
+        )
 
+
+# main(scip_default=True, scip_no_pseudo=False, fico=False, treffen_dict=treffplustage')
+main(scip_default=True, scip_no_pseudo=True, fico=True, treffplusx=treffplustage)
+# main(scip_default=True, scip_no_pseudo=True, fico=False, treffen_dict=treffplustage')
+
+# try:
+#     result = shifted_geometric_mean(values, shift)
+# except ValueError as e:
+#     logging.error(f"SGM failed due to shift: {e}")
+#     return

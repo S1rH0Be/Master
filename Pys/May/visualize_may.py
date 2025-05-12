@@ -2,6 +2,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from may_regression import shifted_geometric_mean
 
+
+#TODO: Adjust Accuracy and run_time to new format
+
+global_path = '/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasDos'
+
 # SGM RUNTIME BLOCK
 def sgm():
     def get_sgm_of_sgm(data_frame, shift):
@@ -48,9 +53,9 @@ def sgm():
         plt.show()
         plt.close()
 
-    scip_sgm_df = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasDos/RunTime/scip_sgm_runtime.csv')
-    scip_no_pseudos_df = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasDos/RunTime/scip_no_pseudo_sgm_runtime.csv')
-    fico_sgm_df = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasDos/RunTime/fico_sgm_runtime.csv')
+    scip_sgm_df = pd.read_csv(f'{global_path}/RunTime/scip_sgm_runtime.csv')
+    scip_no_pseudos_df = pd.read_csv(f'{global_path}/RunTime/scip_no_pseudo_sgm_runtime.csv')
+    fico_sgm_df = pd.read_csv(f'{global_path}/RunTime/fico_sgm_runtime.csv')
     visualize_sgm(scip_sgm_df, 'SCIP SGM')
     visualize_sgm(scip_no_pseudos_df, 'SCIP no Pseudo SGM')
     visualize_sgm(fico_sgm_df, 'FICO SGM')
@@ -81,14 +86,15 @@ def shares():
         plt.show()
         plt.close()
 
-    scip_default_predictions = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasDos/Prediction/scip_prediction_df.csv')
-    fico_predictions = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasDos/Prediction/fico_prediction_df.csv')
-    scip_no_pseudo_predictions = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasDos/Prediction/scip_no_pseudo_prediction_df.csv')
+    scip_default_predictions = pd.read_csv(f'{global_path}/Prediction/scip_prediction_df.csv')
+    fico_predictions = pd.read_csv(f'{global_path}/Prediction/fico_prediction_df.csv')
+    scip_no_pseudo_predictions = pd.read_csv(f'{global_path}/Prediction/scip_no_pseudo_prediction_df.csv')
     histogram_shares(scip_default_predictions, title='SCIP Default: Share of Mixed and Preferred Int')
     histogram_shares(scip_no_pseudo_predictions, title='SCIP NO Pseudocosts: Share of Mixed and Preferred Int')
     histogram_shares(fico_predictions, title='FICO: Share of Mixed and Preferred Int')
 
 # ACCURACY BLOCK
+# TODO: Add parameter: Filter cols by string components, e.g Get all Linear columns with Median Imputation
 def accuracy():
     def get_sgm_series(pandas_series, shift):
         return shifted_geometric_mean(pandas_series, shift)
@@ -99,7 +105,7 @@ def accuracy():
         return sgm_accuracy, sgm_extreme_accuracy
 
 
-    def visualize_acc(data_frame, title: str = 'Accuracy'):
+    def visualize_acc(data_frame, filter_by:[int], title: str = 'Accuracy'):
         linear_df = data_frame[data_frame['Model']=='LinearRegression'].loc[:,['Accuracy', 'Extreme Accuracy',
                                                                                'Number of extreme instances']]
         forest_df = data_frame[data_frame['Model']=='RandomForest'].loc[:,['Accuracy', 'Extreme Accuracy',
@@ -124,15 +130,14 @@ def accuracy():
         plt.show()
         plt.close()
 
-    scip_default_accuracy = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasDos/Accuracy/scip_acc_df.csv')
-    fico_accuracy = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasDos/Accuracy/fico_acc_df.csv')
-    scip_no_pseudo_accuracy = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasDos/Accuracy/scip_no_pseudo_acc_df.csv')
+    scip_default_accuracy = pd.read_csv(f'{global_path}/Accuracy/scip_acc_df.csv')
+    fico_accuracy = pd.read_csv(f'{global_path}/Accuracy/fico_acc_df.csv')
+    scip_no_pseudo_accuracy = pd.read_csv(f'{global_path}/Accuracy/scip_no_pseudo_acc_df.csv')
     visualize_acc(scip_default_accuracy, 'SCIP Default Accuracy')
     visualize_acc(scip_no_pseudo_accuracy, 'SCIP NO Pseudocosts Accuracy')
     visualize_acc(fico_accuracy, 'FICO Accuracy')
 
 # Feature Importances, as sgm
-# TODO: delete this again this is not  what i want
 def importance():
     def feature_importance(data_frame, title: str = 'Feature Importance'):
         feature_names = data_frame.index.tolist()
@@ -218,17 +223,15 @@ def importance():
         plt.show()
         plt.close()
 
-
-    scip_default_importance = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasDos/Importance/scip_importance_df.csv', index_col=0)
-    fico_importance = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasDos/Importance/fico_importance_df.csv', index_col=0)
-    scip_no_pseudo_importance = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasDos/Importance/scip_no_pseudo_importance_df.csv', index_col=0)
-    # plot_importances_by_regressor(scip_default_importance, 'SCIP Default Feature Importance')
-    # plot_importances_by_regressor(fico_importance, 'FICO Feature Importance')
-    # plot_importances_by_regressor(scip_no_pseudo_importance, 'SCIP NO Pseudocosts Feature Importance')
+    scip_default_importance = pd.read_csv(f'{global_path}/Importance/scip_importance_df.csv', index_col=0)
+    scip_no_pseudo_importance = pd.read_csv(f'{global_path}/Importance/scip_no_pseudo_importance_df.csv', index_col=0)
+    fico_importance = pd.read_csv(f'{global_path}/Importance/fico_importance_df.csv', index_col=0)
+    plot_importances_by_regressor(scip_default_importance, 'SCIP Default Feature Importance')
+    plot_importances_by_regressor(scip_no_pseudo_importance, 'SCIP NO Pseudocosts Feature Importance')
+    plot_importances_by_regressor(fico_importance, 'FICO Feature Importance')
     plot_importance(scip_default_importance, 'SCIP Default Feature Importance Score')
     plot_importance(scip_no_pseudo_importance, 'SCIP NO Pseudocosts Feature Importance Score')
     plot_importance(fico_importance, 'FICO Feature Importance Score')
-
 
 # abs time save
 def time_save():
@@ -270,9 +273,32 @@ def time_save():
     visualize_time_save(scip_no_pseudocosts_data)
     visualize_time_save(fico_data)
 
-
 # label analysis
 def label():
-    pass
+    scip_default_label = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_default_clean_data.csv')
+    scip_no_pseudocosts_label = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_no_pseudocosts_clean_data.csv')
+    fico_label = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/clean_data_final_06_03.xlsx')
+
+    labels = [(scip_default_label['Cmp Final solution time (cumulative)'], 'SCIP Default'),
+              (scip_no_pseudocosts_label['Cmp Final solution time (cumulative)'], 'SCIP No Pseudocosts'),
+              (fico_label['Cmp Final solution time (cumulative)'], 'FICO Xpress')]
+
+    for label in labels:
+        plt.figure(figsize=(8, 6))
+        plt.scatter([0] * len(label[0]), label[0], color='white', edgecolor='k', alpha=1)
+        plt.axhline(y=0, color='black', linestyle='-', alpha=0.2)  # Reference line at y=0
+        plt.title(f"Label {label[1]}")
+        plt.xlabel("Pred values")
+        plt.ylabel("Actual Values")
+        plt.show()
+
+
+# sgm()
+# shares()
+# accuracy()
+# importance()
+# time_save()
+# label()
+
 
 
