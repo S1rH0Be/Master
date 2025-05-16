@@ -16,7 +16,6 @@ def find_no_feature_instances(df):
     no_feat_instances = {}
     for index, row in df.iterrows():
         if row.isna().sum() > 0:
-            # print(row['Matrix Name'], row['Random Seed Shift'])
             if row['Matrix Name'] in no_feat_instances:
                 no_feat_instances[row['Matrix Name']].append(row['Random Seed Shift'])
             else:
@@ -40,28 +39,31 @@ def find_no_feature_instances(df):
     return all_runs_no_feats, s0_no_feats, s1_no_feats, s2_no_feats
 
 def map_raw_scip_to_feature(df, compper_df, operation_dict):
+    # TODO: Here its happening with the -1 for fico_only
     # Get the list of columns in compper_df
     df_columns = df.columns.tolist()
 
     for new_col, operation in operation_dict.items():
         # Check if all columns in the operation exist in compper_df
         columns_in_operation = [col for col in df if col in operation]
+        print('OPER:', columns_in_operation)
 
         for col in columns_in_operation:
             if col not in df_columns:
                 raise ValueError(f"Column '{col}' not found in stefan_df")
 
         # Replace column names in the operation with actual references to the columns in df
+
         for col in df_columns:
             # Use \b to ensure we're replacing whole words only
             operation = re.sub(rf'\b{col}\b', f"df['{col}']", operation)
 
+        print('map_raw_scip_to_feature', compper_df['Matrix Equality Constraints'].min())
         try:
             # Evaluate the expression and create the new column in df
             compper_df[new_col] = eval(operation)
             if compper_df[new_col].isna().sum() > 0:
                 compper_df[new_col] = compper_df[new_col].replace(np.nan, -1)
-
         except Exception as e:
             print(f"Error while evaluating operation for {new_col}: {e}")
             compper_df[new_col] = None  # If there's an error, assign NaN or None
@@ -109,18 +111,26 @@ def create_compatible_dataframe(df, fico_only=False):
                                             }
 
     if fico_only:
-        compa_df = pd.DataFrame(columns= ['Matrix Name', 'Random Seed Shift']+[name for name in name_mapping_fico_only.keys()]+['Status Mixed', 'Status Int', 'Final solution time (cumulative) Mixed', 'Final solution time (cumulative) Int', 'Virtual Best'], index=df.index)
+        compa_df = pd.DataFrame(columns= ['Matrix Name', 'Random Seed Shift']+
+                                         [name for name in name_mapping_fico_only.keys()]+
+                                         ['Status Mixed', 'Status Int', 'Final solution time (cumulative) Mixed',
+                                          'Final solution time (cumulative) Int', 'Cmp Final solution time (cumulative)',
+                                          'Virtual Best'], index=df.index)
         for col_name in compa_df.columns:
             if col_name not in name_mapping_fico_only:
                 compa_df[col_name] = df[col_name]
             elif name_mapping_fico_only[col_name] in df.columns:
                 compa_df[col_name] = df[name_mapping_fico_only[col_name]]
+        print('FICONLY')
+        print(compa_df['Matrix Equality Constraints'].min())
         compa_df = map_raw_scip_to_feature(df, compa_df, name_mapping_fico_only)
+        print(compa_df['Matrix Equality Constraints'].min())
     else:
+        print('MORE')
         compa_df = pd.DataFrame(
             columns=['Matrix Name', 'Random Seed Shift'] + [name for name in name_mapping_with_more_scip_features.keys()] + [
                 'Status Mixed', 'Status Int', 'Final solution time (cumulative) Mixed',
-                'Final solution time (cumulative) Int', 'Cmp Final solution time (cumulative)' , 'Virtual Best'],
+                'Final solution time (cumulative) Int', 'Cmp Final solution time (cumulative)', 'Virtual Best'],
             index=df.index)
 
         for col_name in compa_df.columns:
@@ -128,9 +138,9 @@ def create_compatible_dataframe(df, fico_only=False):
                 compa_df[col_name] = df[col_name]
             elif name_mapping_with_more_scip_features[col_name] in df.columns:
                 compa_df[col_name] = df[name_mapping_with_more_scip_features[col_name]]
-
+        print(compa_df['Matrix Equality Constraints'].min())
         compa_df = map_raw_scip_to_feature(df, compa_df, name_mapping_with_more_scip_features)
-
+        print(compa_df['Matrix Equality Constraints'].min())
     return compa_df
 
 def get_name(string: str) -> str|None:
@@ -279,8 +289,9 @@ def extract_instance_data_minlp(file_path):
     return df
 
 def calculate_label(df):
-    df.insert(len(df.columns) - 1, 'Cmp Final solution time (cumulative)', "")
     df.insert(len(df.columns) - 1, 'Virtual Best', "")
+    df.insert(len(df.columns) - 1, 'Cmp Final solution time (cumulative)', 0.0)
+
 
     for index, row in df.iterrows():
         if row['Final solution time (cumulative) Mixed'] >= row['Final solution time (cumulative) Int']:
@@ -333,8 +344,8 @@ def process_directory(directory):
 
     return complete_df
 
-def read_in_and_call_process(directory_path = "/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/no_pseudocosts/Outs",
-                             fico=True, to_csv=True):
+def read_in_and_call_process(data_set: str, fico=True, to_csv=True):
+    directory_path = f"/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/{data_set}/Outs"
 
     stefans_data_merged = process_directory(directory_path)
 
@@ -345,22 +356,29 @@ def read_in_and_call_process(directory_path = "/Users/fritz/Downloads/ZIB/Master
     # Filter out all rows with those matrix names
     stefans_data_merged_all_have_features = stefans_data_merged[~stefans_data_merged['Matrix Name'].isin(matrices_with_nan)]
 
-    # save dataframes in excel once with all instances and once only with instances having features
+    # save dataframes as csv once with all instances and once only with instances having features
     if to_csv:
-        stefans_data_merged.to_csv('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/no_pseudocosts/ready_to_ml/all_instances/stefans_data_merged.csv',
-                               index=False)
-        stefans_data_merged_all_have_features.to_csv('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/no_pseudocosts/ready_to_ml/all_with_feature/stefans_data_merged_all_with_feature.csv',
+        # save only df where all instances without features are deleted
+        stefans_data_merged_all_have_features.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/{data_set}/complete/scip_{data_set}_raw.csv',
                                index=False)
         stefan_data_reduced_cols_no_nan = create_compatible_dataframe(stefans_data_merged_all_have_features)
         stefan_data_reduced_cols_no_nan.to_csv(
-            "/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/no_pseudocosts/ready_to_ml/all_with_feature/scip_data_reduced_columns_no_nan.csv",
+            f"/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/{data_set}/complete/scip_{data_set}_ready_to_ml.csv",
             index=False)
 
+        scip_features_df = stefan_data_reduced_cols_no_nan.drop(['Matrix Name', 'Random Seed Shift', 'Status Mixed',
+                                                                 'Status Int', 'Final solution time (cumulative) Mixed',
+                                                                 'Final solution time (cumulative) Int',
+                                                                 'Cmp Final solution time (cumulative)',
+                                                                 'Virtual Best'], axis=1)
+        scip_features_df.to_csv(
+            f"/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/{data_set}/only_features/scip_{data_set}_features.csv",
+            index=False)
 
     if fico:
         # all instances
         scip_to_fic_df = create_compatible_dataframe(stefans_data_merged, fico_only=True)
-        scip_to_fic_df.to_csv("/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/no_pseudocosts/ready_to_ml/all_instances/scip_to_fic.csv",
+        scip_to_fic_df.to_csv(f"/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/{data_set}/complete/scip_{data_set}_fico_compatible.csv",
                                 index=False)
 
         stefans_feats = scip_to_fic_df[['#integer violations at root Mixed',
@@ -374,26 +392,12 @@ def read_in_and_call_process(directory_path = "/Users/fritz/Downloads/ZIB/Master
                '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG) Mixed',
                '% vars in DAG unbounded (out of vars in DAG) Mixed']].copy()
 
-        stefans_feats.to_csv('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/no_pseudocosts/ready_to_ml/all_instances/stefans_feats.csv',
+        stefans_feats.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/{data_set}/only_features/scip_{data_set}_fico_features.csv',
                                    index=False)
 
-        # only instances with feature
-        stefan_fico_no_nan = create_compatible_dataframe(stefans_data_merged_all_have_features)
-        stefan_fico_no_nan.to_csv(
-            "/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/no_pseudocosts/ready_to_ml/all_with_feature/scip_to_fic_no_nan.csv",
-            index=False)
 
-        stefans_feats = stefan_fico_no_nan[['#integer violations at root Mixed',
-                                        '#nodes in DAG Mixed',
-                                        'Avg coefficient spread for convexification cuts Mixed',
-                                        'Presolve Global Entities Mixed', 'Presolve Columns Mixed',
-                                        '#nonlinear violations at root Mixed', 'Matrix Equality Constraints',
-                                        'Matrix NLP Formula', '% vars in DAG (out of all vars) Mixed',
-                                        '% vars in DAG integer (out of vars in DAG) Mixed',
-                                        'Matrix Quadratic Elements',
-                                        '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG) Mixed',
-                                        '% vars in DAG unbounded (out of vars in DAG) Mixed']].copy()
-        # no_pseudocosts
-        stefans_feats.to_csv(
-            '/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/no_pseudocosts/ready_to_ml/all_with_feature/stefans_feats_no_nan.csv',
-            index=False)
+
+
+read_in_and_call_process(data_set='default')
+read_in_and_call_process(data_set='no_pseudocosts')
+

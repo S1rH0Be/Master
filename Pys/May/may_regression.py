@@ -74,6 +74,7 @@ def get_accuracy(prediction, actual, extreme_value):
     correct_extreme_signs = np.sum(np.sign(y_test_extreme) == np.sign(y_pred_extreme))
     percent_correct_extreme_signs = correct_extreme_signs / len(y_test_extreme) * 100 if len(
         y_test_extreme) > 0 else np.nan
+
     return percent_correct_signs, percent_correct_extreme_signs, number_extreme_signs
 
 def get_sgm_comparison(y_pred, y_test):
@@ -161,7 +162,7 @@ def regression(data, data_set_name, features_df, feature_names, models, scalers,
     logging.info(f"{'-' * 80}\n{data_set_name}\n{'-' * 80}")
     for model_name, model in models.items():
         if model_name not in ['LinearRegression', 'RandomForest']:
-            print(f'AHHHHHHHHHHHHHHHHHHHHHHHH. {model_name} is not a valid regressor!')
+            logging.info(f'AHHHHHHHHHHHHHHHHHHHHHHHH. {model_name} is not a valid regressor!')
             continue
         for imputation in imputer:
             for scaler in scalers:
@@ -175,9 +176,9 @@ def regression(data, data_set_name, features_df, feature_names, models, scalers,
                     y_pred_relevant, y_test_relevant, pt = predict(trained_model, X_test, y_test)
                     prediction_time += pt
                     # get accuracy measure for the model
-                    accuracy_dictionary[model_name+'_'+imputation+'_'+str(scaler)+'_'+str(seed)] = [get_accuracy(y_pred_relevant, y_test_relevant, extreme_threshold)]
+                    accuracy_dictionary[model_name+'_'+imputation+'_'+str(scaler)+'_'+str(seed)] = get_accuracy(y_pred_relevant, y_test_relevant, extreme_threshold)
                     # add sgm of run time for this setting to run_time_df
-                    run_time_dictionary[model_name+'_'+imputation+'_'+str(scaler)+'_'+str(seed)] = [get_predicted_run_time_sgm(y_pred_relevant, data, shift=50)]
+                    run_time_dictionary[model_name+'_'+imputation+'_'+str(scaler)+'_'+str(seed)] = get_predicted_run_time_sgm(y_pred_relevant, data, shift=50)
                     # return actual prediction
                     prediction_dictionary[model_name+'_'+imputation+'_'+str(scaler)+'_'+str(seed)] = y_pred_relevant.to_list()
                     # feature importance
@@ -201,12 +202,18 @@ def regression(data, data_set_name, features_df, feature_names, models, scalers,
         return None
 
     else:
-        feature_importance_df = pd.DataFrame.from_dict(importance_dictionary, orient='columns')
+        feature_importance_df = pd.DataFrame.from_dict(importance_dictionary, orient='columns').astype(float)
         feature_importance_df.index = feature_names
 
-        prediction_df = get_prediction_df(prediction_dictionary)
-        accuracy_df = pd.DataFrame.from_dict(accuracy_dictionary, orient='columns')
-        run_time_df = pd.DataFrame.from_dict(run_time_dictionary, orient='columns')
+        accuracy_df = pd.DataFrame.from_dict(accuracy_dictionary, orient='index')
+        accuracy_df.columns = ['Accuracy', 'Extreme Accuracy', 'Extreme Instances']
+        accuracy_df.loc[:, ['Accuracy', 'Extreme Accuracy']] = accuracy_df.loc[:, ['Accuracy', 'Extreme Accuracy']].astype(float)
+
+
+        prediction_df = get_prediction_df(prediction_dictionary).astype(float)
+
+        run_time_df = pd.DataFrame.from_dict(run_time_dictionary, orient='index').astype(float)
+        run_time_df.columns = ['Predicted', 'Mixed', 'Int', 'VBS']
 
     end_time = time.time()
     logging.info(f'Training time: {training_time}')
@@ -239,10 +246,10 @@ def run_regression_pipeline(data_name, data_path, feats_path, is_excel, prefix, 
 
     # Save results
     base_path = f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffplusx}'
-    acc_df.to_csv(f'{base_path}/Accuracy/{prefix}_acc_df.csv', index=False)
-    runtime_df.to_csv(f'{base_path}/RunTime/{prefix}_sgm_runtime.csv', index=False)
+    acc_df.to_csv(f'{base_path}/Accuracy/{prefix}_acc_df.csv', index=True)
+    runtime_df.to_csv(f'{base_path}/RunTime/{prefix}_sgm_runtime.csv', index=True)
     prediction_df.to_csv(f'{base_path}/Prediction/{prefix}_prediction_df.csv')
-    importance_df.to_csv(f'{base_path}/Importance/{prefix}_importance_df.csv')
+    importance_df.to_csv(f'{base_path}/Importance/{prefix}_importance_df.csv', index=True)
 
 def main(scip_default=False, scip_no_pseudo=False, fico=False, treffplusx='Wurm'):
     models = {
@@ -305,13 +312,8 @@ def main(scip_default=False, scip_no_pseudo=False, fico=False, treffplusx='Wurm'
             hundred_seeds=hundred_seeds
         )
 
+# main(scip_default=True, scip_no_pseudo=False, fico=False, treffplusx=treffplustage)
+# main(scip_default=False, scip_no_pseudo=True, fico=True, treffplusx=treffplustage)
+# main(scip_default=True, scip_no_pseudo=True, fico=True, treffplusx=treffplustage)
+# main(scip_default=True, scip_no_pseudo=True, fico=False, treffplusx=treffplustage')
 
-# main(scip_default=True, scip_no_pseudo=False, fico=False, treffen_dict=treffplustage')
-main(scip_default=True, scip_no_pseudo=True, fico=True, treffplusx=treffplustage)
-# main(scip_default=True, scip_no_pseudo=True, fico=False, treffen_dict=treffplustage')
-
-# try:
-#     result = shifted_geometric_mean(values, shift)
-# except ValueError as e:
-#     logging.error(f"SGM failed due to shift: {e}")
-#     return

@@ -1,3 +1,5 @@
+from traceback import format_exc
+
 import pandas as pd
 import matplotlib.pyplot as plt
 from may_regression import shifted_geometric_mean
@@ -5,10 +7,10 @@ from may_regression import shifted_geometric_mean
 
 #TODO: Adjust Accuracy and run_time to new format
 
-global_path = '/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasDos'
+global_path = '/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasQuat'
 
 # SGM RUNTIME BLOCK
-def sgm():
+def sgm(filter=''):
     def get_sgm_of_sgm(data_frame, shift):
         col_names = data_frame.columns.tolist()
         # Frage: SGM of relative SGMs oder von total SGMs?
@@ -18,24 +20,32 @@ def sgm():
             sgm_sgm_df.loc[:, col] = shifted_geometric_mean(data_frame[col], shift)
         return sgm_sgm_df
 
-    def relative_to_mmixed(values):
-        mixed = values[0]
+    def relative_to_mixed(value_df):
+        values = value_df.iloc[0, :].tolist()
+        mixed = value_df['SGM Mixed'].iloc[0]
         values = [value/mixed for value in values]
         return values
 
-    def visualize_sgm(data_frame, title: str = 'SGMs'):
-        linear_df = data_frame[data_frame['Model']=='LinearRegression'].iloc[:,3:]
-        forest_series = data_frame[data_frame['Model']=='RandomForest'].iloc[:,5]
-        linear_df.columns = ['SGM Mixed', 'SGM Int', 'SGM Linear', 'SGM VBS']
-        linear_df.insert(loc=3, column='SGM Forest', value=forest_series.values)
+    def visualize_sgm(data_frame, filter_by=filter, title: str = 'SGMs'):
+        pred_df = data_frame.copy()
+        if filter_by != '':
+            wanted_runs = [run_setting for run_setting in pred_df.index if filter_by in run_setting]
+            pred_df = pred_df.loc[wanted_runs, :]
+        linear_rows = [lin_rows for lin_rows in pred_df.index if 'LinearRegression' in lin_rows]
+        linear_df = pred_df.loc[linear_rows, :]
+
+        forest_rows = [for_row for for_row in pred_df.index if 'RandomForest' in for_row]
+
+        forest_series = pred_df.loc[forest_rows, 'Predicted']
+
+        linear_df.columns = ['SGM Linear', 'SGM Mixed', 'SGM Int', 'SGM VBS']
+        linear_df.insert(loc=1, column='SGM Forest', value=forest_series.values)
         complete_df = linear_df
+        complete_sgm_df = get_sgm_of_sgm(complete_df, complete_df.mean().mean())
 
-        complete_sgm_df = get_sgm_of_sgm(complete_df, 0)
+        values_relative = relative_to_mixed(complete_sgm_df)
 
-
-        values = complete_sgm_df.iloc[0,:].tolist()
-        values_relative = relative_to_mmixed(values)
-        labels = ['Mixed', 'Int', 'Linear', 'Forest', 'VBS']
+        labels = ['Linear', 'Forest', 'Mixed', 'Int', 'VBS']
         # Determine bar colors based on conditions
         bar_colors = (['turquoise', 'magenta'])
                       # + ['green' if value >= 0.8 else 'red' if value <= 0.6 else 'blue' for value in values[3:7]])
@@ -53,12 +63,12 @@ def sgm():
         plt.show()
         plt.close()
 
-    scip_sgm_df = pd.read_csv(f'{global_path}/RunTime/scip_sgm_runtime.csv')
-    scip_no_pseudos_df = pd.read_csv(f'{global_path}/RunTime/scip_no_pseudo_sgm_runtime.csv')
-    fico_sgm_df = pd.read_csv(f'{global_path}/RunTime/fico_sgm_runtime.csv')
-    visualize_sgm(scip_sgm_df, 'SCIP SGM')
-    visualize_sgm(scip_no_pseudos_df, 'SCIP no Pseudo SGM')
-    visualize_sgm(fico_sgm_df, 'FICO SGM')
+    scip_sgm_df = pd.read_csv(f'{global_path}/RunTime/scip_sgm_runtime.csv', index_col=0)
+    scip_no_pseudos_df = pd.read_csv(f'{global_path}/RunTime/scip_no_pseudo_sgm_runtime.csv', index_col=0)
+    fico_sgm_df = pd.read_csv(f'{global_path}/RunTime/fico_sgm_runtime.csv', index_col=0)
+    visualize_sgm(scip_sgm_df, filter_by='', title='SCIP SGM')
+    visualize_sgm(scip_no_pseudos_df, filter_by='', title='SCIP no Pseudo SGM')
+    visualize_sgm(fico_sgm_df, filter_by='', title='FICO Xpress SGM')
 
 # WHAT RULES DID THE MODELS CHOOSE
 def shares():
@@ -68,7 +78,8 @@ def shares():
         return [mixed, pref_int]
 
     def histogram_shares(data_frame, title: str = 'Share of Mixed and Preferred Int'):
-        values = get_share_mixed_and_int(data_frame)
+        values = get_share_mixed_and_int(data_frame['Cmp Final solution time (cumulative)'])
+
         total_relevant_predictions = sum(values)
         values = [(value/total_relevant_predictions)*100 for value in values]
         bar_colors = (['turquoise', 'magenta'])
@@ -86,56 +97,73 @@ def shares():
         plt.show()
         plt.close()
 
+    scip_default_original_data = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasCinco/CSVs/scip_default_clean_data.csv')
     scip_default_predictions = pd.read_csv(f'{global_path}/Prediction/scip_prediction_df.csv')
     fico_predictions = pd.read_csv(f'{global_path}/Prediction/fico_prediction_df.csv')
     scip_no_pseudo_predictions = pd.read_csv(f'{global_path}/Prediction/scip_no_pseudo_prediction_df.csv')
-    histogram_shares(scip_default_predictions, title='SCIP Default: Share of Mixed and Preferred Int')
-    histogram_shares(scip_no_pseudo_predictions, title='SCIP NO Pseudocosts: Share of Mixed and Preferred Int')
-    histogram_shares(fico_predictions, title='FICO: Share of Mixed and Preferred Int')
+    # histogram_shares(scip_default_predictions, title='SCIP Default Prediction: Share of Mixed and Preferred Int')
+    # histogram_shares(scip_no_pseudo_predictions, title='SCIP NO Pseudocosts Prediction: Share of Mixed and Preferred Int')
+    # histogram_shares(fico_predictions, title='FICO Xpress Prediction: Share of Mixed and Preferred Int')
+    histogram_shares(scip_default_original_data, title='SCIP Default Original Data: Share of Mixed and Preferred Int')
 
 # ACCURACY BLOCK
-# TODO: Add parameter: Filter cols by string components, e.g Get all Linear columns with Median Imputation
-def accuracy():
+def accuracy(run=''):
     def get_sgm_series(pandas_series, shift):
         return shifted_geometric_mean(pandas_series, shift)
 
     def get_sgm_acc(data_frame):
-        sgm_accuracy = get_sgm_series(data_frame['Accuracy'], data_frame['Accuracy'].mean())
-        sgm_extreme_accuracy = get_sgm_series(data_frame['Extreme Accuracy'].dropna(), data_frame['Extreme Accuracy'].dropna().mean())
+        data_frame['Accuracy'] = pd.to_numeric(data_frame['Accuracy'], errors='coerce')
+        data_frame['Extreme Accuracy'] = pd.to_numeric(data_frame['Extreme Accuracy'], errors='coerce')
+
+        sgm_accuracy = get_sgm_series(data_frame['Accuracy'], data_frame['Accuracy'].mean()+0.1)
+        sgm_extreme_accuracy = get_sgm_series(data_frame['Extreme Accuracy'].dropna(), data_frame['Extreme Accuracy'].dropna().mean()+0.1)
         return sgm_accuracy, sgm_extreme_accuracy
 
 
-    def visualize_acc(data_frame, filter_by:[int], title: str = 'Accuracy'):
-        linear_df = data_frame[data_frame['Model']=='LinearRegression'].loc[:,['Accuracy', 'Extreme Accuracy',
-                                                                               'Number of extreme instances']]
-        forest_df = data_frame[data_frame['Model']=='RandomForest'].loc[:,['Accuracy', 'Extreme Accuracy',
-                                                                               'Number of extreme instances']]
-        lin_acc, lin_ex_acc = get_sgm_acc(linear_df)
-        for_acc, for_ex_acc = get_sgm_acc(forest_df)
+    def visualize_acc(data_frame, filter_by:str, title: str = 'Accuracy'):
+        acc_df = data_frame.copy()
+        # if no corresponding acc is found just plot it as 0
+        lin_acc, lin_ex_acc, for_acc, for_ex_acc = 0, 0, 0, 0
+
+        if filter_by != '':
+            wanted_runs = [run for run in data_frame.columns if filter_by in run]
+            acc_df = acc_df.loc[:, wanted_runs]
+
+        linear_rows = [lin_rows for lin_rows in acc_df.index if 'LinearRegression' in lin_rows]
+        linear_df = acc_df.loc[linear_rows, :]
+
+        forest_rows = [for_row for for_row in acc_df.index if 'RandomForest' in for_row]
+        forest_df = acc_df.loc[forest_rows,:]
+
+        if len(linear_df) == len(forest_df) == 0:
+            print(f'{title}: No data found')
+            return None
+        else:
+            if len(linear_df)>0:
+                lin_acc, lin_ex_acc = get_sgm_acc(linear_df)
+            if len(forest_df)>0:
+                for_acc, for_ex_acc = get_sgm_acc(forest_df)
 
         values = [lin_acc, lin_ex_acc, for_acc, for_ex_acc]
 
         # Create the plot
         bar_colors = (['turquoise', 'turquoise', 'magenta', 'magenta'])
         plt.figure(figsize=(8, 5))
-        plt.bar(['LinAcc', 'LinExAcc', 'ForAcc', 'ForExAcc', ], values, color=bar_colors)
+        plt.bar(['LinAcc', 'LinExAcc', 'ForAcc', 'ForExAcc'], values, color=bar_colors)
         plt.title(title)
-        # plt.ylim(min(0.5, min(values) * 0.9), max(values) * 1.1)  # Set y-axis limits for visibility
-        plt.ylim(0,100)
+        plt.ylim(min(0, min(values)*0.9), max(100, max(values)*1.1))  # Set y-axis limits for visibility
         plt.xticks(rotation=45, fontsize=6)
         # Create custom legend entries with value annotations
-        # legend_labels = [f"{label}: {value}" for label, value in zip(labels, values)]
-        # plt.legend(bars, legend_labels, title="Values")
         # Display the plot
         plt.show()
         plt.close()
 
-    scip_default_accuracy = pd.read_csv(f'{global_path}/Accuracy/scip_acc_df.csv')
-    fico_accuracy = pd.read_csv(f'{global_path}/Accuracy/fico_acc_df.csv')
-    scip_no_pseudo_accuracy = pd.read_csv(f'{global_path}/Accuracy/scip_no_pseudo_acc_df.csv')
-    visualize_acc(scip_default_accuracy, 'SCIP Default Accuracy')
-    visualize_acc(scip_no_pseudo_accuracy, 'SCIP NO Pseudocosts Accuracy')
-    visualize_acc(fico_accuracy, 'FICO Accuracy')
+    scip_default_accuracy = pd.read_csv(f'{global_path}/Accuracy/scip_acc_df.csv', index_col=0)
+    scip_no_pseudo_accuracy = pd.read_csv(f'{global_path}/Accuracy/scip_no_pseudo_acc_df.csv', index_col=0)
+    fico_accuracy = pd.read_csv(f'{global_path}/Accuracy/fico_acc_df.csv', index_col=0)
+    visualize_acc(scip_default_accuracy, filter_by=run, title='SCIP Default Accuracy')
+    visualize_acc(scip_no_pseudo_accuracy, filter_by=run, title='SCIP NO Pseudocosts Accuracy')
+    visualize_acc(fico_accuracy, filter_by=run, title='FICO Xpress Accuracy')
 
 # Feature Importances, as sgm
 def importance():
@@ -228,10 +256,10 @@ def importance():
     fico_importance = pd.read_csv(f'{global_path}/Importance/fico_importance_df.csv', index_col=0)
     plot_importances_by_regressor(scip_default_importance, 'SCIP Default Feature Importance')
     plot_importances_by_regressor(scip_no_pseudo_importance, 'SCIP NO Pseudocosts Feature Importance')
-    plot_importances_by_regressor(fico_importance, 'FICO Feature Importance')
+    plot_importances_by_regressor(fico_importance, 'FICO Xpress Feature Importance')
     plot_importance(scip_default_importance, 'SCIP Default Feature Importance Score')
     plot_importance(scip_no_pseudo_importance, 'SCIP NO Pseudocosts Feature Importance Score')
-    plot_importance(fico_importance, 'FICO Feature Importance Score')
+    plot_importance(fico_importance, 'FICO Xpress Feature Importance Score')
 
 # abs time save
 def time_save():
@@ -262,8 +290,6 @@ def time_save():
                                          tdf['Final solution time (cumulative) Mixed'].mean())
         sgm_time_save = shifted_geometric_mean(tdf['Possible Time Save'], tdf['Possible Time Save'].mean())
 
-        print(sgm_mixed, sgm_int, sgm_time_save)
-        print(tdf['Final solution time (cumulative) Mixed'].sum(), tdf['Final solution time (cumulative) Int'].sum(), tdf['Possible Time Save'].sum())
 
     scip_default_data = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_default_clean_data.csv')
     scip_no_pseudocosts_data = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_no_pseudocosts_clean_data.csv')
@@ -294,7 +320,7 @@ def label():
 
 
 # sgm()
-# shares()
+shares()
 # accuracy()
 # importance()
 # time_save()

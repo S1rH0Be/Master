@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-DEBUG = False
+DEBUG = True
 '''READ AND RENAME COLUMNS'''
 # input: df, list. Renames columns of df to strings in lst
 def rename_cols(df, int_cols, dbl_cols):
@@ -189,7 +189,6 @@ def check_col_consistency(df, requirement_df, SCIP=False):
 
         return broken_instances
     # function to check if all entries are nonneg
-    # i check beforehand that only numerical values are in the tested column
     def is_non_neg(df, column_name):
         minimum = df[column_name].min()
         broken_instances = []
@@ -203,7 +202,6 @@ def check_col_consistency(df, requirement_df, SCIP=False):
             return broken_instances
         return broken_instances
     #function to check if all entries are positiv
-    #i check beforehand that only numerical values are in the tested column
     def is_pos(df, column_name):
         minimum = df[column_name].min()
         broken_instances = []
@@ -227,7 +225,7 @@ def check_col_consistency(df, requirement_df, SCIP=False):
         return broken_instances
     #check if instance terminates in a valid state
     def valid_final_state_fico(df, column_name):
-        valid_states = ['Optimal', 'Timeout','Fail','Infeasible']
+        valid_states = ['Optimal', 'Timeout', 'Fail','Infeasible']
         broken_instances = []
         for index, row in df.iterrows():
             if row[column_name] not in valid_states:
@@ -252,13 +250,11 @@ def check_col_consistency(df, requirement_df, SCIP=False):
         broken_instances = []
         # Check if any values are outside the range [0, 1]
         if minimum < 0 or maximum > 1:
-
             for index, row in df.iterrows():
                 if (row[column_name] < 0) | (row[column_name] > 1):
                     if DEBUG:
                         print(f"Instance '{df.loc[index, 'Matrix Name']}' in '{column_name}' is not in [0,1].")
                     broken_instances.append((row['Matrix Name'], 'Not in [0,1]'))
-            return broken_instances
         return broken_instances
     #check if a valid permutation was chosen
     def valid_permutation_seed_fico(df, column_name):
@@ -328,14 +324,14 @@ def check_col_consistency(df, requirement_df, SCIP=False):
         return req_df
 
     requirement_df = clean_requirements(requirement_df, SCIP)
-    
+    print(requirement_df)
     broken_cols = []
     for col in df.columns:
         helper = requirement_df[col]
         requirements = [word.strip() for string in helper for word in string.split(', ')]
         for req in requirements:
             broken_cols += req_dict[req](df, col)
-
+    print(len(broken_cols), broken_cols)
     return df, broken_cols
 
 

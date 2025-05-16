@@ -8,7 +8,6 @@ def find_broken_instances(df:pd.DataFrame, requirements_df:pd.DataFrame)->List:
      fulfill in this column """
     # only take columns where there are requirements for
     columns_to_check = []
-    requirements_df = requirements_df.drop(columns=[col for col in requirements_df.columns if 'Cmp' in col])
 
     for col_name in df.columns:
         if col_name in requirements_df.columns:
@@ -48,7 +47,7 @@ def create_label(data_frame):
 
     return df
 
-def main(file_path_dataset, file_path_requirements_xlsx, to_csv=True):
+def main(file_path_dataset, file_path_requirements_xlsx, treffmasx, dataset_name, to_csv=True):
     data, requirements = read_data(file_path_dataset, file_path_requirements_xlsx)
 
     broken_instances_and_reason = find_broken_instances(data, requirements)
@@ -68,18 +67,19 @@ def main(file_path_dataset, file_path_requirements_xlsx, to_csv=True):
                                # , 'Avg pseudocosts of integer variables Mixed']].copy()
 
     if to_csv:
-        clean_data.to_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_default_clean_data.csv',
+        clean_data.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffmasx}/CSVs/{dataset_name}_clean_data.csv',
                             index=False)
-        clean_feats.to_csv(
-            '/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_default_clean_feats.csv',
-            index=False)
+        clean_feats.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffmasx}/CSVs/{dataset_name}_clean_feats.csv',
+                            index=False)
 
     return clean_data, broken_instances_and_reason
 
 
-# main('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/standard_scip/ready_to_ml/all_instances/scip_to_fic.xlsx',
-#          '/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/standard_scip/ready_to_ml/all_with_feature/scip_requirements.xlsx',
-#          to_csv=True)
+main('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/standard_scip/ready_to_ml/all_instances/scip_to_fic.xlsx',
+         '/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/standard_scip/ready_to_ml/all_with_feature/scip_requirements.xlsx',
+          treffmasx='TreffenMasCinco',
+          dataset_name='scip_default',
+          to_csv=True)
 
 
 
