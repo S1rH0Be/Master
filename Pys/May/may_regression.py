@@ -14,7 +14,7 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler, Qu
 import logging
 
 
-treffplustage = 'TreffenMasOcho'
+treffplustage = 'TreffenMasDiez/ScaledLabel'
 
 # Setup logging configuration
 os.makedirs(os.path.join(f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffplustage}'), exist_ok=True)
@@ -54,6 +54,14 @@ def get_features_label(data_frame, feature_df, chosen_features):
     features = feature_df[chosen_features]
     label = data_frame['Cmp Final solution time (cumulative)']
     return features, label
+
+def label_scaling(label):
+    y_pos = label[label >= 0]
+    y_neg = label[label < 0]
+    y_pos_log = np.log(y_pos + 1)
+    y_neg_log = np.log(abs(y_neg) + 1) * -1
+    y_log = pd.concat([y_pos_log, y_neg_log]).sort_index()
+    return y_log
 
 def get_accuracy(prediction, actual, extreme_value):
     # Filter for nonzero labels
@@ -149,7 +157,7 @@ def predict(pipeline, X_test, y_test):
     end = time.time()
     return y_pred_relevant, y_test_relevant, end - start
 
-def regression(data, data_set_name, features_df, feature_names, models, scalers, imputer, random_seeds, extreme_threshold=4.0):
+def regression(data, data_set_name, features_df, feature_names, models, scalers, imputer, random_seeds, label_scale=False, extreme_threshold=4.0):
     """
     Gets a csv file as input
     trains a ml model
@@ -159,11 +167,17 @@ def regression(data, data_set_name, features_df, feature_names, models, scalers,
     training_time = 0
     prediction_time = 0
     features, label = get_features_label(data, features_df, feature_names)
+
+    if label_scale:
+        label = label_scaling(label)
+        extreme_threshold = np.log(extreme_threshold)
+
     accuracy_dictionary = {}
     run_time_dictionary = {}
     prediction_dictionary = {}
     importance_dictionary = {}
     logging.info(f"{'-' * 80}\n{data_set_name}\n{'-' * 80}")
+
     for model_name, model in models.items():
         if model_name not in ['LinearRegression', 'RandomForest']:
             logging.info(f'AHHHHHHHHHHHHHHHHHHHHHHHH. {model_name} is not a valid regressor!')
@@ -225,7 +239,7 @@ def regression(data, data_set_name, features_df, feature_names, models, scalers,
     print(f'{data_set_name} is done, after {end_time - start_time}!')
     return accuracy_df, run_time_df, prediction_df, feature_importance_df
 
-def run_regression_pipeline(data_name, data_path, feats_path, is_excel, prefix, treffplusx, models, imputer, hundred_seeds):
+def run_regression_pipeline(data_name, data_path, feats_path, is_excel, prefix, treffplusx, models, imputer, hundred_seeds, label_scale=False):
     # Load data
     if is_excel:
         data = pd.read_excel(data_path)
@@ -245,7 +259,7 @@ def run_regression_pipeline(data_name, data_path, feats_path, is_excel, prefix, 
 
     # Run regression
     acc_df, runtime_df, prediction_df, importance_df = regression(
-        data, data_name, features, features.columns, models, scalers, imputer, hundred_seeds
+        data, data_name, features, features.columns, models, scalers, imputer, hundred_seeds, label_scale
     )
 
     # Save results
@@ -255,7 +269,7 @@ def run_regression_pipeline(data_name, data_path, feats_path, is_excel, prefix, 
     prediction_df.to_csv(f'{base_path}/Prediction/{prefix}_prediction_df.csv')
     importance_df.to_csv(f'{base_path}/Importance/{prefix}_importance_df.csv', index=True)
 
-def main(scip_default=False, scip_no_pseudo=False, fico=False, treffplusx='Wurm'):
+def main(scip_default=False, scip_no_pseudo=False, fico=False, treffplusx='Wurm', label_scalen= False):
     models = {
         'LinearRegression': LinearRegression(),
         'RandomForest': RandomForestRegressor(n_estimators=100, random_state=0, n_jobs=-1)
@@ -280,27 +294,29 @@ def main(scip_default=False, scip_no_pseudo=False, fico=False, treffplusx='Wurm'
     if scip_default:
         run_regression_pipeline(
             data_name = 'scip_default',
-            data_path=f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/default/complete/scip_default_ready_to_ml.csv',
-            feats_path=f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/default/only_features/scip_default_features.csv',
+            data_path=f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/cleaned_scip/scip_default_clean_data.csv',
+            feats_path=f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/cleaned_scip/scip_default_clean_feats.csv',
             is_excel=False,
             prefix='scip',
             treffplusx=treffplusx,
             models=models,
             imputer=imputer,
-            hundred_seeds=hundred_seeds
+            hundred_seeds=hundred_seeds,
+            label_scale=label_scalen
         )
 
     if scip_no_pseudo:
         run_regression_pipeline(
             data_name='scip_no_pseudo',
-            data_path=f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/no_pseudocosts/complete/scip_no_pseudocosts_ready_to_ml.csv',
-            feats_path=f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/no_pseudocosts/only_features/scip_no_pseudocosts_features.csv',
+            data_path=f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/cleaned_scip/scip_no_pseudocosts_clean_data.csv',
+            feats_path=f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/cleaned_scip/scip_no_pseudocosts_clean_feats.csv',
             is_excel=False,
             prefix='scip_no_pseudo',
             treffplusx=treffplusx,
             models=models,
             imputer=imputer,
-            hundred_seeds=hundred_seeds
+            hundred_seeds=hundred_seeds,
+            label_scale=label_scalen
         )
 
     if fico:
@@ -313,12 +329,12 @@ def main(scip_default=False, scip_no_pseudo=False, fico=False, treffplusx='Wurm'
             treffplusx=treffplusx,
             models=models,
             imputer=imputer,
-            hundred_seeds=hundred_seeds
+            hundred_seeds=hundred_seeds,
+            label_scale=label_scalen
         )
-
-
 
 # main(scip_default=True, scip_no_pseudo=False, fico=False, treffplusx=treffplustage)
 # main(scip_default=False, scip_no_pseudo=True, fico=True, treffplusx=treffplustage)
-# main(scip_default=True, scip_no_pseudo=True, fico=True, treffplusx=treffplustage)
 # main(scip_default=True, scip_no_pseudo=True, fico=False, treffplusx=treffplustage')
+# main(scip_default=True, scip_no_pseudo=True, fico=True, treffplusx=treffplustage, label_scalen=False)
+# main(scip_default=True, scip_no_pseudo=True, fico=True, treffplusx=treffplustage, label_scalen=True)

@@ -70,41 +70,41 @@ def map_raw_scip_to_feature(df, compper_df, operation_dict):
 
 def create_compatible_dataframe(df, fico_only=False):
 
-    name_mapping_fico_only = {'#integer violations at root Mixed': 'nintpseudocost',
-                    '#nodes in DAG Mixed': 'nnonlinearvars+nauxvars',#weiß nicht warum ich nur nauxvars bisher hatte #aber vielleicht sind auch nnonlinearexpr oder nnonconvexexpr interessant
-                    'Avg coefficient spread for convexification cuts Mixed': 'sumcoefspreadnonlinrows / nnonlinrows',#aber vielleicht ist auch sumcoefspreadactnonlinrows / nactnonlinrows interessant.
-                    'Presolve Global Entities Mixed': 'nintegervars',
-                    'Presolve Columns Mixed': 'ncontinuousvars + nbinaryvars + nintegervars',
-                    '#nonlinear violations at root Mixed': 'nviolconss', #'nnlviolcands waeren die anzahl der branching candidates fuers spatial branching, also die anzahl von variables in nichtkonvexen termen in verletzen nichtlinear constraints',
+    name_mapping_fico_only = {'#integer violations at root': 'nintpseudocost',
+                    '#nodes in DAG': 'nnonlinearvars+nauxvars',#weiß nicht warum ich nur nauxvars bisher hatte #aber vielleicht sind auch nnonlinearexpr oder nnonconvexexpr interessant
+                    'Avg coefficient spread for convexification cuts': 'sumcoefspreadnonlinrows / nnonlinrows',#aber vielleicht ist auch sumcoefspreadactnonlinrows / nactnonlinrows interessant.
+                    'Presolve Global Entities': 'nintegervars',
+                    'Presolve Columns': 'ncontinuousvars + nbinaryvars + nintegervars',
+                    '#nonlinear violations at root': 'nviolconss', #'nnlviolcands waeren die anzahl der branching candidates fuers spatial branching, also die anzahl von variables in nichtkonvexen termen in verletzen nichtlinear constraints',
                     #'Avg work for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed': 'avgstrongbranchrootiter' ist die Anzahl der LP iter, but including infeasible ones',
                     'Matrix Equality Constraints': 'nlinearequconss + nnonlinearequconss',
                     'Matrix NLP Formula': 'nnonlinearconss',
                     #'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed': 'sumintpseudocost / nintpseudocost kann ich als Alternative anbieten',
-                    '% vars in DAG (out of all vars) Mixed': '(nnonlinearvars + nauxvars) / (ncontinuousvars+nbinaryvars+nintegervars+nauxvars)',
-                    '% vars in DAG integer (out of vars in DAG) Mixed': '(nnonlinearbinvars + nnonlinearintvars + nintauxvars) / (nnonlinearvars+nauxvars)',
-                    '% vars in DAG unbounded (out of vars in DAG) Mixed': '(nnonlinearunboundedvars + nunboundedauxvars) / (nnonlinearvars+nauxvars)',
-                    '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG) Mixed': 'nquadexpr / (nquadexpr + nsuperquadexpr)',
+                    '% vars in DAG (out of all vars)': '(nnonlinearvars + nauxvars) / (ncontinuousvars+nbinaryvars+nintegervars+nauxvars)',
+                    '% vars in DAG integer (out of vars in DAG)': '(nnonlinearbinvars + nnonlinearintvars + nintauxvars) / (nnonlinearvars+nauxvars)',
+                    '% vars in DAG unbounded (out of vars in DAG)': '(nnonlinearunboundedvars + nunboundedauxvars) / (nnonlinearvars+nauxvars)',
+                    '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)': 'nquadexpr / (nquadexpr + nsuperquadexpr)',
                     'Matrix Quadratic Elements': 'nquadcons'
                     }
 
-    name_mapping_with_more_scip_features = {'#integer violations at root Mixed': 'nintpseudocost',
-                                            '#nodes in DAG Mixed': 'nnonlinearvars+nauxvars',
+    name_mapping_with_more_scip_features = {'#integer violations at root': 'nintpseudocost',
+                                            '#nodes in DAG': 'nnonlinearvars+nauxvars',
                                             # weiß nicht warum ich nur nauxvars bisher hatte #aber vielleicht sind auch nnonlinearexpr oder nnonconvexexpr interessant
-                                            'Avg coefficient spread for convexification cuts Mixed': 'sumcoefspreadnonlinrows / nnonlinrows',
+                                            'Avg coefficient spread for convexification cuts': 'sumcoefspreadnonlinrows / nnonlinrows',
                                             # aber vielleicht ist auch sumcoefspreadactnonlinrows / nactnonlinrows interessant.
-                                            'Presolve Global Entities Mixed': 'nintegervars',
-                                            'Presolve Columns Mixed': 'ncontinuousvars + nbinaryvars + nintegervars',
-                                            '#nonlinear violations at root Mixed': 'nviolconss',
+                                            'Presolve Global Entities': 'nintegervars',
+                                            'Presolve Columns': 'ncontinuousvars + nbinaryvars + nintegervars',
+                                            '#nonlinear violations at root': 'nviolconss',
                                             # 'nnlviolcands waeren die anzahl der branching candidates fuers spatial branching, also die anzahl von variables in nichtkonvexen termen in verletzen nichtlinear constraints',
                                             # 'Avg work for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed': 'avgstrongbranchrootiter' ist die Anzahl der LP iter, but including infeasible ones',
                                             'Matrix Equality Constraints': 'nlinearequconss + nnonlinearequconss',
                                             'Matrix NLP Formula': 'nnonlinearconss',
                                             # 'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed': 'sumintpseudocost / nintpseudocost kann ich als Alternative anbieten',
-                                            'Avg pseudocosts of integer variables Mixed': 'sumintpseudocost / nintpseudocost',
-                                            '% vars in DAG (out of all vars) Mixed': '(nnonlinearvars + nauxvars) / (ncontinuousvars+nbinaryvars+nintegervars+nauxvars)',
-                                            '% vars in DAG integer (out of vars in DAG) Mixed': '(nnonlinearbinvars + nnonlinearintvars + nintauxvars) / (nnonlinearvars+nauxvars)',
-                                            '% vars in DAG unbounded (out of vars in DAG) Mixed': '(nnonlinearunboundedvars + nunboundedauxvars) / (nnonlinearvars+nauxvars)',
-                                            '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG) Mixed': 'nquadexpr / (nquadexpr + nsuperquadexpr)',
+                                            'Avg pseudocosts of integer variables': 'sumintpseudocost / nintpseudocost',
+                                            '% vars in DAG (out of all vars)': '(nnonlinearvars + nauxvars) / (ncontinuousvars+nbinaryvars+nintegervars+nauxvars)',
+                                            '% vars in DAG integer (out of vars in DAG)': '(nnonlinearbinvars + nnonlinearintvars + nintauxvars) / (nnonlinearvars+nauxvars)',
+                                            '% vars in DAG unbounded (out of vars in DAG)': '(nnonlinearunboundedvars + nunboundedauxvars) / (nnonlinearvars+nauxvars)',
+                                            '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)': 'nquadexpr / (nquadexpr + nsuperquadexpr)',
                                             'Matrix Quadratic Elements': 'nquadcons'
                                             }
 
@@ -371,21 +371,21 @@ def read_in_and_call_process(data_set: str, fico=True, to_csv=True):
         scip_to_fic_df.to_csv(f"/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/{data_set}/complete/scip_{data_set}_fico_compatible.csv",
                                 index=False)
 
-        stefans_feats = scip_to_fic_df[['#integer violations at root Mixed',
-               '#nodes in DAG Mixed',
-               'Avg coefficient spread for convexification cuts Mixed',
-               'Presolve Global Entities Mixed', 'Presolve Columns Mixed',
-               '#nonlinear violations at root Mixed', 'Matrix Equality Constraints',
-               'Matrix NLP Formula', '% vars in DAG (out of all vars) Mixed',
-               '% vars in DAG integer (out of vars in DAG) Mixed',
+        stefans_feats = scip_to_fic_df[['#integer violations at root',
+               '#nodes in DAG',
+               'Avg coefficient spread for convexification cuts',
+               'Presolve Global Entities', 'Presolve Columns',
+               '#nonlinear violations at root', 'Matrix Equality Constraints',
+               'Matrix NLP Formula', '% vars in DAG (out of all vars)',
+               '% vars in DAG integer (out of vars in DAG)',
                'Matrix Quadratic Elements',
-               '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG) Mixed',
-               '% vars in DAG unbounded (out of vars in DAG) Mixed']].copy()
+               '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
+               '% vars in DAG unbounded (out of vars in DAG)']].copy()
 
         stefans_feats.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/{data_set}/only_features/scip_{data_set}_fico_features.csv',
                                    index=False)
 
-# read_in_and_call_process(data_set='default')
-# read_in_and_call_process(data_set='no_pseudocosts')
+read_in_and_call_process(data_set='default')
+read_in_and_call_process(data_set='no_pseudocosts')
 
 # TODO: Wie geh uich mit GAOP limit um? ist das optimal oder timeout oder was ganz anderes? Ne schon optimal

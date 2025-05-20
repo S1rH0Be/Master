@@ -361,7 +361,7 @@ def time_save(scip_default_original_data, scip_no_pseudposts_original_data, fico
     # visualize_time_save(fico_original_data, title='FICO Xpress Possible time Save')
 
 # label analysis
-def label(scip_default_original_data, scip_no_pseudposts_original_data, fico_original_data):
+def label(scip_default_original_data, scip_no_pseudposts_original_data, fico_original_data, scaled=False):
 
     labels = [(scip_default_original_data['Cmp Final solution time (cumulative)'], 'SCIP Default'),
               (scip_no_pseudposts_original_data['Cmp Final solution time (cumulative)'], 'SCIP No Pseudocosts'),
@@ -371,7 +371,10 @@ def label(scip_default_original_data, scip_no_pseudposts_original_data, fico_ori
         plt.figure(figsize=(8, 6))
         plt.scatter([0] * len(label[0]), label[0], color='white', edgecolor='k', alpha=1)
         plt.axhline(y=0, color='black', linestyle='-', alpha=0.2)  # Reference line at y=0
-        plt.title(f"Label {label[1]}")
+        if scaled:
+            plt.title(f"Scaled Label {label[1]}")
+        else:
+            plt.title(f"Unscaled Label {label[1]}")
         plt.xlabel("Pred values")
         plt.ylabel("Actual Values")
         plt.show()
@@ -384,9 +387,22 @@ def label_scaling(label):
     y_log = pd.concat([y_pos_log, y_neg_log]).sort_index()
     return y_log
 
-def main(treffmas, scale_label = False):
+def comp_fico_scip(scip_default_base, fico_base):
+    scip_cols = scip_default_base.columns.tolist()
+    fico_cols = fico_base.columns.tolist()
+    intersec = list(set(scip_cols).intersection(set(fico_cols)))
+
+    for col in intersec:
+        if scip_default_base[col].dtype != 'object':
+            scip_mean = scip_default_base[col].mean()
+            fico_mean = fico_base[col].mean()
+            print(f'{col}:\n SCIP: {scip_mean}, FICO: {fico_mean}')
+
+def main(treffmas, scale_label=True, visualize_sgm=True, visualize_shares=True, visualize_accuracy=True,
+         visualize_importance=True, visualize_time_save=True, visualize_label=True, comp_ficip=True):
+
     scip_default_base = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/default/complete/scip_default_ready_to_ml.csv')
-    scip_no_pseudocosts_base = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/no_pseudocosts/complete/scip_no_pseudocosts_ready_to_ml.csv',)
+    scip_no_pseudocosts_base = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/no_pseudocosts/complete/scip_no_pseudocosts_ready_to_ml.csv')
     fico_base = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/clean_data_final_06_03.xlsx')
 
     if scale_label:
@@ -396,15 +412,29 @@ def main(treffmas, scale_label = False):
 
     global global_path
     global_path = f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffmas}'
+    if visualize_sgm:
+        sgm(scip_default_base, scip_no_pseudocosts_base, fico_base)
+    if visualize_shares:
+        shares(scip_default_base, scip_no_pseudocosts_base, fico_base)
+    if visualize_accuracy:
+        accuracy()
+    if visualize_importance:
+        importance()
+    if visualize_time_save:
+        time_save(scip_default_base, scip_no_pseudocosts_base, fico_base)
+    if visualize_label:
+        label(scip_default_base, scip_no_pseudocosts_base, fico_base, scale_label)
+    if comp_ficip:
+        scip_fic = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/scip_default_schnitt.csv')
+        fic_scip = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/fico_schnitt.csv')
+        comp_fico_scip(scip_fic, fic_scip)
 
-    # sgm(scip_default_base, scip_no_pseudocosts_base, fico_base)
-    # shares(scip_default_base, scip_no_pseudocosts_base, fico_base)
-    # accuracy()
-    # importance()
-    # time_save(scip_default_base, scip_no_pseudocosts_base, fico_base)
-    # label(scip_default_base, scip_no_pseudocosts_base, fico_base)
-
-main('TreffenMasOcho', scale_label = True)
 
 
+# main('TreffenMasDiez/ScaledLabel', scale_label=False, visualize_sgm=False, visualize_shares=False,
+#      visualize_accuracy=False, visualize_importance=False, visualize_time_save=False, visualize_label=False,
+#      comp_ficip=False)
+
+# main('TreffenMasDiez/UnscaledLabel', scale_label=False)
+# main('TreffenMasDiez/ScaledLabel')
 

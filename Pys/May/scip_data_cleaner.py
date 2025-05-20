@@ -24,17 +24,17 @@ def read_data(file_path_data, file_path_requirements):
     data = pd.read_csv(file_path_data)
     requirement_df = pd.read_excel(file_path_requirements, header=0)
     # TODO: Should be with error handling
-    int_cols = ['Random Seed Shift', '#integer violations at root Mixed',
-       '#nodes in DAG Mixed', 'Presolve Columns Mixed', 'Presolve Global Entities Mixed',
-       '#nonlinear violations at root Mixed', 'Matrix Equality Constraints',
+    int_cols = ['Random Seed Shift', '#integer violations at root',
+       '#nodes in DAG', 'Presolve Columns', 'Presolve Global Entities',
+       '#nonlinear violations at root', 'Matrix Equality Constraints',
        'Matrix NLP Formula', 'Matrix Quadratic Elements']
 
-    float_cols = ['Avg coefficient spread for convexification cuts Mixed',
-       'Avg pseudocosts of integer variables Mixed',
-       '% vars in DAG (out of all vars) Mixed',
-       '% vars in DAG integer (out of vars in DAG) Mixed',
-       '% vars in DAG unbounded (out of vars in DAG) Mixed',
-       '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG) Mixed',
+    float_cols = ['Avg coefficient spread for convexification cuts',
+       'Avg pseudocosts of integer variables',
+       '% vars in DAG (out of all vars)',
+       '% vars in DAG integer (out of vars in DAG)',
+       '% vars in DAG unbounded (out of vars in DAG)',
+       '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
        'Final solution time (cumulative) Mixed',
        'Final solution time (cumulative) Int', 'Cmp Final solution time (cumulative)', 'Virtual Best']
     for col in int_cols:
@@ -76,34 +76,34 @@ def main(file_path_dataset, file_path_requirements_xlsx, treffmasx, dataset_name
     broken_names = [name[0] for name in broken_instances_and_reason]
     clean_data = data[~data['Matrix Name'].isin(broken_names)]
     clean_data = create_label(clean_data)
-    clean_feats = clean_data[['#integer violations at root Mixed',
-                               '#nodes in DAG Mixed',
-                               'Avg coefficient spread for convexification cuts Mixed',
-                               'Presolve Global Entities Mixed', 'Presolve Columns Mixed',
-                               '#nonlinear violations at root Mixed', 'Matrix Equality Constraints',
-                               'Matrix NLP Formula', '% vars in DAG (out of all vars) Mixed',
-                               '% vars in DAG integer (out of vars in DAG) Mixed',
+    clean_feats = clean_data[['#integer violations at root',
+                               '#nodes in DAG',
+                               'Avg coefficient spread for convexification cuts',
+                               'Presolve Global Entities', 'Presolve Columns',
+                               '#nonlinear violations at root', 'Matrix Equality Constraints',
+                               'Matrix NLP Formula', '% vars in DAG (out of all vars)',
+                               '% vars in DAG integer (out of vars in DAG)',
                                'Matrix Quadratic Elements',
-                               '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG) Mixed',
-                               '% vars in DAG unbounded (out of vars in DAG) Mixed',
-                               'Avg pseudocosts of integer variables Mixed']].copy()
+                               '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
+                               '% vars in DAG unbounded (out of vars in DAG)',
+                               'Avg pseudocosts of integer variables']].copy()
 
     if to_csv:
         # Define the target directory
-        save_dir = f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffmasx}/CSVs'
+        save_dir = f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffmasx}/CSVs/scip_bases/cleaned_scip'
 
         # Create the directory if it doesn't exist
         os.makedirs(save_dir, exist_ok=True)
 
-        clean_data.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffmasx}/CSVs/scip_{dataset_name}_clean_data.csv',
+        clean_data.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/cleaned_scip/scip_{dataset_name}_clean_data.csv',
                             index=False)
-        clean_feats.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffmasx}/CSVs/scip_{dataset_name}_clean_feats.csv',
+        clean_feats.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/cleaned_scip/scip_{dataset_name}_clean_feats.csv',
                             index=False)
     return clean_data, broken_instances_and_reason
 
 
 data_set = 'default'
-treffen = 'TreffenMasSeis'
+treffen = 'TreffenMasNueve'
 main(f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/{data_set}/complete/scip_{data_set}_ready_to_ml.csv',
          '/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/default/complete/scip_requirements.xlsx',
           treffmasx = treffen,
