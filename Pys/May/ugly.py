@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-DEBUG = True
+DEBUG = False
 '''READ AND RENAME COLUMNS'''
 # input: df, list. Renames columns of df to strings in lst
 def rename_cols(df, int_cols, dbl_cols):
@@ -324,14 +324,14 @@ def check_col_consistency(df, requirement_df, SCIP=False):
         return req_df
 
     requirement_df = clean_requirements(requirement_df, SCIP)
-    print(requirement_df)
     broken_cols = []
     for col in df.columns:
         helper = requirement_df[col]
         requirements = [word.strip() for string in helper for word in string.split(', ')]
         for req in requirements:
             broken_cols += req_dict[req](df, col)
-    print(len(broken_cols), broken_cols)
+    if DEBUG:
+        print(len(broken_cols), broken_cols)
     return df, broken_cols
 
 

@@ -39,18 +39,16 @@ def find_no_feature_instances(df):
     return all_runs_no_feats, s0_no_feats, s1_no_feats, s2_no_feats
 
 def map_raw_scip_to_feature(df, compper_df, operation_dict):
-    # TODO: Here its happening with the -1 for fico_only
     # Get the list of columns in compper_df
     df_columns = df.columns.tolist()
 
     for new_col, operation in operation_dict.items():
         # Check if all columns in the operation exist in compper_df
         columns_in_operation = [col for col in df if col in operation]
-        print('OPER:', columns_in_operation)
 
         for col in columns_in_operation:
             if col not in df_columns:
-                raise ValueError(f"Column '{col}' not found in stefan_df")
+                raise ValueError(f"Column '{col}' not found in scip raw data")
 
         # Replace column names in the operation with actual references to the columns in df
 
@@ -58,7 +56,7 @@ def map_raw_scip_to_feature(df, compper_df, operation_dict):
             # Use \b to ensure we're replacing whole words only
             operation = re.sub(rf'\b{col}\b', f"df['{col}']", operation)
 
-        print('map_raw_scip_to_feature', compper_df['Matrix Equality Constraints'].min())
+        # print('map_raw_scip_to_feature', compper_df['Matrix Equality Constraints'].min())
         try:
             # Evaluate the expression and create the new column in df
             compper_df[new_col] = eval(operation)
@@ -121,26 +119,19 @@ def create_compatible_dataframe(df, fico_only=False):
                 compa_df[col_name] = df[col_name]
             elif name_mapping_fico_only[col_name] in df.columns:
                 compa_df[col_name] = df[name_mapping_fico_only[col_name]]
-        print('FICONLY')
-        print(compa_df['Matrix Equality Constraints'].min())
         compa_df = map_raw_scip_to_feature(df, compa_df, name_mapping_fico_only)
-        print(compa_df['Matrix Equality Constraints'].min())
     else:
-        print('MORE')
-        compa_df = pd.DataFrame(
-            columns=['Matrix Name', 'Random Seed Shift'] + [name for name in name_mapping_with_more_scip_features.keys()] + [
-                'Status Mixed', 'Status Int', 'Final solution time (cumulative) Mixed',
-                'Final solution time (cumulative) Int', 'Cmp Final solution time (cumulative)', 'Virtual Best'],
-            index=df.index)
-
+        compa_df = pd.DataFrame(columns=['Matrix Name', 'Random Seed Shift'] +
+                                        [name for name in name_mapping_with_more_scip_features.keys()] +
+                                        ['Status Mixed', 'Status Int', 'Final solution time (cumulative) Mixed',
+                                         'Final solution time (cumulative) Int', 'Cmp Final solution time (cumulative)',
+                                         'Virtual Best'], index=df.index)
         for col_name in compa_df.columns:
             if col_name not in name_mapping_with_more_scip_features:
                 compa_df[col_name] = df[col_name]
             elif name_mapping_with_more_scip_features[col_name] in df.columns:
                 compa_df[col_name] = df[name_mapping_with_more_scip_features[col_name]]
-        print(compa_df['Matrix Equality Constraints'].min())
         compa_df = map_raw_scip_to_feature(df, compa_df, name_mapping_with_more_scip_features)
-        print(compa_df['Matrix Equality Constraints'].min())
     return compa_df
 
 def get_name(string: str) -> str|None:
@@ -356,7 +347,6 @@ def read_in_and_call_process(data_set: str, fico=True, to_csv=True):
     # Filter out all rows with those matrix names
     stefans_data_merged_all_have_features = stefans_data_merged[~stefans_data_merged['Matrix Name'].isin(matrices_with_nan)]
 
-    # save dataframes as csv once with all instances and once only with instances having features
     if to_csv:
         # save only df where all instances without features are deleted
         stefans_data_merged_all_have_features.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/{data_set}/complete/scip_{data_set}_raw.csv',
@@ -377,7 +367,7 @@ def read_in_and_call_process(data_set: str, fico=True, to_csv=True):
 
     if fico:
         # all instances
-        scip_to_fic_df = create_compatible_dataframe(stefans_data_merged, fico_only=True)
+        scip_to_fic_df = create_compatible_dataframe(stefans_data_merged_all_have_features, fico_only=True)
         scip_to_fic_df.to_csv(f"/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/{data_set}/complete/scip_{data_set}_fico_compatible.csv",
                                 index=False)
 
@@ -395,9 +385,7 @@ def read_in_and_call_process(data_set: str, fico=True, to_csv=True):
         stefans_feats.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/{data_set}/only_features/scip_{data_set}_fico_features.csv',
                                    index=False)
 
+# read_in_and_call_process(data_set='default')
+# read_in_and_call_process(data_set='no_pseudocosts')
 
-
-
-read_in_and_call_process(data_set='default')
-read_in_and_call_process(data_set='no_pseudocosts')
-
+# TODO: Wie geh uich mit GAOP limit um? ist das optimal oder timeout oder was ganz anderes? Ne schon optimal

@@ -2,6 +2,7 @@ import time
 import pandas as pd
 import numpy as np
 import os
+import joblib
 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
@@ -12,9 +13,11 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler, QuantileTransformer, PowerTransformer
 import logging
 
-treffplustage = 'TreffenMasQuat'
+
+treffplustage = 'TreffenMasOcho'
 
 # Setup logging configuration
+os.makedirs(os.path.join(f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffplustage}'), exist_ok=True)
 logging.basicConfig(
     filename=f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffplustage}/regression_log.txt',  # Log file name
     level=logging.INFO,             # Minimum level to log
@@ -115,7 +118,7 @@ def get_prediction_df(dictionary):
         dictionary[key] += [0] * (max_len - len(dictionary[key]))
     return pd.DataFrame.from_dict(dictionary, orient='columns')
 
-def trainer(imputation, scaler, model, model_name, X_train, y_train, seed):
+def trainer(imputation, scaler, model, model_name, X_train, y_train, seed, data_set):
     start = time.time()
     # Build pipeline
     # Update model-specific parameters
@@ -132,6 +135,7 @@ def trainer(imputation, scaler, model, model_name, X_train, y_train, seed):
     pipeline = Pipeline(steps)
     # Train the pipeline
     pipeline.fit(X_train, y_train)
+    joblib.dump(model, f'models/{data_set}/{model_name}_{seed}.pkl')
     end = time.time()
     return pipeline, end-start
 
@@ -170,7 +174,7 @@ def regression(data, data_set_name, features_df, feature_names, models, scalers,
                     X_train, X_test, y_train, y_test = train_test_split(features, label, test_size=0.2,
                                                                         random_state=seed)
                     # train the model
-                    trained_model, tt = trainer(imputation, scaler, model, model_name, X_train, y_train, seed)
+                    trained_model, tt = trainer(imputation, scaler, model, model_name, X_train, y_train, seed, data_set_name)
                     training_time += tt
                     # let the model make predictions
                     y_pred_relevant, y_test_relevant, pt = predict(trained_model, X_test, y_test)
@@ -209,7 +213,6 @@ def regression(data, data_set_name, features_df, feature_names, models, scalers,
         accuracy_df.columns = ['Accuracy', 'Extreme Accuracy', 'Extreme Instances']
         accuracy_df.loc[:, ['Accuracy', 'Extreme Accuracy']] = accuracy_df.loc[:, ['Accuracy', 'Extreme Accuracy']].astype(float)
 
-
         prediction_df = get_prediction_df(prediction_dictionary).astype(float)
 
         run_time_df = pd.DataFrame.from_dict(run_time_dictionary, orient='index').astype(float)
@@ -219,6 +222,7 @@ def regression(data, data_set_name, features_df, feature_names, models, scalers,
     logging.info(f'Training time: {training_time}')
     logging.info(f'Prediction time: {prediction_time}')
     logging.info(f'Final time: {end_time - start_time}')
+    print(f'{data_set_name} is done, after {end_time - start_time}!')
     return accuracy_df, run_time_df, prediction_df, feature_importance_df
 
 def run_regression_pipeline(data_name, data_path, feats_path, is_excel, prefix, treffplusx, models, imputer, hundred_seeds):
@@ -276,8 +280,8 @@ def main(scip_default=False, scip_no_pseudo=False, fico=False, treffplusx='Wurm'
     if scip_default:
         run_regression_pipeline(
             data_name = 'scip_default',
-            data_path='/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_default_clean_data.csv',
-            feats_path='/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_default_clean_feats.csv',
+            data_path=f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/default/complete/scip_default_ready_to_ml.csv',
+            feats_path=f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/default/only_features/scip_default_features.csv',
             is_excel=False,
             prefix='scip',
             treffplusx=treffplusx,
@@ -289,8 +293,8 @@ def main(scip_default=False, scip_no_pseudo=False, fico=False, treffplusx='Wurm'
     if scip_no_pseudo:
         run_regression_pipeline(
             data_name='scip_no_pseudo',
-            data_path='/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_no_pseudocosts_clean_data.csv',
-            feats_path='/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_no_pseudocosts_clean_feats.csv',
+            data_path=f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/no_pseudocosts/complete/scip_no_pseudocosts_ready_to_ml.csv',
+            feats_path=f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/no_pseudocosts/only_features/scip_no_pseudocosts_features.csv',
             is_excel=False,
             prefix='scip_no_pseudo',
             treffplusx=treffplusx,
@@ -302,8 +306,8 @@ def main(scip_default=False, scip_no_pseudo=False, fico=False, treffplusx='Wurm'
     if fico:
         run_regression_pipeline(
             data_name='fico',
-            data_path='/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/clean_data_final_06_03.xlsx',
-            feats_path='/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/base_feats_no_cmp_918_24_01.xlsx',
+            data_path='/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/fico/clean_data_final_06_03.xlsx',
+            feats_path='/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/fico/base_feats_no_cmp_918_24_01.xlsx',
             is_excel=True,
             prefix='fico',
             treffplusx=treffplusx,
@@ -312,8 +316,9 @@ def main(scip_default=False, scip_no_pseudo=False, fico=False, treffplusx='Wurm'
             hundred_seeds=hundred_seeds
         )
 
+
+
 # main(scip_default=True, scip_no_pseudo=False, fico=False, treffplusx=treffplustage)
 # main(scip_default=False, scip_no_pseudo=True, fico=True, treffplusx=treffplustage)
 # main(scip_default=True, scip_no_pseudo=True, fico=True, treffplusx=treffplustage)
 # main(scip_default=True, scip_no_pseudo=True, fico=False, treffplusx=treffplustage')
-

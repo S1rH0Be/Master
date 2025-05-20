@@ -1,6 +1,9 @@
 from typing import List
 import pandas as pd
+import os
 from ugly import check_col_consistency
+
+
 
 
 def find_broken_instances(df:pd.DataFrame, requirements_df:pd.DataFrame)->List:
@@ -14,11 +17,30 @@ def find_broken_instances(df:pd.DataFrame, requirements_df:pd.DataFrame)->List:
             columns_to_check.append(col_name)
 
     dataframe, broken_instances = check_col_consistency(df[columns_to_check], requirements_df[columns_to_check], SCIP=True)
+
     return broken_instances
 
 def read_data(file_path_data, file_path_requirements):
-    data = pd.read_excel(file_path_data)
+    data = pd.read_csv(file_path_data)
     requirement_df = pd.read_excel(file_path_requirements, header=0)
+    # TODO: Should be with error handling
+    int_cols = ['Random Seed Shift', '#integer violations at root Mixed',
+       '#nodes in DAG Mixed', 'Presolve Columns Mixed', 'Presolve Global Entities Mixed',
+       '#nonlinear violations at root Mixed', 'Matrix Equality Constraints',
+       'Matrix NLP Formula', 'Matrix Quadratic Elements']
+
+    float_cols = ['Avg coefficient spread for convexification cuts Mixed',
+       'Avg pseudocosts of integer variables Mixed',
+       '% vars in DAG (out of all vars) Mixed',
+       '% vars in DAG integer (out of vars in DAG) Mixed',
+       '% vars in DAG unbounded (out of vars in DAG) Mixed',
+       '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG) Mixed',
+       'Final solution time (cumulative) Mixed',
+       'Final solution time (cumulative) Int', 'Cmp Final solution time (cumulative)', 'Virtual Best']
+    for col in int_cols:
+        data[col] = data[col].astype(int)
+    for col in float_cols:
+        data[col] = data[col].astype(float)
 
     return data, requirement_df
 
@@ -63,24 +85,36 @@ def main(file_path_dataset, file_path_requirements_xlsx, treffmasx, dataset_name
                                '% vars in DAG integer (out of vars in DAG) Mixed',
                                'Matrix Quadratic Elements',
                                '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG) Mixed',
-                               '% vars in DAG unbounded (out of vars in DAG) Mixed']].copy()
-                               # , 'Avg pseudocosts of integer variables Mixed']].copy()
+                               '% vars in DAG unbounded (out of vars in DAG) Mixed',
+                               'Avg pseudocosts of integer variables Mixed']].copy()
 
     if to_csv:
-        clean_data.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffmasx}/CSVs/{dataset_name}_clean_data.csv',
-                            index=False)
-        clean_feats.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffmasx}/CSVs/{dataset_name}_clean_feats.csv',
-                            index=False)
+        # Define the target directory
+        save_dir = f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffmasx}/CSVs'
 
+        # Create the directory if it doesn't exist
+        os.makedirs(save_dir, exist_ok=True)
+
+        clean_data.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffmasx}/CSVs/scip_{dataset_name}_clean_data.csv',
+                            index=False)
+        clean_feats.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffmasx}/CSVs/scip_{dataset_name}_clean_feats.csv',
+                            index=False)
     return clean_data, broken_instances_and_reason
 
 
-main('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/standard_scip/ready_to_ml/all_instances/scip_to_fic.xlsx',
-         '/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/standard_scip/ready_to_ml/all_with_feature/scip_requirements.xlsx',
-          treffmasx='TreffenMasCinco',
-          dataset_name='scip_default',
-          to_csv=True)
-
+data_set = 'default'
+treffen = 'TreffenMasSeis'
+main(f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/{data_set}/complete/scip_{data_set}_ready_to_ml.csv',
+         '/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/default/complete/scip_requirements.xlsx',
+          treffmasx = treffen,
+          dataset_name = 'default',
+          to_csv = True)
+data_set = 'no_pseudocosts'
+main(f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/{data_set}/complete/scip_{data_set}_ready_to_ml.csv',
+         '/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/default/complete/scip_requirements.xlsx',
+          treffmasx = treffen,
+          dataset_name = 'no_pseudocosts',
+          to_csv = True)
 
 
 

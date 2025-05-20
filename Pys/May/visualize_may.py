@@ -1,16 +1,13 @@
-from traceback import format_exc
-
 import pandas as pd
 import matplotlib.pyplot as plt
 from may_regression import shifted_geometric_mean
+import numpy as np
 
-
-#TODO: Adjust Accuracy and run_time to new format
-
-global_path = '/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasQuat'
+global_path = '/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasSeis'
 
 # SGM RUNTIME BLOCK
-def sgm(filter=''):
+def sgm(scip_default_original_data, scip_no_pseudposts_original_data, fico_original_data, filter=''):
+
     def get_sgm_of_sgm(data_frame, shift):
         col_names = data_frame.columns.tolist()
         # Frage: SGM of relative SGMs oder von total SGMs?
@@ -31,6 +28,7 @@ def sgm(filter=''):
         if filter_by != '':
             wanted_runs = [run_setting for run_setting in pred_df.index if filter_by in run_setting]
             pred_df = pred_df.loc[wanted_runs, :]
+
         linear_rows = [lin_rows for lin_rows in pred_df.index if 'LinearRegression' in lin_rows]
         linear_df = pred_df.loc[linear_rows, :]
 
@@ -42,10 +40,11 @@ def sgm(filter=''):
         linear_df.insert(loc=1, column='SGM Forest', value=forest_series.values)
         complete_df = linear_df
         complete_sgm_df = get_sgm_of_sgm(complete_df, complete_df.mean().mean())
-
+        new_order = ['SGM Int', 'SGM Mixed', 'SGM Linear', 'SGM Forest', 'SGM VBS']
+        complete_sgm_df = complete_sgm_df.reindex(columns=new_order)
         values_relative = relative_to_mixed(complete_sgm_df)
 
-        labels = ['Linear', 'Forest', 'Mixed', 'Int', 'VBS']
+        labels = ['SGM Int', 'SGM Mixed', 'SGM Linear', 'SGM Forest', 'SGM VBS']
         # Determine bar colors based on conditions
         bar_colors = (['turquoise', 'magenta'])
                       # + ['green' if value >= 0.8 else 'red' if value <= 0.6 else 'blue' for value in values[3:7]])
@@ -63,22 +62,57 @@ def sgm(filter=''):
         plt.show()
         plt.close()
 
+    def sgm_complete_df(dataframe, title):
+        mixed = dataframe['Final solution time (cumulative) Mixed']
+        pref_int = dataframe['Final solution time (cumulative) Int']
+        vbs = dataframe['Virtual Best']
+
+        mixed_values = shifted_geometric_mean(mixed, mixed.mean())
+        pref_int_values = shifted_geometric_mean(pref_int, pref_int.mean())
+        vbs_values = shifted_geometric_mean(vbs, vbs.mean())
+        values_relative = [pref_int_values/mixed_values, 1.0, vbs_values/mixed_values]
+
+        labels = ['PrefInt', 'Mixed', 'VBS']
+        # Determine bar colors based on conditions
+        bar_colors = ['turquoise', 'magenta']
+
+        # Create the plot
+        plt.figure(figsize=(8, 5))
+        plt.bar(labels, values_relative, color=bar_colors)
+        plt.title(title)
+        plt.ylim(min(0.5, min(values_relative) * 0.9), max(values_relative) * 1.01)  # Set y-axis limits for visibility
+        plt.xticks(rotation=45, fontsize=6)
+        # Create custom legend entries with value annotations
+        # legend_labels = [f"{label}: {value}" for label, value in zip(labels, values)]
+        # plt.legend(bars, legend_labels, title="Values")
+        # Display the plot
+        plt.show()
+        plt.close()
+
+    sgm_complete_df(scip_default_original_data, title='SGM SCIP Default Complete Data Set')
+    sgm_complete_df(scip_no_pseudposts_original_data, title='SGM SCIP No Pseudocosts Complete Data Set')
+    sgm_complete_df(fico_original_data, title='SGM FICO Xpress Complete Data Set')
+
     scip_sgm_df = pd.read_csv(f'{global_path}/RunTime/scip_sgm_runtime.csv', index_col=0)
     scip_no_pseudos_df = pd.read_csv(f'{global_path}/RunTime/scip_no_pseudo_sgm_runtime.csv', index_col=0)
     fico_sgm_df = pd.read_csv(f'{global_path}/RunTime/fico_sgm_runtime.csv', index_col=0)
-    visualize_sgm(scip_sgm_df, filter_by='', title='SCIP SGM')
-    visualize_sgm(scip_no_pseudos_df, filter_by='', title='SCIP no Pseudo SGM')
+
+    visualize_sgm(scip_sgm_df, filter_by='', title='SCIP Default SGM')
+    visualize_sgm(scip_no_pseudos_df, filter_by='', title='SCIP No Pseudocosts SGM')
     visualize_sgm(fico_sgm_df, filter_by='', title='FICO Xpress SGM')
 
 # WHAT RULES DID THE MODELS CHOOSE
-def shares():
+def shares(scip_default_original_data, scip_no_pseudposts_original_data, fico_original_data):
     def get_share_mixed_and_int(data_frame):
         mixed = (data_frame > 0).sum().sum()
         pref_int = (data_frame < 0).sum().sum()
         return [mixed, pref_int]
 
-    def histogram_shares(data_frame, title: str = 'Share of Mixed and Preferred Int'):
-        values = get_share_mixed_and_int(data_frame['Cmp Final solution time (cumulative)'])
+    def histogram_shares(data_frame, origis=False, title: str = 'Share of Mixed and Preferred Int'):
+        if origis:
+            values = get_share_mixed_and_int(data_frame['Cmp Final solution time (cumulative)'])
+        else:
+            values = get_share_mixed_and_int(data_frame)
 
         total_relevant_predictions = sum(values)
         values = [(value/total_relevant_predictions)*100 for value in values]
@@ -97,14 +131,24 @@ def shares():
         plt.show()
         plt.close()
 
-    scip_default_original_data = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasCinco/CSVs/scip_default_clean_data.csv')
     scip_default_predictions = pd.read_csv(f'{global_path}/Prediction/scip_prediction_df.csv')
-    fico_predictions = pd.read_csv(f'{global_path}/Prediction/fico_prediction_df.csv')
+
     scip_no_pseudo_predictions = pd.read_csv(f'{global_path}/Prediction/scip_no_pseudo_prediction_df.csv')
-    # histogram_shares(scip_default_predictions, title='SCIP Default Prediction: Share of Mixed and Preferred Int')
-    # histogram_shares(scip_no_pseudo_predictions, title='SCIP NO Pseudocosts Prediction: Share of Mixed and Preferred Int')
-    # histogram_shares(fico_predictions, title='FICO Xpress Prediction: Share of Mixed and Preferred Int')
-    histogram_shares(scip_default_original_data, title='SCIP Default Original Data: Share of Mixed and Preferred Int')
+
+    fico_predictions = pd.read_csv(f'{global_path}/Prediction/fico_prediction_df.csv')
+
+    histogram_shares(scip_default_predictions, title='SCIP Default Prediction: Share of Mixed and Preferred Int')
+    histogram_shares(scip_default_original_data, title='SCIP Default Original Data: Share of Mixed and Preferred Int',
+                                                   origis=True)
+
+    histogram_shares(scip_no_pseudo_predictions, title='SCIP NO Pseudocosts Prediction: Share of Mixed and Preferred Int')
+    histogram_shares(scip_no_pseudposts_original_data, title='SCIP No Pseudposts Original Data: Share of Mixed and Preferred Int',
+                                                   origis=True)
+
+    histogram_shares(fico_predictions, title='FICO Xpress Prediction: Share of Mixed and Preferred Int')
+    histogram_shares(fico_original_data,
+                     title='FICO Xpress Original Data: Share of Mixed and Preferred Int',
+                     origis=True)
 
 # ACCURACY BLOCK
 def accuracy(run=''):
@@ -254,6 +298,7 @@ def importance():
     scip_default_importance = pd.read_csv(f'{global_path}/Importance/scip_importance_df.csv', index_col=0)
     scip_no_pseudo_importance = pd.read_csv(f'{global_path}/Importance/scip_no_pseudo_importance_df.csv', index_col=0)
     fico_importance = pd.read_csv(f'{global_path}/Importance/fico_importance_df.csv', index_col=0)
+
     plot_importances_by_regressor(scip_default_importance, 'SCIP Default Feature Importance')
     plot_importances_by_regressor(scip_no_pseudo_importance, 'SCIP NO Pseudocosts Feature Importance')
     plot_importances_by_regressor(fico_importance, 'FICO Xpress Feature Importance')
@@ -262,7 +307,7 @@ def importance():
     plot_importance(fico_importance, 'FICO Xpress Feature Importance Score')
 
 # abs time save
-def time_save():
+def time_save(scip_default_original_data, scip_no_pseudposts_original_data, fico_original_data):
     def create_time_save_df(data_frame):
         time_save_df = data_frame[['Final solution time (cumulative) Mixed',
                                     'Final solution time (cumulative) Int',
@@ -282,32 +327,45 @@ def time_save():
 
         return time_save_df
 
-    def visualize_time_save(data_frame):
-        tdf = create_time_save_df(data_frame)
-        sgm_mixed = shifted_geometric_mean(tdf['Final solution time (cumulative) Mixed'],
-                                           tdf['Final solution time (cumulative) Mixed'].mean())
-        sgm_int = shifted_geometric_mean(tdf['Final solution time (cumulative) Int'],
-                                         tdf['Final solution time (cumulative) Mixed'].mean())
-        sgm_time_save = shifted_geometric_mean(tdf['Possible Time Save'], tdf['Possible Time Save'].mean())
+    def visualize_time_save(default, no_pseudo, fico, title:str):
+        tdf_default = create_time_save_df(default)
+        tdf_no_pseudo = create_time_save_df(no_pseudo)
+        tdf_fico = create_time_save_df(fico)
+
+        sgm_time_save_default = shifted_geometric_mean(tdf_default['Possible Time Save'],
+                                                       tdf_default['Possible Time Save'].mean())
+        sgm_time_save_no_pseudo = shifted_geometric_mean(tdf_no_pseudo['Possible Time Save'],
+                                                         tdf_no_pseudo['Possible Time Save'].mean())
+        sgm_time_save_fico = shifted_geometric_mean(tdf_fico['Possible Time Save'],
+                                                         tdf_fico['Possible Time Save'].mean())
+
+        values = [sgm_time_save_default, sgm_time_save_no_pseudo, sgm_time_save_fico]
+        bar_colors = (['turquoise', 'magenta'])
+
+        # Create the plot
+        plt.figure(figsize=(8, 5))
+        plt.bar(['SCIP Default', 'SCIP No Pseudocosts', 'FICO Xpress'], values, color=bar_colors)
+        plt.title(title)
+        plt.ylim(0, max(values)*1.1)  # Set y-axis limits for visibility
+        plt.xticks(rotation=45, fontsize=6)
+        # Create custom legend entries with value annotations
+        # legend_labels = [f"{label}: {value}" for label, value in zip(labels, values)]
+        # plt.legend(bars, legend_labels, title="Values")
+        # Display the plot
+        plt.show()
+        plt.close()
 
 
-    scip_default_data = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_default_clean_data.csv')
-    scip_no_pseudocosts_data = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_no_pseudocosts_clean_data.csv')
-    fico_data = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/clean_data_final_06_03.xlsx')
-
-    visualize_time_save(scip_default_data)
-    visualize_time_save(scip_no_pseudocosts_data)
-    visualize_time_save(fico_data)
+    visualize_time_save(scip_default_original_data, scip_no_pseudposts_original_data, fico_original_data, title='SGM Possible Time Save')
+    # visualize_time_save(scip_no_pseudposts_original_data, title='SCIP No Pseudocosts Possible Time Save')
+    # visualize_time_save(fico_original_data, title='FICO Xpress Possible time Save')
 
 # label analysis
-def label():
-    scip_default_label = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_default_clean_data.csv')
-    scip_no_pseudocosts_label = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_no_pseudocosts_clean_data.csv')
-    fico_label = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/clean_data_final_06_03.xlsx')
+def label(scip_default_original_data, scip_no_pseudposts_original_data, fico_original_data):
 
-    labels = [(scip_default_label['Cmp Final solution time (cumulative)'], 'SCIP Default'),
-              (scip_no_pseudocosts_label['Cmp Final solution time (cumulative)'], 'SCIP No Pseudocosts'),
-              (fico_label['Cmp Final solution time (cumulative)'], 'FICO Xpress')]
+    labels = [(scip_default_original_data['Cmp Final solution time (cumulative)'], 'SCIP Default'),
+              (scip_no_pseudposts_original_data['Cmp Final solution time (cumulative)'], 'SCIP No Pseudocosts'),
+              (fico_original_data['Cmp Final solution time (cumulative)'], 'FICO Xpress')]
 
     for label in labels:
         plt.figure(figsize=(8, 6))
@@ -318,13 +376,35 @@ def label():
         plt.ylabel("Actual Values")
         plt.show()
 
+def label_scaling(label):
+    y_pos = label[label >= 0]
+    y_neg = label[label < 0]
+    y_pos_log = np.log(y_pos + 1)
+    y_neg_log = np.log(abs(y_neg) + 1) * -1
+    y_log = pd.concat([y_pos_log, y_neg_log]).sort_index()
+    return y_log
 
-# sgm()
-shares()
-# accuracy()
-# importance()
-# time_save()
-# label()
+def main(treffmas, scale_label = False):
+    scip_default_base = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/default/complete/scip_default_ready_to_ml.csv')
+    scip_no_pseudocosts_base = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/no_pseudocosts/complete/scip_no_pseudocosts_ready_to_ml.csv',)
+    fico_base = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/clean_data_final_06_03.xlsx')
+
+    if scale_label:
+        scip_default_base.loc[:, 'Cmp Final solution time (cumulative)'] = label_scaling(scip_default_base.loc[:, 'Cmp Final solution time (cumulative)'])
+        scip_no_pseudocosts_base.loc[:, 'Cmp Final solution time (cumulative)'] = label_scaling(scip_no_pseudocosts_base.loc[:, 'Cmp Final solution time (cumulative)'])
+        fico_base.loc[:, 'Cmp Final solution time (cumulative)'] = label_scaling(fico_base.loc[:, 'Cmp Final solution time (cumulative)'])
+
+    global global_path
+    global_path = f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffmas}'
+
+    # sgm(scip_default_base, scip_no_pseudocosts_base, fico_base)
+    # shares(scip_default_base, scip_no_pseudocosts_base, fico_base)
+    # accuracy()
+    # importance()
+    # time_save(scip_default_base, scip_no_pseudocosts_base, fico_base)
+    # label(scip_default_base, scip_no_pseudocosts_base, fico_base)
+
+main('TreffenMasOcho', scale_label = True)
 
 
 
