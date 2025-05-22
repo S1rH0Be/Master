@@ -1,6 +1,6 @@
 import os
 
-root_dir = '/Users/fritz/Downloads/ZIB/Master/Treffen/BilderTreffen/ScaledLabel/19_05'
+root_dir = '/Users/fritz/Downloads/ZIB/Master/Treffen/BilderTreffen'
 
 for subdir, _, files in os.walk(root_dir):
     for file in sorted(files):

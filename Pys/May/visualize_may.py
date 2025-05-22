@@ -431,10 +431,18 @@ def main(treffmas, scale_label=True, visualize_sgm=True, visualize_shares=True, 
 
 
 
-# main('TreffenMasDiez/ScaledLabel', scale_label=False, visualize_sgm=False, visualize_shares=False,
-#      visualize_accuracy=False, visualize_importance=False, visualize_time_save=False, visualize_label=False,
+# main('TreffenMasDiez/UnscaledLabel', scale_label=False, visualize_sgm=False, visualize_shares=False,
+#      visualize_accuracy=True, visualize_importance=False, visualize_time_save=False, visualize_label=False,
+#      comp_ficip=False)
+#
+# main('TreffenMasDiez/ScaledLabel', scale_label=True, visualize_sgm=False, visualize_shares=False,
+#      visualize_accuracy=True, visualize_importance=False, visualize_time_save=False, visualize_label=False,
 #      comp_ficip=False)
 
 # main('TreffenMasDiez/UnscaledLabel', scale_label=False)
 # main('TreffenMasDiez/ScaledLabel')
 
+'''
+IDEAS:
+1. Maybe zip bars to have a better comparison between scip_default and fico
+'''
