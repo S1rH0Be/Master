@@ -13,8 +13,8 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler, QuantileTransformer, PowerTransformer
 import logging
 
-
-treffplustage = 'TreffenMasDiez/ScaledLabel'
+# TODO: Do i actually impute with mean AND median????
+treffplustage = 'TreffenMasOnce/SoloRobust'
 
 # Setup logging configuration
 os.makedirs(os.path.join(f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffplustage}'), exist_ok=True)
@@ -26,7 +26,7 @@ logging.basicConfig(
 
 def create_directory(parent_name):
     base_path = f'/Users/fritz/Downloads/ZIB/Master/Treffen/{parent_name}'
-    subdirs = ['Prediction', 'Accuracy', 'Importance', 'RunTime']
+    subdirs = ['Prediction', 'Accuracy', 'Importance', 'SGM']
     for subdir in subdirs:
         os.makedirs(os.path.join(base_path, subdir), exist_ok=True)
     return 0
@@ -143,6 +143,7 @@ def trainer(imputation, scaler, model, model_name, X_train, y_train, seed, data_
     pipeline = Pipeline(steps)
     # Train the pipeline
     pipeline.fit(X_train, y_train)
+    # Just after fitting the pipeline
     joblib.dump(model, f'models/{data_set}/{model_name}_{seed}.pkl')
     end = time.time()
     return pipeline, end-start
@@ -250,11 +251,11 @@ def run_regression_pipeline(data_name, data_path, feats_path, is_excel, prefix, 
 
     # Set scalers
     scalers = [
-        StandardScaler(),
-        MinMaxScaler(),
+        # StandardScaler(),
+        # MinMaxScaler(),
         RobustScaler(),
-        PowerTransformer(method='yeo-johnson'),
-        QuantileTransformer(output_distribution='normal', n_quantiles=int(len(data) * 0.8))
+        # PowerTransformer(method='yeo-johnson'),
+        # QuantileTransformer(output_distribution='normal', n_quantiles=int(len(data) * 0.8))
     ]
 
     # Run regression
@@ -265,16 +266,20 @@ def run_regression_pipeline(data_name, data_path, feats_path, is_excel, prefix, 
     # Save results
     base_path = f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffplusx}'
     acc_df.to_csv(f'{base_path}/Accuracy/{prefix}_acc_df.csv', index=True)
-    runtime_df.to_csv(f'{base_path}/RunTime/{prefix}_sgm_runtime.csv', index=True)
+    runtime_df.to_csv(f'{base_path}/SGM/{prefix}_sgm_runtime.csv', index=True)
     prediction_df.to_csv(f'{base_path}/Prediction/{prefix}_prediction_df.csv')
     importance_df.to_csv(f'{base_path}/Importance/{prefix}_importance_df.csv', index=True)
 
 def main(scip_default=False, scip_no_pseudo=False, fico=False, treffplusx='Wurm', label_scalen= False):
+    if label_scalen:
+        treffplusx = treffplusx+'/ScaledLabel'
+    else:
+        treffplusx = treffplusx + '/UnscaledLabel'
     models = {
         'LinearRegression': LinearRegression(),
         'RandomForest': RandomForestRegressor(n_estimators=100, random_state=0, n_jobs=-1)
     }
-    imputer = ['mean', 'median']
+    imputer = ['mean']
     hundred_seeds = [2207168494, 288314836, 1280346069, 1968903417, 1417846724, 2942245439, 2177268096, 571870743,
                      1396620602, 3691808733, 4033267948, 3898118442, 24464804, 882010483, 2324915710, 316013333,
                      3516440788, 535561664, 1398432260, 572356937, 398674085, 4189070509, 429011752, 2112194978,
@@ -338,3 +343,4 @@ def main(scip_default=False, scip_no_pseudo=False, fico=False, treffplusx='Wurm'
 # main(scip_default=True, scip_no_pseudo=True, fico=False, treffplusx=treffplustage')
 # main(scip_default=True, scip_no_pseudo=True, fico=True, treffplusx=treffplustage, label_scalen=False)
 # main(scip_default=True, scip_no_pseudo=True, fico=True, treffplusx=treffplustage, label_scalen=True)
+

@@ -3,15 +3,15 @@ import matplotlib.pyplot as plt
 from may_regression import shifted_geometric_mean
 import numpy as np
 
-global_path = '/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasSeis'
+global_path = '/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasOnce'
 
 # SGM RUNTIME BLOCK
-def sgm(scip_default_original_data, scip_no_pseudposts_original_data, fico_original_data, filter=''):
+def sgm(scip_default_data, scip_no_pseudposts_data, fico_data, title_add_on:str, filter=''):
 
     def get_sgm_of_sgm(data_frame, shift):
         col_names = data_frame.columns.tolist()
         # Frage: SGM of relative SGMs oder von total SGMs?
-        # Ich mach erstaml total sgms
+        # Ich mach erstmal total sgms
         sgm_sgm_df = pd.DataFrame(columns=col_names, index=['Value'])
         for col in col_names:
             sgm_sgm_df.loc[:, col] = shifted_geometric_mean(data_frame[col], shift)
@@ -89,17 +89,13 @@ def sgm(scip_default_original_data, scip_no_pseudposts_original_data, fico_origi
         plt.show()
         plt.close()
 
-    sgm_complete_df(scip_default_original_data, title='SGM SCIP Default Complete Data Set')
-    sgm_complete_df(scip_no_pseudposts_original_data, title='SGM SCIP No Pseudocosts Complete Data Set')
-    sgm_complete_df(fico_original_data, title='SGM FICO Xpress Complete Data Set')
+    # sgm_complete_df(scip_default_data, title='SGM SCIP Default Complete Data Set')
+    # sgm_complete_df(scip_no_pseudposts_data, title='SGM SCIP No Pseudocosts Complete Data Set')
+    # sgm_complete_df(fico_data, title='SGM FICO Xpress Complete Data Set')
 
-    scip_sgm_df = pd.read_csv(f'{global_path}/RunTime/scip_sgm_runtime.csv', index_col=0)
-    scip_no_pseudos_df = pd.read_csv(f'{global_path}/RunTime/scip_no_pseudo_sgm_runtime.csv', index_col=0)
-    fico_sgm_df = pd.read_csv(f'{global_path}/RunTime/fico_sgm_runtime.csv', index_col=0)
-
-    visualize_sgm(scip_sgm_df, filter_by='', title='SCIP Default SGM')
-    visualize_sgm(scip_no_pseudos_df, filter_by='', title='SCIP No Pseudocosts SGM')
-    visualize_sgm(fico_sgm_df, filter_by='', title='FICO Xpress SGM')
+    visualize_sgm(scip_default_data, filter_by='', title=f'SCIP Default SGM {title_add_on}')
+    visualize_sgm(scip_no_pseudposts_data, filter_by='', title=f'SCIP No Pseudocosts SGM {title_add_on}')
+    visualize_sgm(fico_data, filter_by='', title=f'FICO Xpress SGM {title_add_on}')
 
 # WHAT RULES DID THE MODELS CHOOSE
 def shares(scip_default_original_data, scip_no_pseudposts_original_data, fico_original_data):
@@ -399,7 +395,7 @@ def comp_fico_scip(scip_default_base, fico_base):
             print(f'{col}:\n SCIP: {scip_mean}, FICO: {fico_mean}')
 
 def main(treffmas, scale_label=True, visualize_sgm=True, visualize_shares=True, visualize_accuracy=True,
-         visualize_importance=True, visualize_time_save=True, visualize_label=True, comp_ficip=True):
+         visualize_importance=True, visualize_time_save=True, visualize_label=True, comp_ficip=True, title_add_on='Wurm'):
 
     scip_default_base = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/default/complete/scip_default_ready_to_ml.csv')
     scip_no_pseudocosts_base = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/no_pseudocosts/complete/scip_no_pseudocosts_ready_to_ml.csv')
@@ -413,7 +409,7 @@ def main(treffmas, scale_label=True, visualize_sgm=True, visualize_shares=True, 
     global global_path
     global_path = f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffmas}'
     if visualize_sgm:
-        sgm(scip_default_base, scip_no_pseudocosts_base, fico_base)
+        sgm(scip_default_base, scip_no_pseudocosts_base, fico_base, title_add_on=title_add_on)
     if visualize_shares:
         shares(scip_default_base, scip_no_pseudocosts_base, fico_base)
     if visualize_accuracy:
@@ -435,9 +431,9 @@ def main(treffmas, scale_label=True, visualize_sgm=True, visualize_shares=True, 
 #      visualize_accuracy=True, visualize_importance=False, visualize_time_save=False, visualize_label=False,
 #      comp_ficip=False)
 #
-# main('TreffenMasDiez/ScaledLabel', scale_label=True, visualize_sgm=False, visualize_shares=False,
-#      visualize_accuracy=True, visualize_importance=False, visualize_time_save=False, visualize_label=False,
-#      comp_ficip=False)
+# main('TreffenMasOnce/ScaledLabel/SoloQuantile', scale_label=True, visualize_sgm=True, visualize_shares=False,
+#      visualize_accuracy=False, visualize_importance=False, visualize_time_save=False, visualize_label=False,
+#      comp_ficip=False, title_add_on='Only Quantile')
 
 # main('TreffenMasDiez/UnscaledLabel', scale_label=False)
 # main('TreffenMasDiez/ScaledLabel')
@@ -446,3 +442,4 @@ def main(treffmas, scale_label=True, visualize_sgm=True, visualize_shares=True, 
 IDEAS:
 1. Maybe zip bars to have a better comparison between scip_default and fico
 '''
+
