@@ -14,7 +14,7 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler, Qu
 import logging
 
 # TODO: Do i actually impute with mean AND median????
-treffplustage = 'TreffenMasOnce/SoloRobust'
+treffplustage = 'TreffenMasDoce/SoloQuantile' # need to change scalers in run_regression as well
 
 # Setup logging configuration
 os.makedirs(os.path.join(f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffplustage}'), exist_ok=True)
@@ -179,6 +179,10 @@ def regression(data, data_set_name, features_df, feature_names, models, scalers,
     importance_dictionary = {}
     logging.info(f"{'-' * 80}\n{data_set_name}\n{'-' * 80}")
 
+    # accuracy and sgm on train set
+    accuracy_dictionary_train = {}
+    run_time_dictionary_train = {}
+
     for model_name, model in models.items():
         if model_name not in ['LinearRegression', 'RandomForest']:
             logging.info(f'AHHHHHHHHHHHHHHHHHHHHHHHH. {model_name} is not a valid regressor!')
@@ -186,7 +190,7 @@ def regression(data, data_set_name, features_df, feature_names, models, scalers,
         for imputation in imputer:
             for scaler in scalers:
                 for seed in random_seeds:
-                    X_train, X_test, y_train, y_test = train_test_split(features, label, test_size=0.2,
+                    X_train, X_test, y_train, y_test = train_test_split(features, label, test_size=0.1,
                                                                         random_state=seed)
                     # train the model
                     trained_model, tt = trainer(imputation, scaler, model, model_name, X_train, y_train, seed, data_set_name)
@@ -206,6 +210,15 @@ def regression(data, data_set_name, features_df, feature_names, models, scalers,
                     else:
                         importances = trained_model.named_steps['model'].feature_importances_
                     importance_dictionary[model_name+'_'+imputation+'_'+str(scaler)+'_'+str(seed)] = importances.tolist()
+
+                    # make predictions on train set for checking of over/underfitting
+                    y_pred_train, y_test_train, pt_train = predict(trained_model, X_train, y_train)
+                    accuracy_dictionary_train[
+                        model_name + '_' + imputation + '_' + str(scaler) + '_' + str(seed)] = get_accuracy(
+                        y_pred_train, y_test_train, extreme_threshold)
+                    # add sgm of run time for this setting to run_time_df
+                    run_time_dictionary_train[model_name + '_' + imputation + '_' + str(scaler) + '_' + str(
+                        seed)] = get_predicted_run_time_sgm(y_pred_train, data, shift=50)
 
     if any(len(d) == 0 for d in [importance_dictionary,prediction_dictionary,accuracy_dictionary,run_time_dictionary]):
         # handle the empty case
@@ -233,12 +246,20 @@ def regression(data, data_set_name, features_df, feature_names, models, scalers,
         run_time_df = pd.DataFrame.from_dict(run_time_dictionary, orient='index').astype(float)
         run_time_df.columns = ['Predicted', 'Mixed', 'Int', 'VBS']
 
+    run_time_df_trainset = pd.DataFrame.from_dict(run_time_dictionary_train, orient='index').astype(float)
+    run_time_df_trainset.columns = ['Predicted', 'Mixed', 'Int', 'VBS']
+
+    accuracy_df_trainset = pd.DataFrame.from_dict(accuracy_dictionary_train, orient='index')
+    accuracy_df_trainset.columns = ['Accuracy', 'Extreme Accuracy', 'Extreme Instances']
+    accuracy_df_trainset.loc[:, ['Accuracy', 'Extreme Accuracy']] = accuracy_df_trainset.loc[:, ['Accuracy', 'Extreme Accuracy']].astype(
+        float)
+
     end_time = time.time()
     logging.info(f'Training time: {training_time}')
     logging.info(f'Prediction time: {prediction_time}')
     logging.info(f'Final time: {end_time - start_time}')
     print(f'{data_set_name} is done, after {end_time - start_time}!')
-    return accuracy_df, run_time_df, prediction_df, feature_importance_df
+    return accuracy_df, run_time_df, prediction_df, feature_importance_df, accuracy_df_trainset, run_time_df_trainset
 
 def run_regression_pipeline(data_name, data_path, feats_path, is_excel, prefix, treffplusx, models, imputer, hundred_seeds, label_scale=False):
     # Load data
@@ -253,13 +274,13 @@ def run_regression_pipeline(data_name, data_path, feats_path, is_excel, prefix, 
     scalers = [
         # StandardScaler(),
         # MinMaxScaler(),
-        RobustScaler(),
+        # RobustScaler(),
         # PowerTransformer(method='yeo-johnson'),
-        # QuantileTransformer(output_distribution='normal', n_quantiles=int(len(data) * 0.8))
+        QuantileTransformer(output_distribution='normal', n_quantiles=int(len(data) * 0.8))
     ]
 
     # Run regression
-    acc_df, runtime_df, prediction_df, importance_df = regression(
+    acc_df, runtime_df, prediction_df, importance_df, acc_train, sgm_train = regression(
         data, data_name, features, features.columns, models, scalers, imputer, hundred_seeds, label_scale
     )
 
@@ -269,6 +290,9 @@ def run_regression_pipeline(data_name, data_path, feats_path, is_excel, prefix, 
     runtime_df.to_csv(f'{base_path}/SGM/{prefix}_sgm_runtime.csv', index=True)
     prediction_df.to_csv(f'{base_path}/Prediction/{prefix}_prediction_df.csv')
     importance_df.to_csv(f'{base_path}/Importance/{prefix}_importance_df.csv', index=True)
+    acc_train.to_csv(f'{base_path}/Accuracy/{prefix}_acc_trainset.csv', index=True)
+    sgm_train.to_csv(f'{base_path}/SGM/{prefix}_sgm_trainset.csv', index=True)
+
 
 def main(scip_default=False, scip_no_pseudo=False, fico=False, treffplusx='Wurm', label_scalen= False):
     if label_scalen:
@@ -344,3 +368,9 @@ def main(scip_default=False, scip_no_pseudo=False, fico=False, treffplusx='Wurm'
 # main(scip_default=True, scip_no_pseudo=True, fico=True, treffplusx=treffplustage, label_scalen=False)
 # main(scip_default=True, scip_no_pseudo=True, fico=True, treffplusx=treffplustage, label_scalen=True)
 
+
+# TODO: For training on FICO and predict on SCIP:
+#  Idea: Train Model on all FICO instances, because a lot more than scip. Use Scip data as test set
+#       1. Create Feature_df from fico only containing scip feats
+#       2. Set test set size to very small(if not possible not to bad)
+#       3. use scip_feats as test set

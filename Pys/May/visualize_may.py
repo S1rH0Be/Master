@@ -443,3 +443,10 @@ IDEAS:
 1. Maybe zip bars to have a better comparison between scip_default and fico
 '''
 
+
+
+
+
+
+
+

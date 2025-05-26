@@ -320,7 +320,7 @@ def multiple_accuracy_plot(data_frames, title: str, run=''):
 
         plt.xticks(x + bar_width * (n_dfs - 1) / 2, categories)
         plt.title(title)
-        plt.ylim(0, 100)
+        plt.ylim(0, 105)
         plt.ylabel('Accuracy')
         plt.legend()
         plt.tight_layout()
@@ -486,3 +486,66 @@ def compare_scalers_sgm(scaled_or_unscaled:str, treffen='TreffenMasOnce', scip=T
 
         ficos = [fico_quantile, fico_yeo, fico_robust]
         multiple_sgm_plot(ficos, title='FICO Comparison SGM Scaled')
+
+def compare_train_vs_test(scaled_or_unscaled:str, scaler, treffen='TreffenMasDoce', scip=True, fico=True):
+    # Accuracy
+    if scip:
+        scip_test = pd.read_csv(
+                    f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffen}/Solo{scaler}/{scaled_or_unscaled}Label/Accuracy/scip_acc_df.csv',
+                    index_col=0)
+        scip_test.name = f'SCIP Default Accuracy Testset {scaler} {scaled_or_unscaled} Label'
+
+        scip_train = pd.read_csv(
+            f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffen}/Solo{scaler}/{scaled_or_unscaled}Label/Accuracy/scip_acc_trainset.csv',
+            index_col=0)
+        scip_train.name = f'SCIP Default Accuracy Trainingset {scaler} {scaled_or_unscaled} Label'
+
+        train_test = [scip_test, scip_train]
+        multiple_accuracy_plot(train_test, 'Comparison Accuracy Train vs Testset')
+
+    if fico:
+        fico_test = pd.read_csv(
+                    f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffen}/Solo{scaler}/{scaled_or_unscaled}Label/Accuracy/fico_acc_df.csv',
+                    index_col=0)
+        fico_test.name = f'FICO Xpress Accuracy Testset {scaler} {scaled_or_unscaled} Label'
+
+        fico_train = pd.read_csv(
+            f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffen}/Solo{scaler}/{scaled_or_unscaled}Label/Accuracy/fico_acc_trainset.csv',
+            index_col=0)
+        fico_train.name = f'FICO Xpress Accuracy Trainingset {scaler} {scaled_or_unscaled} Label'
+
+        train_test = [fico_test, fico_train]
+        multiple_accuracy_plot(train_test, 'Comparison Accuracy Train vs Testset')
+
+
+    # RunTime
+    if scip:
+        scip_test = pd.read_csv(
+            f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffen}/Solo{scaler}/{scaled_or_unscaled}Label/SGM/scip_sgm_runtime.csv',
+            index_col=0)
+        scip_test.name = f'FICO Xpress SGM Testset {scaler} {scaled_or_unscaled} Label'
+
+        scip_train = pd.read_csv(
+            f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffen}/Solo{scaler}/{scaled_or_unscaled}Label/SGM/scip_sgm_trainset.csv',
+            index_col=0)
+        scip_train.name = f'FICO Xpress SGM Trainset {scaler} {scaled_or_unscaled} Label'
+
+        scips = [scip_test, scip_train]
+        multiple_sgm_plot(scips, title=f'SCIP Comparison RunTime SGM Train vs Testset {scaler} {scaled_or_unscaled} Label')
+
+    if fico:
+        fico_test = pd.read_csv(
+            f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffen}/Solo{scaler}/{scaled_or_unscaled}Label/SGM/fico_sgm_runtime.csv',
+            index_col=0)
+        fico_test.name = f'FICO Xpress SGM Testset {scaler} {scaled_or_unscaled} Label'
+
+        fico_train = pd.read_csv(
+            f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffen}/Solo{scaler}/{scaled_or_unscaled}Label/SGM/fico_sgm_trainset.csv',
+            index_col=0)
+        fico_train.name = f'FICO Xpress SGM Trainset {scaler} {scaled_or_unscaled} Label'
+
+        ficos = [fico_test, fico_train]
+        multiple_sgm_plot(ficos, title=f'FICO Xpress Comparison RunTime SGM Train vs Testset {scaler} {scaled_or_unscaled} Label')
+
+
+compare_train_vs_test('scaled', 'Quantile', treffen='TreffenMasDoce',scip=True, fico=True)
