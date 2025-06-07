@@ -1,2 +1,30 @@
 TODO: 1. Check scip data cleaning
+           1.1 Add unique cols removal (all values of feature are the same)
       2. Analyze pictures => Think about using this to improve results
+
+@Todo 1. FICO Feature Reduction
+      2. SCIP Analyse
+        DONE Create df with mean, median, min/max, sgm
+        2.2 Compare Distribution to FICO
+      3. Check scaling
+        3.1 aka in what range does the scaled feature lie in the end
+      4. Run Regression with new Xpress data-> wait for new data
+      5. Experiment random noise:
+         Instead of Rule         A          B       Do:  A          A
+                    Instance     123        123          123        456
+      6. Use more SCIP feature
+      7. Write over Overfitting in Masterarbeit
+      8. Rename Features.
+        8.1 e.g.: #Presolve Global Entities to #MIP Instances
+        8.2 Ticks in deterministic work
+        8.3 In SCIP Avg pseudocosts are more or less bound change
+      9. User threshold for using predicted rule
+        9.1 aka If Model is biased towards Mixed rule, only choose mixed if predicted time gain is >= 10%(or so),
+            and vice versa
+
+
+Erkenntnisse SCIP FICO Xpress Comparison:
+1. Avg pseudcosts and avg bound change differ by a lot
+2. Avg strong branching iterations in root SCIP is just 0.0 for all instances
+3.
+

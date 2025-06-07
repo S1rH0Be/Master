@@ -72,35 +72,30 @@ def create_compatible_dataframe(df, fico_only=False):
 
     name_mapping_fico_only = {'#integer violations at root': 'nintpseudocost',
                     '#nodes in DAG': 'nnonlinearvars+nauxvars',#weiß nicht warum ich nur nauxvars bisher hatte #aber vielleicht sind auch nnonlinearexpr oder nnonconvexexpr interessant
-                    'Avg coefficient spread for convexification cuts': 'sumcoefspreadnonlinrows / nnonlinrows',#aber vielleicht ist auch sumcoefspreadactnonlinrows / nactnonlinrows interessant.
+                    'Avg coefficient spread for convexification cuts Mixed': 'sumcoefspreadnonlinrows / nnonlinrows',#aber vielleicht ist auch sumcoefspreadactnonlinrows / nactnonlinrows interessant.
                     'Presolve Global Entities': 'nintegervars',
                     'Presolve Columns': 'ncontinuousvars + nbinaryvars + nintegervars',
                     '#nonlinear violations at root': 'nviolconss', #'nnlviolcands waeren die anzahl der branching candidates fuers spatial branching, also die anzahl von variables in nichtkonvexen termen in verletzen nichtlinear constraints',
-                    #'Avg work for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed': 'avgstrongbranchrootiter' ist die Anzahl der LP iter, but including infeasible ones',
                     'Matrix Equality Constraints': 'nlinearequconss + nnonlinearequconss',
                     'Matrix NLP Formula': 'nnonlinearconss',
-                    #'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed': 'sumintpseudocost / nintpseudocost kann ich als Alternative anbieten',
                     '% vars in DAG (out of all vars)': '(nnonlinearvars + nauxvars) / (ncontinuousvars+nbinaryvars+nintegervars+nauxvars)',
                     '% vars in DAG integer (out of vars in DAG)': '(nnonlinearbinvars + nnonlinearintvars + nintauxvars) / (nnonlinearvars+nauxvars)',
                     '% vars in DAG unbounded (out of vars in DAG)': '(nnonlinearunboundedvars + nunboundedauxvars) / (nnonlinearvars+nauxvars)',
                     '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)': 'nquadexpr / (nquadexpr + nsuperquadexpr)',
-                    'Matrix Quadratic Elements': 'nquadcons'
+                    'Matrix Quadratic Elements': 'nquadcons',
+                    'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed': 'sumintpseudocost / nintpseudocost',
                     }
 
     name_mapping_with_more_scip_features = {'#integer violations at root': 'nintpseudocost',
                                             '#nodes in DAG': 'nnonlinearvars+nauxvars',
-                                            # weiß nicht warum ich nur nauxvars bisher hatte #aber vielleicht sind auch nnonlinearexpr oder nnonconvexexpr interessant
-                                            'Avg coefficient spread for convexification cuts': 'sumcoefspreadnonlinrows / nnonlinrows',
-                                            # aber vielleicht ist auch sumcoefspreadactnonlinrows / nactnonlinrows interessant.
+                                            'Avg coefficient spread for convexification cuts Mixed': 'sumcoefspreadnonlinrows / nnonlinrows',
                                             'Presolve Global Entities': 'nintegervars',
                                             'Presolve Columns': 'ncontinuousvars + nbinaryvars + nintegervars',
                                             '#nonlinear violations at root': 'nviolconss',
-                                            # 'nnlviolcands waeren die anzahl der branching candidates fuers spatial branching, also die anzahl von variables in nichtkonvexen termen in verletzen nichtlinear constraints',
-                                            # 'Avg work for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed': 'avgstrongbranchrootiter' ist die Anzahl der LP iter, but including infeasible ones',
+                                            'Avg strong branching iterations in root': 'avgstrongbranchrootiter',
                                             'Matrix Equality Constraints': 'nlinearequconss + nnonlinearequconss',
                                             'Matrix NLP Formula': 'nnonlinearconss',
-                                            # 'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed': 'sumintpseudocost / nintpseudocost kann ich als Alternative anbieten',
-                                            'Avg pseudocosts of integer variables': 'sumintpseudocost / nintpseudocost',
+                                            'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed': 'sumintpseudocost / nintpseudocost',
                                             '% vars in DAG (out of all vars)': '(nnonlinearvars + nauxvars) / (ncontinuousvars+nbinaryvars+nintegervars+nauxvars)',
                                             '% vars in DAG integer (out of vars in DAG)': '(nnonlinearbinvars + nnonlinearintvars + nintauxvars) / (nnonlinearvars+nauxvars)',
                                             '% vars in DAG unbounded (out of vars in DAG)': '(nnonlinearunboundedvars + nunboundedauxvars) / (nnonlinearvars+nauxvars)',
@@ -114,6 +109,7 @@ def create_compatible_dataframe(df, fico_only=False):
                                          ['Status Mixed', 'Status Int', 'Final solution time (cumulative) Mixed',
                                           'Final solution time (cumulative) Int', 'Cmp Final solution time (cumulative)',
                                           'Virtual Best'], index=df.index)
+
         for col_name in compa_df.columns:
             if col_name not in name_mapping_fico_only:
                 compa_df[col_name] = df[col_name]
@@ -373,7 +369,7 @@ def read_in_and_call_process(data_set: str, fico=True, to_csv=True):
 
         stefans_feats = scip_to_fic_df[['#integer violations at root',
                '#nodes in DAG',
-               'Avg coefficient spread for convexification cuts',
+               'Avg coefficient spread for convexification cuts Mixed',
                'Presolve Global Entities', 'Presolve Columns',
                '#nonlinear violations at root', 'Matrix Equality Constraints',
                'Matrix NLP Formula', '% vars in DAG (out of all vars)',
@@ -384,6 +380,8 @@ def read_in_and_call_process(data_set: str, fico=True, to_csv=True):
 
         stefans_feats.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/{data_set}/only_features/scip_{data_set}_fico_features.csv',
                                    index=False)
+
+
 
 read_in_and_call_process(data_set='default')
 read_in_and_call_process(data_set='no_pseudocosts')

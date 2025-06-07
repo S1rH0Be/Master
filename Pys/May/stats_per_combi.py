@@ -1,5 +1,7 @@
 import pandas as pd
 import os
+
+from Pys.May import scip_data
 from visualize_may import shifted_geometric_mean
 import matplotlib.pyplot as plt
 import numpy as np
@@ -175,7 +177,7 @@ def get_splitup_dfs(stat_version:str, stats_be_filtered:str):
                         df.to_csv(f'{stat_version}/{stats_be_filtered}/SplitUp/{model}_{imputer}_{scaler}_{df_name}.csv', index=False)
 
                         if stats_be_filtered == 'Accuracy':
-                            accuritaet, extreme_accuracy = accuracy(df, f'{model}_{imputer}_{scaler}_{df_name}')
+                            accuritaet, extreme_accuracy = accuracy_lin_for(df, f'{model}_{imputer}_{scaler}_{df_name}')
                             acc_df.loc[len(acc_df)] = [f'{model}_{imputer}_{scaler}_{df_name}', accuritaet, extreme_accuracy]
 
                         if stats_be_filtered == 'RunTime':
@@ -547,5 +549,226 @@ def compare_train_vs_test(scaled_or_unscaled:str, scaler, treffen='TreffenMasDoc
         ficos = [fico_test, fico_train]
         multiple_sgm_plot(ficos, title=f'FICO Xpress Comparison RunTime SGM Train vs Testset {scaler} {scaled_or_unscaled} Label')
 
+def visualize_fico_on_scip(scaled_or_unscaled:str, scaler, treffen='TreffenMasTrece'):
+    # Accuracy
+    scip_acc = pd.read_csv(
+        f'/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasDoce/Solo{scaler}/{scaled_or_unscaled}Label/Accuracy/scip_acc_df.csv',
+        index_col=0)
+    scip_acc.name = f'SCIP Default Accuracy {scaler} {scaled_or_unscaled} Label'
 
-compare_train_vs_test('scaled', 'Quantile', treffen='TreffenMasDoce',scip=True, fico=True)
+    fico_on_scip_acc = pd.read_csv(
+        f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffen}/FICOonSCIP/Solo{scaler}/{scaled_or_unscaled}Label/Accuracy/fico_on_scip_acc_df.csv',
+        index_col=0)
+    fico_on_scip_acc.name = f'FICO XPRESS On SCIP Accuracy {scaler} {scaled_or_unscaled} Label'
+
+    scip_vs_fico_on_scip_acc = [scip_acc, fico_on_scip_acc]
+    multiple_accuracy_plot(scip_vs_fico_on_scip_acc, f'FICO Xpress vs SCIP on SCIP Accuracy {scaled_or_unscaled} Label')
+
+    # RunTime
+    scip_sgm = pd.read_csv(
+        f'/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasDoce/Solo{scaler}/{scaled_or_unscaled}Label/SGM/scip_sgm_runtime.csv',
+        index_col=0)
+    scip_sgm.name = f'SCIP SGM {scaler} {scaled_or_unscaled} Label'
+
+    fico_on_scip_sgm = pd.read_csv(
+        f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffen}/FICOonSCIP/Solo{scaler}/{scaled_or_unscaled}Label/SGM/fico_on_scip_sgm_runtime.csv',
+        index_col=0)
+    fico_on_scip_sgm.name = f'FICO Xpress on SCIP SGM {scaler} {scaled_or_unscaled} Label'
+
+    fico_vs_scip_on_scip_sgm = [scip_sgm, fico_on_scip_sgm]
+
+    multiple_sgm_plot(fico_vs_scip_on_scip_sgm,
+                      title=f'FICO Xpress vs SCIP on SCIP Comparison RunTime SGM {scaler} {scaled_or_unscaled} Label')
+
+def ranking_feature_importance_fico(importance_df, title):
+    feature_names = ['Matrix Equality Constraints', 'Matrix Quadratic Elements',
+       'Matrix NLP Formula', 'Presolve Columns', 'Presolve Global Entities',
+       '#nodes in DAG', '#integer violations at root',
+       '#nonlinear violations at root', '% vars in DAG (out of all vars)',
+       '% vars in DAG unbounded (out of vars in DAG)',
+       '% vars in DAG integer (out of vars in DAG)',
+       '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
+       'Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
+       'Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
+       'Avg relative bound change for solving strong branching LPs for spatial branchings (not including infeasible ones) Mixed',
+       'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
+       '#spatial branching entities fixed (at the root) Mixed',
+       'Avg coefficient spread for convexification cuts Mixed']
+    ranking_df = pd.DataFrame(index=feature_names, columns=['Linear Score', 'Forest Score'])
+
+    linear_df = importance_df.iloc[:,:100]
+    forest_df = importance_df.iloc[:,100:]
+    lin_scores = pd.DataFrame(index=feature_names)
+    for_scores = pd.DataFrame(index=feature_names)
+    for col in linear_df.columns:
+        # Get ranks based on absolute value (highest gets rank 0)
+        ranked = linear_df[col].abs().rank(method='first', ascending=False) - 1
+        lin_scores[col] = ranked.astype(int)
+
+    for col in forest_df.columns:
+        ranked = forest_df[col].abs().rank(method='first', ascending=False) - 1
+        for_scores[col] = ranked.astype(int)
+
+    ranking_df['Linear Score'] = lin_scores.sum(axis=1)
+    ranking_df['Forest Score'] = for_scores.sum(axis=1)
+
+    return ranking_df
+
+def importance(treffen, scaler):
+    def feature_importance(data_frame, title: str = 'Feature Importance'):
+        feature_names = data_frame.index.tolist()
+        importance_dict = {}
+        linear_columns = [lin_col for lin_col in data_frame.columns if 'LinearRegression' in lin_col]
+        forest_columns = [for_col for for_col in data_frame.columns if 'RandomForest' in for_col]
+
+        for feature in feature_names:
+            minimum = min(data_frame.loc[feature,:])
+            mean = data_frame.loc[feature,:].mean()
+            importance_dict[feature] = shifted_geometric_mean(data_frame.loc[feature,:], abs(minimum)+abs(mean))
+
+        sgm_importance_df = pd.DataFrame.from_dict(importance_dict, orient='index' )
+
+        return sgm_importance_df
+
+    def importance_bar_plot(data_frame, title):
+        importance_df = feature_importance(data_frame, title)
+        values = importance_df.iloc[:,0].tolist()
+        # Create the plot
+        bar_colors = (['turquoise', 'magenta'])
+        plt.figure(figsize=(8, 5))
+        plt.bar([i for i in range(len(values))], values, color=bar_colors)
+        plt.title(title)
+        # plt.ylim(min(0.5, min(values) * 0.9), max(values) * 1.1)  # Set y-axis limits for visibility
+        # plt.ylim(0, 100)
+        plt.xticks(rotation=45, fontsize=6)
+        # Create custom legend entries with value annotations
+        # legend_labels = [f"{label}: {value}" for label, value in zip(labels, values)]
+        # plt.legend(bars, legend_labels, title="Values")
+        # Display the plot
+        plt.show()
+        plt.close()
+
+    def plot_importances_by_regressor(data_frame, title):
+        linear_cols = [col_name for col_name in data_frame.columns if 'LinearRegression' in col_name]
+        forest_cols = [col_name for col_name in data_frame.columns if 'RandomForest' in col_name]
+        linear_importance_df = data_frame[linear_cols]
+        forest_importance_df = data_frame[forest_cols]
+        importance_bar_plot(linear_importance_df, f'LinearRegression {title}')
+        importance_bar_plot(forest_importance_df, f'RandomForest {title}')
+
+    def get_score(data_series):
+        sorted = data_series.abs().sort_values(ascending=False)
+        score_dict = {feature:0 for feature in sorted.index.tolist()}
+        score = 0
+        for feature in sorted.index.tolist():
+            score_dict[feature] = score
+            score += 1
+
+        return score_dict
+
+    def get_importance_score_df(data_frame):
+        linear_cols = [col_name for col_name in data_frame.columns if 'LinearRegression' in col_name]
+        forest_cols = [col_name for col_name in data_frame.columns if 'RandomForest' in col_name]
+        linear_importance_df = data_frame[linear_cols]
+        forest_importance_df = data_frame[forest_cols]
+
+        linear_scores_dict = {feature_name:0 for feature_name in linear_importance_df.index.tolist()}
+        forest_scores_dict = {feature_name:0 for feature_name in forest_importance_df.index.tolist()}
+
+        # linear scores
+        for run in linear_importance_df.columns:
+            run_scores = get_score(linear_importance_df[run])
+            for feature in linear_scores_dict.keys():
+                linear_scores_dict[feature] += run_scores[feature]
+
+        # forest scores
+        for run in forest_importance_df.columns:
+            run_scores = get_score(forest_importance_df[run])
+            for feature in forest_scores_dict.keys():
+                forest_scores_dict[feature] += run_scores[feature]
+
+        return pd.DataFrame({'Linear': linear_scores_dict, 'Forest': forest_scores_dict})
+
+    def plot_importance_score(data_frame, title):
+        importance_df = get_importance_score_df(data_frame)
+        importance_df.plot(kind='bar', figsize=(10, 6), color=['turquoise', 'magenta'])
+        plt.title(title)
+        plt.ylabel('Importance Score')
+        plt.xlabel('Feature')
+        plt.xticks(rotation=270, fontsize=6)
+        plt.show()
+        plt.close()
+
+    fico_impo_scaled = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffen}/Solo{scaler}/ScaledLabel/Importance/fico_importance_df.csv',
+                            index_col=0)
+    fico_impo_unscaled = pd.read_csv(
+        f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffen}/Solo{scaler}/UnscaledLabel/Importance/fico_importance_df.csv',
+        index_col=0)
+
+    fico_impo_all_runs_scaled = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasDiez/ScaledLabel/Importance/fico_importance_df.csv')
+    fico_impo_all_runs_unscaled = pd.read_csv(
+        '/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasDiez/UnscaledLabel/Importance/fico_importance_df.csv')
+
+    scip_impo_scaled = pd.read_csv(
+        f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffen}/Solo{scaler}/ScaledLabel/Importance/scip_importance_df.csv',
+        index_col=0)
+    scip_impo_unscaled = pd.read_csv(
+        f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffen}/Solo{scaler}/UnscaledLabel/Importance/scip_importance_df.csv',
+        index_col=0)
+
+    # scip_impo_all_runs_scaled = pd.read_csv(
+    #     '/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasDiez/ScaledLabel/Importance/scip_importance_df.csv')
+    # scip_impo_all_runs_unscaled = pd.read_csv(
+    #     '/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasDiez/UnscaledLabel/Importance/scip_importance_df.csv')
+
+    # plot_importances_by_regressor(scip_impo_all_runs_unscaled, 'Feature Importance Unscaled Label')
+    # plot_importances_by_regressor(scip_impo_all_runs_scaled, 'Feature Importance Scaled Label')
+
+    plot_importance_score(scip_impo_unscaled, f'SCIP Importance {scaler} Unscaled Label')
+    plot_importances_by_regressor(scip_impo_unscaled, f'SCIP {scaler} Unscaled Label')
+
+    plot_importance_score(scip_impo_scaled, f'SCIP Importance {scaler} Scaled Label')
+    plot_importances_by_regressor(scip_impo_scaled, f'SCIP Importance {scaler} Scaled Label')
+
+def time_loss_per_prediction(scip_data, prediction_df):
+    """
+    Think about: Do i take the sgm of all prediction for a given instance?
+                Also für linear gibts nur eine prediction:) weil keine randomness (only rand is choice of train/test set)
+    """
+    def get_time_loss_per_prediction(df):
+        df['Time Loss'] = 0.0
+
+        for index, row in df.iterrows():
+            if row['Prediction']<0:
+                if row['Cmp Final solution time (cumulative)']>0:
+                    df.loc[index, 'Time Loss'] = np.round(row['Final solution time (cumulative) Int']-row['Final solution time (cumulative) Mixed'],6)
+            else:
+                if row['Cmp Final solution time (cumulative)']<0:
+                    df.loc[index,'Time Loss'] = np.round(row['Final solution time (cumulative) Mixed'] - row[
+                        'Final solution time (cumulative) Int'], 6)
+        return df
+
+    # create time_df
+    time_df = pd.DataFrame(index=scip_data.index, columns=['Matrix Name', 'Prediction',
+                                                           'Final solution time (cumulative) Mixed',
+                                                           'Final solution time (cumulative) Int',
+                                                           'Cmp Final solution time (cumulative)',
+                                                           'Virtual Best'])
+    time_df.loc[:, ['Matrix Name', 'Final solution time (cumulative) Mixed',
+                    'Final solution time (cumulative) Int', 'Cmp Final solution time (cumulative)', 'Virtual Best']] = scip_data.loc[:,['Matrix Name', 'Final solution time (cumulative) Mixed',
+                    'Final solution time (cumulative) Int', 'Cmp Final solution time (cumulative)',
+                                                                                                'Virtual Best']]
+    linear_prediction = prediction_df.iloc[:, 5]
+    time_df.loc[:, 'Prediction'] = linear_prediction
+    linear_time_df = get_time_loss_per_prediction(time_df)
+    linear_time_df.to_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/BilderTreffen/ScaledLabel/linear_time_loss.csv', index=False)
+
+    forest_prediction = prediction_df.iloc[:, 100:]
+
+# TODO I think i need regression to use all predictions not only relevant, such that everyth9ng matches
+#  for example: len(prediction)=234!=282
+
+scip_data_df = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/cleaned_scip/scip_default_clean_data.csv')
+
+quantile_scaled_prediction_df = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasTrece/FICOonSCIP/SoloQuantile/ScaledLabel/Prediction/fico_on_scip_prediction_df.csv')
+time_loss_per_prediction(scip_data_df, quantile_scaled_prediction_df)

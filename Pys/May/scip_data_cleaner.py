@@ -17,7 +17,6 @@ def find_broken_instances(df:pd.DataFrame, requirements_df:pd.DataFrame)->List:
             columns_to_check.append(col_name)
 
     dataframe, broken_instances = check_col_consistency(df[columns_to_check], requirements_df[columns_to_check], SCIP=True)
-
     return broken_instances
 
 def read_data(file_path_data, file_path_requirements):
@@ -29,8 +28,8 @@ def read_data(file_path_data, file_path_requirements):
        '#nonlinear violations at root', 'Matrix Equality Constraints',
        'Matrix NLP Formula', 'Matrix Quadratic Elements']
 
-    float_cols = ['Avg coefficient spread for convexification cuts',
-       'Avg pseudocosts of integer variables',
+    float_cols = ['Avg coefficient spread for convexification cuts Mixed',
+       'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
        '% vars in DAG (out of all vars)',
        '% vars in DAG integer (out of vars in DAG)',
        '% vars in DAG unbounded (out of vars in DAG)',
@@ -76,17 +75,7 @@ def main(file_path_dataset, file_path_requirements_xlsx, treffmasx, dataset_name
     broken_names = [name[0] for name in broken_instances_and_reason]
     clean_data = data[~data['Matrix Name'].isin(broken_names)]
     clean_data = create_label(clean_data)
-    clean_feats = clean_data[['#integer violations at root',
-                               '#nodes in DAG',
-                               'Avg coefficient spread for convexification cuts',
-                               'Presolve Global Entities', 'Presolve Columns',
-                               '#nonlinear violations at root', 'Matrix Equality Constraints',
-                               'Matrix NLP Formula', '% vars in DAG (out of all vars)',
-                               '% vars in DAG integer (out of vars in DAG)',
-                               'Matrix Quadratic Elements',
-                               '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
-                               '% vars in DAG unbounded (out of vars in DAG)',
-                               'Avg pseudocosts of integer variables']].copy()
+    clean_feats = clean_data[['#integer violations at root', '#nodes in DAG', 'Avg coefficient spread for convexification cuts Mixed', 'Presolve Global Entities', 'Presolve Columns', '#nonlinear violations at root', 'Avg strong branching iterations in root', 'Matrix Equality Constraints', 'Matrix NLP Formula', 'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed', '% vars in DAG (out of all vars)', '% vars in DAG integer (out of vars in DAG)', '% vars in DAG unbounded (out of vars in DAG)', '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)', 'Matrix Quadratic Elements']].copy()
 
     if to_csv:
         # Define the target directory
@@ -103,18 +92,18 @@ def main(file_path_dataset, file_path_requirements_xlsx, treffmasx, dataset_name
 
 
 data_set = 'default'
-treffen = 'TreffenMasNueve'
+treffen = 'TreffenMasQuince'
 main(f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/{data_set}/complete/scip_{data_set}_ready_to_ml.csv',
          '/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/default/complete/scip_requirements.xlsx',
           treffmasx = treffen,
           dataset_name = 'default',
           to_csv = True)
-data_set = 'no_pseudocosts'
-main(f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/{data_set}/complete/scip_{data_set}_ready_to_ml.csv',
-         '/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/default/complete/scip_requirements.xlsx',
-          treffmasx = treffen,
-          dataset_name = 'no_pseudocosts',
-          to_csv = True)
+# data_set = 'no_pseudocosts'
+# main(f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/{data_set}/complete/scip_{data_set}_ready_to_ml.csv',
+#          '/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/default/complete/scip_requirements.xlsx',
+#           treffmasx = treffen,
+#           dataset_name = 'no_pseudocosts',
+#           to_csv = True)
 
 
 
