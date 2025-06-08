@@ -129,7 +129,7 @@ def sgm(scaled_label=True):
     call_sgm_visualization(scaledlabel=scaled_label)
 
 # WHAT RULES DID THE MODELS CHOOSE
-def shares(scip_default_original_data, fico_original_data, scaledlabel=True):
+def shares(scip_default_original_data, fico_original_data, scaledlabel=True, complete_data=False):
     def get_share_mixed_and_int(data_frame):
         mixed = (data_frame > 0).sum().sum()
         pref_int = (data_frame < 0).sum().sum()
@@ -166,11 +166,12 @@ def shares(scip_default_original_data, fico_original_data, scaledlabel=True):
     for dataframe in dataframes.keys():
         histogram_shares(dataframes[dataframe], dataframe)
     # TODO: Keep in mind when changing base files
-    histogram_shares(fico_original_data, 'FICO Complete Set', origis=True)
-    histogram_shares(scip_default_original_data, 'SCIP Complete Set', origis=True)
+    if complete_data:
+        histogram_shares(fico_original_data, 'FICO Complete Set', origis=True)
+        histogram_shares(scip_default_original_data, 'SCIP Complete Set', origis=True)
 
 # ACCURACY BLOCK
-def accuracy(run=''):
+def accuracy(scaled_label=True):
     def get_sgm_series(pandas_series, shift):
         return shifted_geometric_mean(pandas_series, shift)
 
@@ -220,6 +221,18 @@ def accuracy(run=''):
         # Display the plot
         plt.show()
         plt.close()
+
+    def call_acc_visualization(scaledlabel, title_add_on=''):
+        if scaledlabel:
+            dataframes = get_files(global_path+'/ScaledLabel/Accuracy/', index_col=True)
+        else:
+            dataframes = get_files(global_path + '/UnscaledLabel/Accuracy/', index_col=True)
+
+        for dataframe in dataframes.keys():
+            df = dataframes[dataframe]
+            visualize_acc(df, filter_by='', title=dataframe+title_add_on)
+
+    call_acc_visualization(scaledlabel=scaled_label)
 
 # Feature Importances, as sgm
 def importance():
@@ -414,7 +427,8 @@ def create_scip_feature_name_df():
     return scip_feat_df
 
 def main(treffmas, scale_label=True, visualize_sgm=False, visualize_shares=False, visualize_accuracy=False,
-         visualize_importance=False, visualize_time_save=False, visualize_label=False, comp_ficip=False, title_add_on='Wurm'):
+         visualize_importance=False, visualize_time_save=False, visualize_label=False, comp_ficip=False, title_add_on='Wurm',
+         label_scaled=True):
 
     scip_default_base = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/cleaned_scip/scip_default_clean_data.csv')
     fico_base = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/clean_data_final_06_03.xlsx')
@@ -429,11 +443,11 @@ def main(treffmas, scale_label=True, visualize_sgm=False, visualize_shares=False
     global global_path
     global_path = f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffmas}'
     if visualize_sgm:
-        sgm()
+        sgm(scaled_label=label_scaled)
     if visualize_shares:
-        shares(scip_default_base, fico_base)
+        shares(scip_default_base, fico_base, scaledlabel=label_scaled, complete_data=True)
     if visualize_accuracy:
-        accuracy()
+        accuracy(label_scaled)
     if visualize_importance:
         importance()
     if visualize_time_save:
@@ -445,8 +459,8 @@ def main(treffmas, scale_label=True, visualize_sgm=False, visualize_shares=False
         fic_scip = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/fico_schnitt.csv')
         comp_fico_scip(scip_fic, fic_scip)
 
-main('TreffenMasVeinte/SoloQuantilePreScaled', scale_label=True, visualize_sgm=False, visualize_shares=True,
-     visualize_accuracy=False, visualize_importance=False, visualize_time_save=False, visualize_label=False,
+main('TreffenMasVeinte/SoloQuantilePreScaled', scale_label=True, visualize_sgm=False, visualize_shares=False,
+     visualize_accuracy=True, visualize_importance=False, visualize_time_save=False, visualize_label=False,
      comp_ficip=False, title_add_on='Only Quantile')
 
 
