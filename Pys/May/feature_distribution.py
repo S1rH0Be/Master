@@ -3,10 +3,31 @@ import numpy as np
 import pandas as pd
 
 from sklearn.preprocessing import QuantileTransformer
+from sklearn.impute import SimpleImputer
 
 from may_regression import shifted_geometric_mean
 
+def log_df(df):
+    for col in df.columns:
+        column = df[col]
+        value_pos = column[column >= 0]
+        value_neg = column[column < 0]
+        value_pos_log = np.log1p(value_pos)
+        value_neg_log = np.log1p(abs(value_neg)) * -1
+        column = pd.concat([value_pos_log, value_neg_log]).sort_index()
+        df.loc[:,col] = column
+    return df
+
+def replace_and_impute(df, imputation_rule):
+    df = df.replace([-1,-1.0], np.nan)
+    imputer = SimpleImputer(missing_values=np.nan, strategy=imputation_rule)
+    imputer.fit(df)
+    imputed_array = imputer.transform(df)
+    df_imputed = pd.DataFrame(imputed_array, columns=df.columns, index=df.index)
+    return df_imputed
+
 def create_quantile_scaled_features_zero_one(df):
+    df = replace_and_impute(df, 'mean')
     transformer = QuantileTransformer(output_distribution='normal', n_quantiles=int(len(df) * 0.8))
     transformed = transformer.fit_transform(df)
     transformed = transformed.transpose()
@@ -14,6 +35,14 @@ def create_quantile_scaled_features_zero_one(df):
     for i, col in enumerate(df.columns):
         df.loc[:, col] = (transformed[i] / abs(transformed[i]).max())
     return df
+
+def create_log_scaled_df(df, imputer):
+    df = replace_and_impute(df, imputer)
+    df_log = log_df(df)
+    # make it zero one
+    for i, col in enumerate(df_log.columns):
+        df_log.loc[:, col] = (df_log[col] / abs(df_log[col]).max())
+    return df_log
 
 def plot_histo(data, color, number_bins, title):
 
@@ -38,7 +67,6 @@ def feature_histo(scip_df, fico_df, columns: list, number_bins=10):
         color =  ['violet', 'purple']
         plot_histo(scip_data, color[0], number_bins, f'{col} SCIP scaled')
         plot_histo(fico_data, color[1], number_bins, f'{col} FICO scaled')
-
 
 def comp_scip_and_fico(scip_feature, fico_feature):
     scip_feat_names = [feat_name+' SCIP' for feat_name in scip_feature.columns]
@@ -86,12 +114,22 @@ common_cols = list(set(fico_feats.columns).intersection(scip_feats.columns))
 
 
 # Scaled features
-scip_scaled = create_quantile_scaled_features_zero_one(scip_feats)
-fico_scaled = create_quantile_scaled_features_zero_one(fico_feats)
-
-scip_scaled.to_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/scaled_feats/scip_quantile_feats.csv')
-fico_scaled.to_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/scaled_feats/fico_quantile_feats.csv')
-
-
+# scip_scaled = create_quantile_scaled_features_zero_one(scip_feats)
+# fico_scaled = create_quantile_scaled_features_zero_one(fico_feats)
+#
+# scip_scaled.to_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/scaled_feats/scip_quantile_feats.csv',
+#                    index=False)
+# fico_scaled.to_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/scaled_feats/fico_quantile_feats.csv',
+#                    index=False)
 
 # feature_histo(scip_scaled, fico_scaled, common_cols)
+
+
+scip_logged = create_log_scaled_df(scip_feats, 'mean')
+scip_logged.to_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/scaled_feats/scip_logged_feats.csv',
+                   index=False)
+fico_logged = create_log_scaled_df(fico_feats, 'mean')
+fico_logged.to_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/scaled_feats/fico_logged_feats.csv',
+                   index=False)
+
+# feature_histo(scip_logged, fico_logged, common_cols)

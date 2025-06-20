@@ -26,7 +26,6 @@ def accuracy_lin_for(data_frame, title:str, run=''):
         if filter_by != '':
             wanted_runs = [run for run in data_frame.columns if filter_by in run]
             acc_df = acc_df.loc[:, wanted_runs]
-
         linear_rows = [lin_rows for lin_rows in acc_df.index if 'LinearRegression' in lin_rows]
         linear_df = acc_df.loc[linear_rows, :]
 
@@ -55,8 +54,10 @@ def accuracy_lin_for(data_frame, title:str, run=''):
         # Display the plot
         plt.show()
         plt.close()
+        return lin_acc, lin_ex_acc, for_acc, for_ex_acc
 
-    visualize_acc(data_frame, filter_by='', title=title)
+    lin_acc, lin_ex_acc, for_acc, for_ex_acc = visualize_acc(data_frame, filter_by='', title=title)
+    return lin_acc, lin_ex_acc, for_acc, for_ex_acc
 
 def sgm(data_frame, title:str, complete=False):
 
@@ -124,7 +125,7 @@ def split_df_by_data_set(data_frame, col_or_row:str):
     return fico_df, scip_default_df, scip_no_pseudocosts_df
 
 def get_splitup_dfs(stat_version:str, stats_be_filtered:str):
-    scalers = ['StandardScaler', 'MinMaxScaler', 'RobustScaler', 'PowerTransformer', 'QuantileTransformer']
+    scalers = ['None', 'StandardScaler', 'MinMaxScaler', 'RobustScaler', 'PowerTransformer', 'QuantileTransformer']
     imputers = ['median', 'mean']
     models = ['LinearRegression', 'RandomForest']
 
@@ -177,7 +178,10 @@ def get_splitup_dfs(stat_version:str, stats_be_filtered:str):
                         df.to_csv(f'{stat_version}/{stats_be_filtered}/SplitUp/{model}_{imputer}_{scaler}_{df_name}.csv', index=False)
 
                         if stats_be_filtered == 'Accuracy':
-                            accuritaet, extreme_accuracy = accuracy_lin_for(df, f'{model}_{imputer}_{scaler}_{df_name}')
+                            df.set_index(df.columns[0], inplace=True, drop=True)
+                            lin_acc, lin_ex_acc, for_acc, for_ex_acc = accuracy_lin_for(df, f'{model}_{imputer}_{scaler}_{df_name}')
+                            accuritaet = max(lin_acc, for_acc)
+                            extreme_accuracy = max(lin_ex_acc, for_ex_acc)
                             acc_df.loc[len(acc_df)] = [f'{model}_{imputer}_{scaler}_{df_name}', accuritaet, extreme_accuracy]
 
                         if stats_be_filtered == 'RunTime':
@@ -222,7 +226,7 @@ def get_splitup_dfs(stat_version:str, stats_be_filtered:str):
 # get_splitup_dfs('/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasDiez/UnscaledLabel', 'RunTime')
 
 # SCALED
-# get_splitup_dfs('/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasDiez/ScaledLabel', 'Accuracy')
+# get_splitup_dfs('/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasVeinteUno/ScaledLabel', 'Accuracy')
 # get_splitup_dfs('/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasDiez/ScaledLabel', 'Importance')
 # get_splitup_dfs('/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasDiez/ScaledLabel', 'Prediction')
 # get_splitup_dfs('/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasDiez/ScaledLabel', 'RunTime')
@@ -329,7 +333,7 @@ def multiple_accuracy_plot(data_frames, title: str, run=''):
         plt.show()
         plt.close()
 
-    visualize_acc(data_frames, filter_by='', title=title)
+    visualize_acc(data_frames, filter_by=run, title=title)
 
 def visualisiere_sgm(treffen:str, scaler:str, unscaled=True, scaled=True):
     if unscaled:
@@ -771,4 +775,5 @@ def time_loss_per_prediction(scip_data, prediction_df):
 scip_data_df = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/cleaned_scip/scip_default_clean_data.csv')
 
 quantile_scaled_prediction_df = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasTrece/FICOonSCIP/SoloQuantile/ScaledLabel/Prediction/fico_on_scip_prediction_df.csv')
-time_loss_per_prediction(scip_data_df, quantile_scaled_prediction_df)
+# time_loss_per_prediction(scip_data_df, quantile_scaled_prediction_df)
+

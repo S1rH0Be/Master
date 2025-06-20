@@ -100,7 +100,7 @@ def create_compatible_dataframe(df):
     name_mapping = {'#integer violations at root': 'nintpseudocost',
                     '#nodes in DAG': 'nexpr', #aber vielleicht sind auch nnonlinearexpr oder nnonconvexexpr interessant
                     'Avg coefficient spread for convexification cuts Mixed': 'sumcoefspreadnonlinrows / nnonlinrows',#aber vielleicht ist auch sumcoefspreadactnonlinrows / nactnonlinrows interessant.
-                    'Presolve Global Entities': 'nintegervars',
+                    'Presolve Global Entities': 'nintegervars', # should be everything you can branch on 
                     'Presolve Columns': 'ncontinuousvars + nbinaryvars + nintegervars',
                     '#nonlinear violations at root': 'nviolconss', #'nnlviolcands waeren die anzahl der branching candidates fuers spatial branching, also die anzahl von variables in nichtkonvexen termen in verletzen nichtlinear constraints',
                     #'Avg work for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed': 'avgstrongbranchrootiter ist die Anzahl der LP iter, but including infeasible ones',

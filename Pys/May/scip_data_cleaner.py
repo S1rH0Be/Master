@@ -1,23 +1,47 @@
 from typing import List
 import pandas as pd
 import os
+
+
 from ugly import check_col_consistency
 
+def drop_trivial(df):
+    # Input: DataFrame
+    # Output: DataFrame without trivial columns, list of column names which got dropped
 
+    dropped_cols = []
+    for col in df.columns:
+        if df[col].nunique()==1:
+            dropped_cols.append(col)
+            df.drop(col, axis=1, inplace=True)
 
+    if len(dropped_cols)>0:
+        print("Trivial ", dropped_cols)
+
+    return df, dropped_cols
+
+def each_name_thrice(df, column_name):
+    broken_instances = []
+    matrix_names = df[column_name].unique()
+    for matrix_name in matrix_names:
+        if len(df[df[column_name]==matrix_name])!=3:
+            broken_instances.append(matrix_name)
+    return broken_instances
 
 def find_broken_instances(df:pd.DataFrame, requirements_df:pd.DataFrame)->List:
     """ requirement_dict has as keys column names and as values a list of requirements the instances have to
      fulfill in this column """
     # only take columns where there are requirements for
     columns_to_check = []
-
+    df, dropped_columns = drop_trivial(df)
+    random_number_of_times = each_name_thrice(df, 'Matrix Name')
+    if len(random_number_of_times)>0:
+        df = df[~df['Matrix Name'].isin(random_number_of_times)]
     for col_name in df.columns:
         if col_name in requirements_df.columns:
             columns_to_check.append(col_name)
-
     dataframe, broken_instances = check_col_consistency(df[columns_to_check], requirements_df[columns_to_check], SCIP=True)
-    return broken_instances
+    return df, broken_instances
 
 def read_data(file_path_data, file_path_requirements):
     data = pd.read_csv(file_path_data)
@@ -71,39 +95,54 @@ def create_label(data_frame):
 def main(file_path_dataset, file_path_requirements_xlsx, treffmasx, dataset_name, to_csv=True):
     data, requirements = read_data(file_path_dataset, file_path_requirements_xlsx)
 
-    broken_instances_and_reason = find_broken_instances(data, requirements)
+    data, broken_instances_and_reason = find_broken_instances(data, requirements)
     broken_names = [name[0] for name in broken_instances_and_reason]
     clean_data = data[~data['Matrix Name'].isin(broken_names)]
     clean_data = create_label(clean_data)
-    clean_feats = clean_data[['#integer violations at root', '#nodes in DAG', 'Avg coefficient spread for convexification cuts Mixed', 'Presolve Global Entities', 'Presolve Columns', '#nonlinear violations at root', 'Avg strong branching iterations in root', 'Matrix Equality Constraints', 'Matrix NLP Formula', 'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed', '% vars in DAG (out of all vars)', '% vars in DAG integer (out of vars in DAG)', '% vars in DAG unbounded (out of vars in DAG)', '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)', 'Matrix Quadratic Elements']].copy()
+    wish_columns_to_have = ['#integer violations at root', '#nodes in DAG',
+                              'Avg coefficient spread for convexification cuts Mixed', 'Presolve Global Entities',
+                              'Presolve Columns', '#nonlinear violations at root',
+                              'Avg strong branching iterations in root', 'Matrix Equality Constraints',
+                              'Matrix NLP Formula',
+                              'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
+                              '% vars in DAG (out of all vars)', '% vars in DAG integer (out of vars in DAG)',
+                              '% vars in DAG unbounded (out of vars in DAG)',
+                              '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
+                              'Matrix Quadratic Elements']
+    intersection_wish_and_reality = [name for name in wish_columns_to_have if name in clean_data.columns]
+    clean_feats = clean_data[intersection_wish_and_reality].copy()
 
     if to_csv:
         # Define the target directory
         save_dir = f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffmasx}/CSVs/scip_bases/cleaned_scip'
-
+        # save_dir = '/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/cleaned_scip'
         # Create the directory if it doesn't exist
         os.makedirs(save_dir, exist_ok=True)
 
-        clean_data.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/cleaned_scip/scip_{dataset_name}_clean_data.csv',
+        clean_data.to_csv(f'{save_dir}/scip_{dataset_name}_clean_data.csv',
                             index=False)
-        clean_feats.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/cleaned_scip/scip_{dataset_name}_clean_feats.csv',
+        clean_feats.to_csv(f'{save_dir}/scip_{dataset_name}_clean_feats.csv',
                             index=False)
+    print(len(clean_data))
     return clean_data, broken_instances_and_reason
 
 
+data_set = '345'
+treffen = 'TreffenMasVeinteDos'
+main(f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/{data_set}/complete/scip_{data_set}_ready_to_ml.csv',
+         '/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/default/complete/scip_requirements.xlsx',
+          treffmasx = treffen,
+          dataset_name = '345',
+          to_csv = True)
+
 data_set = 'default'
-treffen = 'TreffenMasQuince'
+treffen = 'TreffenMasVeinteDos'
 main(f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/{data_set}/complete/scip_{data_set}_ready_to_ml.csv',
          '/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/default/complete/scip_requirements.xlsx',
           treffmasx = treffen,
           dataset_name = 'default',
           to_csv = True)
-# data_set = 'no_pseudocosts'
-# main(f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/{data_set}/complete/scip_{data_set}_ready_to_ml.csv',
-#          '/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/default/complete/scip_requirements.xlsx',
-#           treffmasx = treffen,
-#           dataset_name = 'no_pseudocosts',
-#           to_csv = True)
+
 
 
 

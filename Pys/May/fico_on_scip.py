@@ -2,11 +2,9 @@ import time
 import pandas as pd
 import numpy as np
 import os
-import joblib
 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
 
@@ -323,5 +321,7 @@ def main(treffplusx='Wurm', label_scalen= False):
 
 # main(treffplusx=treffplustage, label_scalen=False)
 # main(treffplusx=treffplustage, label_scalen=True)
+
+
 
 

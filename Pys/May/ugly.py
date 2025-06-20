@@ -223,6 +223,15 @@ def check_col_consistency(df, requirement_df, SCIP=False):
                     print(f"Instance '{row['Matrix Name']}' is not a string.")
                 broken_instances.append((row['Matrix Name'], 'Not string'))
         return broken_instances
+
+    def each_name_thrice(df, column_name):
+        broken_instances = []
+
+        matrix_names = df[column_name].unique()
+        for matrix_name in matrix_names:
+            if len(df[df[column_name] == matrix_name]) != 3:
+                broken_instances.append((matrix_name, 'Exist unequal 3 many times'))
+        return broken_instances
     #check if instance terminates in a valid state
     def valid_final_state_fico(df, column_name):
         valid_states = ['Optimal', 'Timeout', 'Fail','Infeasible']
@@ -268,9 +277,9 @@ def check_col_consistency(df, requirement_df, SCIP=False):
         return broken_instances
 
     def valid_permutation_seed_scip(df, column_name):
-        valid_perms = [0,1,2]
+        valid_perms = [0, 1, 2, 3, 4, 5]
         broken_instances = []
-        for index,row in df.iterrows():
+        for index, row in df.iterrows():
             if row[column_name] not in valid_perms:
                 if DEBUG:
                     print(f"Instance '{row['Matrix Name']}' has an invalid permutation seed.")
@@ -299,14 +308,7 @@ def check_col_consistency(df, requirement_df, SCIP=False):
                 broken_instances.append((df['Matrix Name'].loc[index], 'Not float nor -1'))
         return broken_instances
     # each instance name should appear three times; once for each permutaion
-    def each_name_thrice(df, column_name):
-        broken_instances = []
 
-        matrix_names = df[column_name].unique()
-        for matrix_name in matrix_names:
-            if len(df[df[column_name]==matrix_name])<3:
-                broken_cols.append((matrix_name, 'Less than 3'))
-        return broken_instances
 
     
     req_dict = {'Strings': is_string, 'Integers': convert_column_to_integer, 'nonneg': is_non_neg, 
@@ -317,8 +319,8 @@ def check_col_consistency(df, requirement_df, SCIP=False):
                 '[0,1,2]':valid_permutation_seed_scip,
                 'nonneg_or_minus_one': nonneg_or_minus_one, 'Each_name_3_Times': each_name_thrice}
     #make requirement_df usable
-    def clean_requirements(req_df, scip):
-        if not SCIP:
+    def clean_requirements(req_df, scip=False):
+        if not scip:
             req_df = req_df.drop(req_df.columns[-1], axis=1)
         req_df.columns = df.columns
         return req_df

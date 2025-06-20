@@ -1,9 +1,10 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-from may_regression import shifted_geometric_mean
 import numpy as np
 import sys
 import os
+import re
+
 '''
 @TODO rewrite it again.........
 So das ich nur den ordner inputten muss und es dann von da alles alleine findet aka 
@@ -45,6 +46,26 @@ def get_files(directory_path:str, index_col=False):
                 print(f"Error reading {filename}: {e}")
     return dataframes
 
+def shifted_geometric_mean(values, shift):
+    values = np.array(values)
+    if values.dtype == 'object':
+        # Attempt to convert to float
+        values = values.astype(float)
+
+    # Shift the values by the constant
+    # Check if shift is large enough
+    if shift <= -values.min():
+        raise ValueError(f"Shift too small. Minimum value is {values.min()}, so shift must be > {-values.min()}")
+
+    shifted_values = values + shift
+
+    shifted_values_log = np.log(shifted_values)  # Step 1: Log of each element in shifted_values
+
+    log_mean = np.mean(shifted_values_log)  # Step 2: Compute the mean of the log values
+    geo_mean = np.exp(log_mean) - shift
+    # geo_mean = np.round(geo_mean, 6)
+    return geo_mean
+
 # SGM RUNTIME BLOCK
 def sgm(scaled_label=True):
 
@@ -58,9 +79,9 @@ def sgm(scaled_label=True):
         return sgm_sgm_df
 
     def relative_to_default(value_dict:dict, dataset:str):
-        if dataset == 'fico':
+        if dataset.lower() == 'fico':
             default_rule = 'Mixed'
-        elif dataset == 'scip':
+        elif dataset.lower() == 'scip':
             default_rule = 'Int'
         else:
             print(f'{dataset} is not a valid dataset')
@@ -101,7 +122,7 @@ def sgm(scaled_label=True):
         plt.figure(figsize=(8, 5))
         plt.bar(labels, values, color=bar_colors)
         plt.title(title)
-        if data_set == 'fico':
+        if data_set.lower() == 'fico':
             plt.ylim(0.5, 1.35)  # Set y-axis limits for visibility
         else:
             plt.ylim(0.8, 1.06)  # Set y-axis limits for visibility
@@ -117,8 +138,9 @@ def sgm(scaled_label=True):
             dataframes = get_files(global_path + '/UnscaledLabel/SGM/', index_col=True)
 
         for dataframe in dataframes.keys():
+
             df = dataframes[dataframe]
-            sgm_plot(df, dataframe+' combined', dataframe[:4])
+            sgm_plot(df, dataframe+' combined', dataframe[:4].lower())
             linear_runs = [index for index in df.index if 'LinearRegression' in index]
             forest_runs = [index for index in df.index if 'RandomForest' in index]
             linear_df = df.loc[linear_runs, :]
@@ -162,16 +184,21 @@ def shares(scip_default_original_data, fico_original_data, scaledlabel=True, com
         dataframes = get_files(global_path+'/ScaledLabel/Prediction/', index_col=True)
     else:
         dataframes = get_files(global_path+'/UnscaledLabel/Prediction/', index_col=True)
-
+    print(global_path+'/ScaledLabel/Prediction/')
     for dataframe in dataframes.keys():
-        histogram_shares(dataframes[dataframe], dataframe)
+        df = dataframes[dataframe]
+        lin_cols = [col_name for col_name in df.columns if "Linear" in col_name]
+        forest_df = [col_name for col_name in df.columns if "Forest" in col_name]
+        histogram_shares(df[lin_cols], title_add_on=dataframe+" Linear", origis=False)
+        histogram_shares(df[forest_df], title_add_on=dataframe+" Forest", origis=False)
+        histogram_shares(df, dataframe+" Lin and For Combined", origis=False)
     # TODO: Keep in mind when changing base files
     if complete_data:
         histogram_shares(fico_original_data, 'FICO Complete Set', origis=True)
         histogram_shares(scip_default_original_data, 'SCIP Complete Set', origis=True)
 
 # ACCURACY BLOCK
-def accuracy(scaled_label=True):
+def accuracy_visualize(scaled_label=True, title_add_on='', plot=True):
     def get_sgm_series(pandas_series, shift):
         return shifted_geometric_mean(pandas_series, shift)
 
@@ -184,7 +211,7 @@ def accuracy(scaled_label=True):
         return sgm_accuracy, sgm_extreme_accuracy
 
 
-    def visualize_acc(data_frame, filter_by:str, title: str = 'Accuracy'):
+    def visualize_acc(data_frame, filter_by:str, title: str = 'Accuracy', plot=True):
         acc_df = data_frame.copy()
         # if no corresponding acc is found just plot it as 0
         lin_acc, lin_ex_acc, for_acc, for_ex_acc = 0, 0, 0, 0
@@ -209,20 +236,22 @@ def accuracy(scaled_label=True):
                 for_acc, for_ex_acc = get_sgm_acc(forest_df)
 
         values = [lin_acc, lin_ex_acc, for_acc, for_ex_acc]
+        print(values)
 
-        # Create the plot
-        bar_colors = (['turquoise', 'turquoise', 'magenta', 'magenta'])
-        plt.figure(figsize=(8, 5))
-        plt.bar(['LinAcc', 'LinExAcc', 'ForAcc', 'ForExAcc'], values, color=bar_colors)
-        plt.title(title)
-        plt.ylim(0, 105)  # Set y-axis limits for visibility
-        plt.xticks(rotation=45, fontsize=6)
-        # Create custom legend entries with value annotations
-        # Display the plot
-        plt.show()
-        plt.close()
+        if plot:
+            # Create the plot
+            bar_colors = (['turquoise', 'turquoise', 'magenta', 'magenta'])
+            plt.figure(figsize=(8, 5))
+            plt.bar(['LinAcc', 'LinExAcc', 'ForAcc', 'ForExAcc'], values, color=bar_colors)
+            plt.title(title)
+            plt.ylim(0, 105)  # Set y-axis limits for visibility
+            plt.xticks(rotation=45, fontsize=6)
+            # Create custom legend entries with value annotations
+            # Display the plot
+            plt.show()
+            plt.close()
 
-    def call_acc_visualization(scaledlabel, title_add_on=''):
+    def call_acc_visualization(scaledlabel, title_add_on='', plot=True):
         if scaledlabel:
             dataframes = get_files(global_path+'/ScaledLabel/Accuracy/', index_col=True)
         else:
@@ -230,12 +259,14 @@ def accuracy(scaled_label=True):
 
         for dataframe in dataframes.keys():
             df = dataframes[dataframe]
-            visualize_acc(df, filter_by='', title=dataframe+title_add_on)
-
-    call_acc_visualization(scaledlabel=scaled_label)
+            visualize_acc(df, filter_by='', title=dataframe+title_add_on, plot=plot)
+    if plot:
+        call_acc_visualization(scaledlabel=scaled_label, title_add_on=title_add_on)
+    else:
+        call_acc_visualization(scaledlabel=scaled_label, plot=False)
 
 # Feature Importances, as sgm
-def importance():
+def importance(treffen):
     def feature_importance(data_frame, title: str = 'Feature Importance'):
         feature_names = data_frame.index.tolist()
         importance_dict = {}
@@ -291,6 +322,7 @@ def importance():
     def get_importance_score_df(data_frame, title):
         linear_cols = [col_name for col_name in data_frame.columns if 'LinearRegression' in col_name]
         forest_cols = [col_name for col_name in data_frame.columns if 'RandomForest' in col_name]
+
         linear_importance_df = data_frame[linear_cols]
         forest_importance_df = data_frame[forest_cols]
 
@@ -308,7 +340,6 @@ def importance():
             run_scores = get_score(forest_importance_df[run])
             for feature in forest_scores_dict.keys():
                 forest_scores_dict[feature] += run_scores[feature]
-
         df = pd.DataFrame({
             'Feature': list(linear_scores_dict.keys()),
             'Linear': list(linear_scores_dict.values()),
@@ -319,12 +350,15 @@ def importance():
 
         # Sort by 'Combined' in ascending order (smallest on top)
         df = df.sort_values(by='Combined', ascending=True)
-        df.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasQuince/FICOonSCIP/SoloQuantile/ScaledLabel/Importance/{title}.csv', index=False)
+        title = title.strip().replace(' ', '_').lower()
+
+        df.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/Präsis/treffen_11-06/FeatImpo/{title}.csv', index=False)
 
         return pd.DataFrame({'Linear': linear_scores_dict, 'Forest': forest_scores_dict})
 
     def plot_importance(data_frame, title):
         importance_df = get_importance_score_df(data_frame, title)
+
         importance_df.plot(kind='bar', figsize=(10, 6), color=['turquoise', 'magenta'])
         plt.title(title)
         plt.ylabel('Importance Score')
@@ -333,6 +367,10 @@ def importance():
         plt.show()
         plt.close()
 
+    impo_dfs = get_files(f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffen}/ScaledLabel/Importance', index_col=True)
+
+    for impo_df in impo_dfs:
+        plot_importance(impo_dfs[impo_df], impo_df)
 # abs time save
 def time_save(scip_default_original_data, fico_original_data):
     def create_time_save_df(data_frame):
@@ -426,45 +464,154 @@ def create_scip_feature_name_df():
                         index=False)
     return scip_feat_df
 
-def main(treffmas, scale_label=True, visualize_sgm=False, visualize_shares=False, visualize_accuracy=False,
-         visualize_importance=False, visualize_time_save=False, visualize_label=False, comp_ficip=False, title_add_on='Wurm',
-         label_scaled=True):
+def feature_reduction_graph(feature_ranking:str, data_set:str, lin_accuracy=None, lin_sgm=None, for_accuracy=None,
+                            for_sgm=None):
 
-    scip_default_base = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/cleaned_scip/scip_default_clean_data.csv')
-    fico_base = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/clean_data_final_06_03.xlsx')
-    fico_feats = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/base_feats_no_cmp_918_24_01.xlsx')
-    scip_feature_names = create_scip_feature_name_df()
+    if (lin_accuracy is None) or (lin_sgm is None) or (for_accuracy is None) or (for_sgm is None):
+        print(f'None values inputed.')
+        sys.exit(1)
 
+    number_of_features = max(len(lin_accuracy), len(lin_sgm), len(for_accuracy), len(for_sgm))
+    x_labels = [str(i) for i in range(number_of_features, 0, -1)]
 
-    if scale_label:
-        scip_default_base.loc[:, 'Cmp Final solution time (cumulative)'] = label_scaling(scip_default_base.loc[:, 'Cmp Final solution time (cumulative)'])
-        fico_base.loc[:, 'Cmp Final solution time (cumulative)'] = label_scaling(fico_base.loc[:, 'Cmp Final solution time (cumulative)'])
+    lin_sgm = (np.array(lin_sgm) * 100).tolist()
+    lin_sgm = [value[0] for value in lin_sgm]
 
-    global global_path
-    global_path = f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffmas}'
-    if visualize_sgm:
-        sgm(scaled_label=label_scaled)
-    if visualize_shares:
-        shares(scip_default_base, fico_base, scaledlabel=label_scaled, complete_data=True)
-    if visualize_accuracy:
-        accuracy(label_scaled)
-    if visualize_importance:
-        importance()
-    if visualize_time_save:
-        time_save(scip_default_base, fico_base)
-    if visualize_label:
-        label(scip_default_base, fico_base, scale_label)
-    if comp_ficip:
-        scip_fic = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/scip_default_schnitt.csv')
-        fic_scip = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/fico_schnitt.csv')
-        comp_fico_scip(scip_fic, fic_scip)
-
-main('TreffenMasVeinte/SoloQuantilePreScaled', scale_label=True, visualize_sgm=False, visualize_shares=False,
-     visualize_accuracy=True, visualize_importance=False, visualize_time_save=False, visualize_label=False,
-     comp_ficip=False, title_add_on='Only Quantile')
+    for_sgm = (np.array(for_sgm) * 100).tolist()
+    for_sgm = [value[0] for value in for_sgm]
+    print(f'In feature_reduction_graph. SGM Forest: {for_sgm}')
 
 
 
+    if feature_ranking.lower() == 'combined':
+        colors = ['gold', 'orange', 'turquoise', 'seagreen']
+        plt.figure(figsize=(8, 6))
+        plt.plot(lin_accuracy['Extreme Accuracy'], color=colors[0])
+        plt.plot(for_accuracy['Extreme Accuracy'], color=colors[1])
+        plt.plot(lin_sgm, color=colors[2])
+        plt.plot(for_sgm, color=colors[3])
+        plt.plot(for_sgm)
+        plt.title(label=f'{data_set.upper()} Linear Accuracy and SGM on Top x-Features Combined')
+        plt.axvline(x=15, color='red', linestyle='--', label='Threshold')
+        plt.ylim(0, 115)
+        plt.legend(['Extreme Accuracy Linear', 'Extreme Accuracy Random Forest', 'SGM Linear', 'SGM Random Forest'])
+        plt.xticks(ticks=range(len(lin_accuracy)), labels=x_labels)
+        plt.show()
+    elif feature_ranking.lower() == 'linear':
+        # Linear
+        plt.figure(figsize=(8, 6))
+        plt.plot(lin_accuracy)
+        plt.plot(lin_sgm)
+        plt.title(label='FICO Linear Accuracy and SGM on Top-X Linear-Features')
+        plt.axvline(x=13, color='red', linestyle='--', label='Threshold')
+        plt.axvline(x=14, color='orange', linestyle='--', label='Threshold')
+        plt.axvline(x=15, color='gold', linestyle='--', label='Threshold')
+        plt.legend(['Accuracy', 'Extreme Accuracy', 'SGM'])
+        plt.xticks(ticks=range(len(lin_accuracy)), labels=x_labels)
+        plt.ylim(0, 115)
+        plt.show()
+    elif feature_ranking.lower() == 'forest':
+        # Forest
+        plt.figure(figsize=(8, 6))
+        plt.plot(for_accuracy)
+        plt.plot(for_sgm)
+        plt.title(label='FICO Forest Accuracy and SGM on Top-X Forest-Features')
+        plt.legend(['Accuracy', 'Extreme Accuracy', 'SGM'])
+        plt.xticks(ticks=range(len(for_accuracy)), labels=x_labels)
+        plt.axvline(x=13, color='red', linestyle='--', label='Threshold')
+        plt.ylim(0, 115)
+        plt.show()
+        plt.close()
+    else:
+        print(f'Feature ranking {feature_ranking} not implemented.')
+        sys.exit(1)
+
+def plot_feature_reduction(treffen:str, fico_or_scip:str, feature_ranking='combined'):
+    """
+    Plots SGM and Extreme Accuracy from linear model vs the random forest regressor
+    TODO: Add 10% instances and plot them also
+    """
+    path = f'/Users/fritz/Downloads/ZIB/Master/Treffen/Präsis/{treffen}/FeatReduction/{fico_or_scip}/'
+    dfs = get_files(path)
+    accuracy_keys = [key for key in dfs.keys() if 'acc' in key.lower()]
+    sgm_keys = [key for key in dfs.keys() if 'sgm' in key.lower()]
+    print(f'{feature_ranking}')
+
+    if feature_ranking == 'combined':
+        acc_lin_key = [key for key in accuracy_keys if 'combined linear' in key.lower()][0]
+        acc_for_key = [key for key in accuracy_keys if 'combined forest' in key.lower()][0]
+
+        sgm_lin_key = [key for key in sgm_keys if 'combined linear' in key.lower()][0]
+        sgm_for_key = [key for key in sgm_keys if 'combined forest' in key.lower()][0]
+        print(f'AccLinKeys: {acc_lin_key}\nSGMLinKeys: {sgm_lin_key}')
+        print(f'AccForKeys: {acc_for_key}\nSGMForKeys: {sgm_for_key}')
+
+        feature_reduction_graph(feature_ranking, lin_accuracy=dfs[acc_lin_key], lin_sgm=dfs[sgm_lin_key],
+                                for_accuracy=dfs[acc_for_key], for_sgm=dfs[sgm_for_key], data_set=fico_or_scip)
+
+    elif feature_ranking == 'linear':
+        acc_lin_key = [key for key in accuracy_keys if 'linear linear' in key.lower()][0]
+        sgm_lin_key = [key for key in sgm_keys if 'linear linear' in key.lower()][0]
+        print(f'AccKeys: {acc_lin_key}\nSGMKeys: {sgm_lin_key}')
+        feature_reduction_graph(feature_ranking, lin_accuracy=dfs[acc_lin_key], lin_sgm=dfs[sgm_lin_key],
+                                for_accuracy=[], for_sgm=[], data_set=fico_or_scip)
+
+    elif feature_ranking == 'forest':
+        acc_for_key = [key for key in accuracy_keys if 'forest forest' in key.lower()][0]
+        sgm_for_key = [key for key in sgm_keys if 'forest forest' in key.lower()][0]
+        print(f'AccKeys: {acc_for_key}\nSGMKeys: {sgm_for_key}')
+        feature_reduction_graph(feature_ranking, lin_accuracy=[], lin_sgm=[],
+                                for_accuracy=dfs[acc_for_key], for_sgm=dfs[sgm_for_key], data_set=fico_or_scip)
+
+
+plot_feature_reduction('treffen_02-07', 'fico', feature_ranking='linear')
+plot_feature_reduction('treffen_02-07', 'fico', feature_ranking='forest')
+plot_feature_reduction('treffen_02-07', 'fico', feature_ranking='combined')
+
+
+
+
+
+
+
+
+# def main(treffmas, scale_label=True, visualize_sgm=False, visualize_shares=False, visualize_accuracy=False,
+#          visualize_importance=False, visualize_time_save=False, visualize_label=False, comp_ficip=False,
+#          title_add_on='Wurm'):
+#     print('Proper bases amigo?')
+#     scip_default_base = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/cleaned_scip/scip_default_clean_data.csv')
+#     fico_base = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/clean_data_final_06_03.xlsx')
+#
+#     if scale_label:
+#         scip_default_base.loc[:, 'Cmp Final solution time (cumulative)'] = label_scaling(scip_default_base.loc[:, 'Cmp Final solution time (cumulative)'])
+#         fico_base.loc[:, 'Cmp Final solution time (cumulative)'] = label_scaling(fico_base.loc[:, 'Cmp Final solution time (cumulative)'])
+#
+#     global global_path
+#     global_path = f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffmas}'
+#     if visualize_sgm:
+#         sgm(scaled_label=scale_label)
+#     if visualize_shares:
+#         shares(scip_default_base, fico_base, scaledlabel=scale_label, complete_data=True)
+#     if visualize_accuracy:
+#         accuracy_visualize(scale_label, title_add_on)
+#     if visualize_importance:
+#         importance(treffmas)
+#     if visualize_time_save:
+#         time_save(scip_default_base, fico_base)
+#     if visualize_label:
+#         label(scip_default_base, fico_base, scale_label)
+#     if comp_ficip:
+#         scip_fic = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/scip_default_schnitt.csv')
+#         fic_scip = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/fico_schnitt.csv')
+#         comp_fico_scip(scip_fic, fic_scip)
+
+# main('TreffenMasVeinteTres/prescaled/logged/minmax', scale_label=True, visualize_sgm=False, visualize_shares=False,
+#      visualize_accuracy=True, visualize_importance=False, visualize_time_save=False, visualize_label=False,
+#      comp_ficip=False, title_add_on=' Logged MinMax')
+
+# main('TreffenMasVeinteQuattro/prescaled/logged/quantile', scale_label=True, visualize_sgm=False,
+#      visualize_shares=False, visualize_accuracy=False, visualize_importance=False, visualize_time_save=False,
+#      visualize_label=False, comp_ficip=False, title_add_on=' Quantile Logged')
 
 
 

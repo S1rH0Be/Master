@@ -174,7 +174,6 @@ def extract_instance_data_mix0(file_path):
             line = line.strip()
 
             # Extract matrix name (the string between the last slash and the next dot)
-            # Extract matrix name (the string between the last slash and the next dot)
             if line.startswith('SCIP> read'):
                 matrix_name = get_name(line)
 
@@ -303,7 +302,7 @@ def process_directory(directory):
 
     for filename in os.listdir(directory):
         if filename.endswith(".out"):
-            match = re.search(r'(mix0|minlp)_s(\d+)\.out$', filename)
+            match = re.search(r'(mix0|minlp)[_-]s(\d+)\.out$', filename)
             if match:
                 category, group_id = match.groups()
                 file_groups.setdefault(group_id, {}).update({category: os.path.join(directory, filename)})
@@ -333,6 +332,8 @@ def process_directory(directory):
 
 def read_in_and_call_process(data_set: str, fico=True, to_csv=True):
     directory_path = f"/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/{data_set}/Outs"
+    if data_set == '345':
+        directory_path = "/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/345/Outs"
 
     stefans_data_merged = process_directory(directory_path)
 
@@ -383,7 +384,7 @@ def read_in_and_call_process(data_set: str, fico=True, to_csv=True):
 
 
 
-read_in_and_call_process(data_set='default')
-read_in_and_call_process(data_set='no_pseudocosts')
+# read_in_and_call_process(data_set='default')
+read_in_and_call_process(data_set='345')
 
 # TODO: Wie geh uich mit GAOP limit um? ist das optimal oder timeout oder was ganz anderes? Ne schon optimal

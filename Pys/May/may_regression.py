@@ -2,7 +2,10 @@ import time
 import pandas as pd
 import numpy as np
 import os
+import sys
 import joblib
+
+from matplotlib import pyplot as plt
 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
@@ -13,16 +16,15 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler, QuantileTransformer, PowerTransformer
 import logging
 
-# TODO: Do i actually impute with mean AND median????
-treffplustage = 'TreffenMasVeinte/SoloQuantilePreScaled' # need to change scalers in run_regression as well
-
-# Setup logging configuration
-os.makedirs(os.path.join(f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffplustage}'), exist_ok=True)
-logging.basicConfig(
-    filename=f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffplustage}/regression_log.txt',  # Log file name
-    level=logging.INFO,             # Minimum level to log
-    format='%(asctime)s - %(levelname)s - %(message)s'  # Log format
-)
+def setup_directory(new_directory):
+    # Setup directory
+    os.makedirs(os.path.join(f'/Users/fritz/Downloads/ZIB/Master/Treffen/{new_directory}'), exist_ok=True)
+    # create logging file
+    logging.basicConfig(
+        filename=f'/Users/fritz/Downloads/ZIB/Master/Treffen/{new_directory}/regression_log.txt',  # Log file name
+        level=logging.INFO,  # Minimum level to log
+        format='%(asctime)s - %(levelname)s - %(message)s'  # Log format
+    )
 
 def create_directory(parent_name):
     base_path = f'/Users/fritz/Downloads/ZIB/Master/Treffen/{parent_name}'
@@ -51,6 +53,115 @@ def shifted_geometric_mean(values, shift):
     # geo_mean = np.round(geo_mean, 6)
     return geo_mean
 
+def print_accuracy(acc_df):
+    def get_sgm_series(pandas_series, shift):
+        return shifted_geometric_mean(pandas_series, shift)
+    def get_sgm_acc(data_frame):
+        data_frame['Accuracy'] = pd.to_numeric(data_frame['Accuracy'], errors='coerce')
+        data_frame['Extreme Accuracy'] = pd.to_numeric(data_frame['Extreme Accuracy'], errors='coerce')
+
+        sgm_accuracy = get_sgm_series(data_frame['Accuracy'], data_frame['Accuracy'].mean()+0.1)
+        sgm_extreme_accuracy = get_sgm_series(data_frame['Extreme Accuracy'].dropna(), data_frame['Extreme Accuracy'].dropna().mean()+0.1)
+
+        return [sgm_accuracy, sgm_extreme_accuracy]
+
+    def visualize_acc(data_frame, title: str = 'Accuracy'):
+        acc_df = data_frame.copy()
+        # if no corresponding acc is found just plot it as 0
+        lin_acc, lin_ex_acc, for_acc, for_ex_acc = 0, 0, 0, 0
+
+        linear_rows = [lin_rows for lin_rows in acc_df.index if 'LinearRegression' in lin_rows]
+        linear_df = acc_df.loc[linear_rows, :]
+
+        forest_rows = [for_row for for_row in acc_df.index if 'RandomForest' in for_row]
+        forest_df = acc_df.loc[forest_rows,:]
+
+        if len(linear_df) == len(forest_df) == 0:
+            print(f'{title}: No data found')
+            return None
+        else:
+            if len(linear_df)>0:
+                lin_acc = get_sgm_acc(linear_df)
+                return np.round(lin_acc, 2)
+            if len(forest_df)>0:
+                for_acc = get_sgm_acc(forest_df)
+                return np.round(for_acc, 2)
+
+    return visualize_acc(acc_df, title='Accuracy')
+
+def print_sgm(sgm_df, data_set, number_features):
+
+    def get_sgm_of_sgm(data_frame, shift):
+        col_names = data_frame.columns.tolist()
+        # Frage: SGM of relative SGMs oder von total SGMs?
+        # Ich mach erstmal total sgms
+        sgm_sgm_df = pd.DataFrame(columns=col_names, index=['Value'])
+        for col in col_names:
+            sgm_sgm_df.loc[:, col] = shifted_geometric_mean(data_frame[col], shift)
+        return sgm_sgm_df
+
+    def relative_to_default(value_dict:dict, dataset:str):
+        if dataset.lower() == 'fico':
+            default_rule = 'Mixed'
+        elif dataset[:4].lower() == 'scip':
+            default_rule = 'Int'
+        else:
+            print(f'{dataset} is not a valid dataset')
+            sys.exit(1)
+
+        default = value_dict[default_rule]
+        values = [value_dict[rule]/default for rule in value_dict.keys()]
+
+        return values
+
+    def get_values_for_plot(dataframe:pd.DataFrame, data_set):
+        mixed = dataframe['Mixed']
+        pref_int = dataframe['Int']
+        prediction = dataframe['Predicted']
+        vbs = dataframe['VBS']
+
+
+        means = [mixed.quantile(0.05).min(), pref_int.quantile(0.05).min(), prediction.quantile(0.05).min(),
+                 vbs.quantile(0.05).min()]
+        mean_mean = np.min(means)
+
+        mixed_values = shifted_geometric_mean(mixed, mean_mean)
+        pref_int_values = shifted_geometric_mean(pref_int, mean_mean)
+        predicted_values = shifted_geometric_mean(prediction, mean_mean)
+        vbs_values = shifted_geometric_mean(vbs, mean_mean)
+        value_dictionary = {'Int': pref_int_values, 'Mixed': mixed_values, 'Predicted': predicted_values,
+                            'VBS': vbs_values}
+        values_relative = relative_to_default(value_dictionary, data_set)
+
+        return values_relative
+
+    def sgm_plot(dataframe, title:str, data_set:str, plot=True):
+        values = get_values_for_plot(dataframe, data_set)
+
+        if plot:
+            labels = ['PrefInt', 'Mixed', 'Predicted', 'VBS']
+
+            bar_colors = ['turquoise', 'magenta']
+
+            # Create the plot
+            plt.figure(figsize=(8, 5))
+            plt.bar(labels, values, color=bar_colors)
+            plt.title(title)
+            if data_set.lower() == 'fico':
+                plt.ylim(0.5, 1.35)  # Set y-axis limits for visibility
+            else:
+                plt.ylim(0.8, 1.06)  # Set y-axis limits for visibility
+            plt.xticks(rotation=45, fontsize=6)
+            # Display the plot
+            plt.show()
+            plt.close()
+
+        return np.round(values[2], 2)
+    def call_sgm_visualization(df, number_features, data_set, plot=True):
+        return sgm_plot(df, f'SGM {number_features}', data_set, plot)
+
+    return call_sgm_visualization(sgm_df, number_features, data_set, plot=False)
+
 def get_features_label(data_frame, feature_df, chosen_features):
     features = feature_df[chosen_features]
     label = data_frame['Cmp Final solution time (cumulative)']
@@ -59,8 +170,9 @@ def get_features_label(data_frame, feature_df, chosen_features):
 def label_scaling(label):
     y_pos = label[label >= 0]
     y_neg = label[label < 0]
-    y_pos_log = np.log(y_pos + 1)
-    y_neg_log = np.log(abs(y_neg) + 1) * -1
+    # log1p calculates log(1+x) numerically stable
+    y_pos_log = np.log1p(y_pos)
+    y_neg_log = np.log1p(abs(y_neg)) * -1
     y_log = pd.concat([y_pos_log, y_neg_log]).sort_index()
     return y_log
 
@@ -126,6 +238,105 @@ def get_prediction_df(dictionary):
     for key in dictionary:
         dictionary[key] += [0] * (max_len - len(dictionary[key]))
     return pd.DataFrame.from_dict(dictionary, orient='columns')
+
+def feature_reduction(data_set: str, model: str, treffmas):
+    accuracy_lin = []
+    sgm_lin = []
+    accuracy_for = []
+    sgm_for = []
+
+    def acc_sgm_to_csv(accuracy_drops_lin, sgm_drops_lin, accuracy_drops_for, sgm_drops_for, feature_ranking):
+        if len(accuracy_drops_lin)>0:
+            acc_reduct_lin_df = pd.DataFrame(data=accuracy_drops_lin, columns=['Accuracy', 'Extreme Accuracy'])
+            acc_reduct_lin_df.to_csv(
+                f'/Users/fritz/Downloads/ZIB/Master/Treffen/Präsis/treffen_02-07/FeatReduction/FICO/acc_{data_set}_{feature_ranking}_linear.csv',
+                index=False)
+
+        if len(sgm_drops_lin)>0:
+            sgm_reduct_lin_df = pd.DataFrame(data=sgm_drops_lin, columns=['SGM relative to Default'])
+            sgm_reduct_lin_df.to_csv(
+                f'/Users/fritz/Downloads/ZIB/Master/Treffen/Präsis/treffen_02-07/FeatReduction/FICO/sgm_{data_set}_{feature_ranking}_linear.csv',
+                index=False)
+
+        if len(accuracy_drops_for)>0:
+            acc_reduct_for_df = pd.DataFrame(data=accuracy_drops_for, columns=['Accuracy', 'Extreme Accuracy'])
+            acc_reduct_for_df.to_csv(
+                f'/Users/fritz/Downloads/ZIB/Master/Treffen/Präsis/treffen_02-07/FeatReduction/FICO/acc_{data_set}_{feature_ranking}_forest.csv',
+                index=False)
+
+        if len(sgm_drops_for)>0:
+            sgm_reduct_for_df = pd.DataFrame(data=sgm_drops_for, columns=['SGM relative to Default'])
+            sgm_reduct_for_df.to_csv(
+                f'/Users/fritz/Downloads/ZIB/Master/Treffen/Präsis/treffen_02-07/FeatReduction/FICO/sgm_{data_set}_{feature_ranking}_forest.csv',
+                index=False)
+
+    def forest_reduction(scip_default, fico, impo_df, number_features, treffmas):
+        feature_list = impo_df['Feature'].tolist()
+        for reduce_by in range(len(feature_list)):
+            treff = f'{treffmas}/forest/{reduce_by}'
+            feature_set = feature_list[:(number_features - reduce_by)]
+
+            acc, sgm = main(scip_default, fico, treffplusx=treff, feature_scaling=['NoScaling'], prescaled=True,
+                 label_scalen=True, feature_subset=feature_set,
+                 models={'RandomForest': RandomForestRegressor(n_estimators=100, random_state=0, n_jobs=-1)})
+
+            accuracy_for.append(acc)
+            sgm_for.append(sgm)
+
+    def linear_reduction(scip_default, fico, impo_df, number_features, treffmas):
+        feature_list = impo_df['Feature'].tolist()
+        for reduce_by in range(len(feature_list)):
+            treff = f'{treffmas}/linear/{reduce_by}'
+            feature_set = feature_list[:(number_features - reduce_by)]
+
+            acc, sgm = main(scip_default, fico, treffplusx=treff, feature_scaling=['NoScaling'], prescaled=True,
+                 label_scalen=True, feature_subset=feature_set, models={'LinearRegression': LinearRegression()})
+
+            accuracy_lin.append(acc)
+            sgm_lin.append(sgm)
+
+    if data_set.lower() == 'fico':
+        impo_df = pd.read_csv(
+            '/Users/fritz/Downloads/ZIB/Master/Treffen/Präsis/treffen_11-06/FeatImpo/fico_importance.csv')
+        scip_default = False
+        fico = True
+        treffmas = f'{treffmas}/fico'
+        number_features = len(impo_df)
+
+    elif data_set.lower() == 'scip':
+        impo_df = pd.read_csv(
+            '/Users/fritz/Downloads/ZIB/Master/Treffen/Präsis/treffen_11-06/FeatImpo/scip_importance.csv')
+        scip_default = True
+        fico = False
+        treffmas = f'{treffmas}/scip'
+        number_features = len(impo_df)
+
+    else:
+        print(f'Data set {data_set} not recognized. use scip or fico')
+        sys.exit(1)
+
+    if model.lower() == 'linear':
+        impo_df = impo_df.sort_values(by=['Linear'], ascending=True)
+        linear_reduction(scip_default, fico, impo_df, number_features, treffmas)
+        acc_sgm_to_csv(accuracy_drops_lin=accuracy_lin, sgm_drops_lin=sgm_lin, accuracy_drops_for=[], sgm_drops_for=[],
+                       feature_ranking='linear')
+
+    elif model.lower() == 'forest':
+        impo_df = impo_df.sort_values(by=['Forest'], ascending=True)
+        forest_reduction(scip_default, fico, impo_df, number_features, treffmas)
+        acc_sgm_to_csv(accuracy_drops_lin=[], sgm_drops_lin=[], accuracy_drops_for=accuracy_for, sgm_drops_for=sgm_for,
+                       feature_ranking='forest')
+
+    elif model.lower() == 'combined':
+        print('LINEAR')
+        linear_reduction(scip_default, fico, impo_df, number_features, treffmas)
+        print('FOREST')
+        forest_reduction(scip_default, fico, impo_df, number_features, treffmas)
+        acc_sgm_to_csv(accuracy_lin, sgm_lin, accuracy_for, sgm_for, 'combined')
+
+    else:
+        print(f'Model {model} not recognized. use linear, forest or combined')
+        sys.exit(1)
 
 def trainer(imputation, scaler, model, model_name, X_train, y_train, seed, data_set):
     start = time.time()
@@ -242,6 +453,7 @@ def regression(data, data_set_name, features_df, feature_names, models, scalers,
         accuracy_df.columns = ['Accuracy', 'Extreme Accuracy', 'Extreme Instances']
         accuracy_df.loc[:, ['Accuracy', 'Extreme Accuracy']] = accuracy_df.loc[:, ['Accuracy', 'Extreme Accuracy']].astype(float)
 
+
         prediction_df = get_prediction_df(prediction_dictionary).astype(float)
 
         run_time_df = pd.DataFrame.from_dict(run_time_dictionary, orient='index').astype(float)
@@ -259,34 +471,50 @@ def regression(data, data_set_name, features_df, feature_names, models, scalers,
     logging.info(f'Training time: {training_time}')
     logging.info(f'Prediction time: {prediction_time}')
     logging.info(f'Final time: {end_time - start_time}')
-    print(f'{data_set_name} is done, after {end_time - start_time}!')
+    # print(f'{data_set_name} is done, after {end_time - start_time}!')
     return accuracy_df, run_time_df, prediction_df, feature_importance_df, accuracy_df_trainset, run_time_df_trainset
 
-def run_regression_pipeline(data_name, data_path, feats_path, is_excel, prefix, treffplusx, models, imputer, hundred_seeds, label_scale=False, feature_subset=[]):
+def run_regression_pipeline(data_name, data_path, feats_path, is_excel, prefix, treffplusx, models, imputer, scalers,
+                            hundred_seeds:list, feature_subset:list, label_scale=False):
     # Load data
     if is_excel:
+        # TODO write fico values to csv
         data = pd.read_excel(data_path)
-        # features = pd.read_excel(feats_path).iloc[:, 1:]
-        features = pd.read_csv(feats_path).iloc[:, 1:]
+        features = pd.read_excel(feats_path).iloc[:, 1:]
     else:
         data = pd.read_csv(data_path)
         features = pd.read_csv(feats_path)
-    if len(feature_subset) > 0:
+
+    # treat -1 as missing value
+    # TODO check which features have this property
+    data = data.replace([-1, -1.0], np.nan)
+
+    features = features.replace([-1, -1.0], np.nan)
+    # if feature_subset is None, it means that we use all features
+    if feature_subset is not None:
         features = features[feature_subset]
     # Set scalers
-    scalers = [
-        None,
-        # StandardScaler(),
-        # MinMaxScaler(),
-        # RobustScaler(),
-        # PowerTransformer(method='yeo-johnson'),
-        # QuantileTransformer(output_distribution='normal', n_quantiles=int(len(data) * 0.8))
-    ]
+    if scalers is not None:
+        scaler_dict = { 'NoScaling':None,
+                'Standard':StandardScaler(),
+                'MinMax':MinMaxScaler(),
+                'Robust':RobustScaler(),
+                'Yeo':PowerTransformer(method='yeo-johnson'),
+                'Quantile': QuantileTransformer(output_distribution='normal', n_quantiles=int(len(data) * 0.8))
+                }
+        scalers = [scaler_dict[scaler] for scaler in scalers]
+
+    elif scalers is None:
+        scalers = [None]
+    else:
+        print("Check input for scalers. Needs to be None or list of valid scalers.")
+        sys.exit(1)
 
     # Run regression
-    acc_df, runtime_df, prediction_df, importance_df, acc_train, sgm_train = regression(
-        data, data_name, features, features.columns, models, scalers, imputer, hundred_seeds, label_scale
-    )
+    acc_df, runtime_df, prediction_df, importance_df, acc_train, sgm_train = (
+        regression(data, data_name, features, features.columns, models, scalers, imputer, hundred_seeds, label_scale
+    ))
+
 
     # Save results
     base_path = f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffplusx}'
@@ -297,17 +525,25 @@ def run_regression_pipeline(data_name, data_path, feats_path, is_excel, prefix, 
     acc_train.to_csv(f'{base_path}/Accuracy/{prefix}_acc_trainset.csv', index=True)
     sgm_train.to_csv(f'{base_path}/SGM/{prefix}_sgm_trainset.csv', index=True)
 
+    return print_accuracy(acc_df), print_sgm(runtime_df, data_name, len(features.columns))
 
-def main(scaled_dfs=False, scip_default=False, scip_no_pseudo=False, fico=False, treffplusx='Wurm', label_scalen=False, feature_subset=[]):
+def main(scip_default=False, fico=False, treffplusx='Wurm', label_scalen=True,
+         feature_scaling=None, prescaled=False, feature_subset=None, models=None):
+    setup_directory(treffplusx)
+
     if label_scalen:
         treffplusx = treffplusx+'/ScaledLabel'
     else:
         treffplusx = treffplusx + '/UnscaledLabel'
-    models = {
-        'LinearRegression': LinearRegression(),
-        'RandomForest': RandomForestRegressor(n_estimators=100, random_state=0, n_jobs=-1)
-    }
-    imputer = ['mean']
+
+    if models is None:
+        models = {
+            'LinearRegression': LinearRegression(),
+            'RandomForest': RandomForestRegressor(n_estimators=100, random_state=0, n_jobs=-1)
+        }
+
+    imputer = ['mean', 'median']
+
     hundred_seeds = [2207168494, 288314836, 1280346069, 1968903417, 1417846724, 2942245439, 2177268096, 571870743,
                      1396620602, 3691808733, 4033267948, 3898118442, 24464804, 882010483, 2324915710, 316013333,
                      3516440788, 535561664, 1398432260, 572356937, 398674085, 4189070509, 429011752, 2112194978,
@@ -323,9 +559,9 @@ def main(scaled_dfs=False, scip_default=False, scip_no_pseudo=False, fico=False,
                      1784663289, 2270465462, 537517556, 2411126429]
 
     create_directory(treffplusx)
-    if not scaled_dfs:
+    if not prescaled:
         if scip_default:
-            run_regression_pipeline(
+            akk, ess_geh_ehm = run_regression_pipeline(
                 data_name = 'scip_default',
                 data_path=f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/cleaned_scip/scip_default_clean_data.csv',
                 feats_path=f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/cleaned_scip/scip_default_clean_feats.csv',
@@ -334,13 +570,13 @@ def main(scaled_dfs=False, scip_default=False, scip_no_pseudo=False, fico=False,
                 treffplusx=treffplusx,
                 models=models,
                 imputer=imputer,
+                scalers=feature_scaling,
                 hundred_seeds=hundred_seeds,
                 label_scale=label_scalen,
                 feature_subset=feature_subset
             )
-
         if fico:
-            run_regression_pipeline(
+            akk, ess_geh_ehm = run_regression_pipeline(
                 data_name='fico',
                 data_path='/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/fico/clean_data_final_06_03.xlsx',
                 feats_path='/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/fico/base_feats_no_cmp_918_24_01.xlsx',
@@ -349,53 +585,80 @@ def main(scaled_dfs=False, scip_default=False, scip_no_pseudo=False, fico=False,
                 treffplusx=treffplusx,
                 models=models,
                 imputer=imputer,
+                scalers=feature_scaling,
                 hundred_seeds=hundred_seeds,
                 label_scale=label_scalen,
                 feature_subset=feature_subset
             )
-    elif scaled_dfs:
+        if not (fico|scip_default):
+            print('Neither fico or scip_default is specified. use one of them!')
+            sys.exit(1)
+
+    else:
+        imputer = ['median']
         if scip_default:
-            run_regression_pipeline(
+            akk, ess_geh_ehm = run_regression_pipeline(
                 data_name='scip_default',
                 data_path=f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/cleaned_scip/scip_default_clean_data.csv',
-                feats_path='/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/scaled_feats/scip_quantile_feats.csv',
+                feats_path='/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/cleaned_scip/median_imputed_quantile_logged_scip_feats.csv',
                 is_excel=False,
                 prefix='scip',
                 treffplusx=treffplusx,
                 models=models,
                 imputer=imputer,
+                scalers=feature_scaling,
                 hundred_seeds=hundred_seeds,
                 label_scale=label_scalen,
                 feature_subset=feature_subset
             )
-
         if fico:
-            run_regression_pipeline(
+            akk, ess_geh_ehm = run_regression_pipeline(
                 data_name='fico',
-                data_path='/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/fico/clean_data_final_06_03.xlsx',
-                feats_path='/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/scaled_feats/fico_quantile_feats.csv',
-                is_excel=True,
+                data_path=f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/fico/fico_clean_data.csv',
+                feats_path='/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/fico/median_imputed_quantile_logged_fico_feats.csv',
+                is_excel=False,
                 prefix='fico',
                 treffplusx=treffplusx,
                 models=models,
                 imputer=imputer,
+                scalers=feature_scaling,
                 hundred_seeds=hundred_seeds,
                 label_scale=label_scalen,
                 feature_subset=feature_subset
             )
+        if not (fico|scip_default):
+            print('Neither fico or scip_default is specified. use one of them!')
+            sys.exit(1)
 
-scip_top_3_linear = ['#integer violations at root', 'Avg pseudocosts of integer variables', 'Presolve Global Entities']
-scip_top_3_forest = ['Avg coefficient spread for convexification cuts Mixed', '#nonlinear violations at root',
-                     '% vars in DAG (out of all vars)']
-fico_top_2_linear = ['Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
-'Avg relative bound change for solving strong branching LPs for spatial branchings (not including infeasible ones) Mixed']
-fico_top_3_forest = ['Avg coefficient spread for convexification cuts Mixed', '#nonlinear violations at root',
-'% vars in DAG integer (out of vars in DAG)']
+    return akk, ess_geh_ehm
+
+
+
+
+
+
 # TODO OUTLIER IGNORED => DONT IGNORE ANYMORE
 # I do until now: Instead of kicking outlier scale whole label down, but maybe both even better:)
 
-# main(scip_default=True, scip_no_pseudo=False, fico=False, treffplusx=treffplustage)
-# main(scip_default=False, scip_no_pseudo=True, fico=True, treffplusx=treffplustage)
-# main(scip_default=True, scip_no_pseudo=True, fico=False, treffplusx=treffplustage')
-# main(scaled_dfs=True, scip_default=True, scip_no_pseudo=True, fico=True, treffplusx=treffplustage, label_scalen=True)
-# main(scip_default=True, scip_no_pseudo=True, fico=True, treffplusx=treffplustage, label_scalen=True, feature_subset=['Avg coefficient spread for convexification cuts Mixed'])
+scaler_names = ['NoScaling', 'Standard', 'MinMax', 'Robust', 'Yeo', 'Quantile']
+
+treffplustage = 'TreffenMasVeinteOcho/prescaled/logged/quantile'
+# TODO Call main with porper base csvs aka unscaled or scaled base set to regress on
+# main(scip_default=True, fico=True, treffplusx=treffplustage, feature_scaling=['NoScaling'], prescaled=True, label_scalen=True)
+# main(scip_default=True, fico=False, treffplusx=treffplustage+'/scip', feature_scaling=scaler_names, label_scalen=True)
+# main(scip_default=True, fico=True, treffplusx=treffplustage, label_scalen=True,
+# feature_subset=['Avg coefficient spread for convexification cuts Mixed'])
+
+# feature_reduction(data_set='scip', model='linear', treffmas=treffplustage)
+# feature_reduction(data_set='scip', model='forest', treffmas=treffplustage)
+feature_reduction(data_set='fico', model='linear', treffmas=treffplustage)
+feature_reduction(data_set='fico', model='forest', treffmas=treffplustage)
+feature_reduction(data_set='fico', model='combined', treffmas=treffplustage)
+
+
+
+
+
+# TODO Avg root iteration in scip unique == 0
+
+
