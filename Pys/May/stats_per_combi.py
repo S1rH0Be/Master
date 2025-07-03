@@ -1,7 +1,6 @@
 import pandas as pd
 import os
 
-from Pys.May import scip_data
 from visualize_may import shifted_geometric_mean
 import matplotlib.pyplot as plt
 import numpy as np
@@ -452,46 +451,72 @@ def compare_scalers_accuracy(scaled_or_unscaled:str, treffen='TreffenMasOnce', s
         ficos = [fico_quantile, fico_yeo, fico_robust]
         multiple_accuracy_plot(ficos, title='FICO Comparison Accuracy Scaled')
 
-def compare_scalers_sgm(scaled_or_unscaled:str, treffen='TreffenMasOnce', scip=True, fico=True):
-    if scip:
-        scip_quantile = pd.read_csv(
-                    f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffen}/SoloQuantile/{scaled_or_unscaled}Label/SGM/scip_sgm_runtime.csv',
-                    index_col=0)
-        scip_quantile.name = f'SCIP Default SGM Only Quantile {scaled_or_unscaled} Label'
+# def compare_scalers_sgm(scaled_or_unscaled:str, treffen='TreffenMasOnce', scip=True, fico=True):
+#     if scip:
+#         scip_quantile = pd.read_csv(
+#                     f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffen}/SoloQuantile/{scaled_or_unscaled}Label/SGM/scip_sgm_runtime.csv',
+#                     index_col=0)
+#         scip_quantile.name = f'SCIP Default SGM Only Quantile {scaled_or_unscaled} Label'
+#
+#         scip_yeo = pd.read_csv(
+#             f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffen}/SoloYeoJohnson/{scaled_or_unscaled}Label/SGM/scip_sgm_runtime.csv',
+#             index_col=0)
+#         scip_yeo.name = f'SCIP Default SGM Only YeoJohnson {scaled_or_unscaled} Label'
+#
+#         scip_robust = pd.read_csv(
+#             f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffen}/SoloRobust/{scaled_or_unscaled}Label/SGM/scip_sgm_runtime.csv',
+#             index_col=0)
+#         scip_robust.name = f'SCIP Default SGM Only Robust {scaled_or_unscaled} Label'
+#
+#
+#         scippies = [scip_quantile, scip_yeo, scip_robust]
+#
+#         multiple_sgm_plot(scippies, title='SCIP Comparison SGM Scaled')
+#
+#     if fico:
+#         fico_quantile = pd.read_csv(
+#             f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffen}/SoloQuantile/{scaled_or_unscaled}Label/SGM/fico_sgm_runtime.csv',
+#             index_col=0)
+#         fico_quantile.name = f'FICO Xpress SGM Only Quantile {scaled_or_unscaled} Label'
+#
+#         fico_yeo = pd.read_csv(
+#             f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffen}/SoloYeoJohnson/{scaled_or_unscaled}Label/SGM/fico_sgm_runtime.csv',
+#             index_col=0)
+#         fico_yeo.name = f'FICO Xpress SGM Only Yeo-Johnson {scaled_or_unscaled} Label'
+#
+#         fico_robust = pd.read_csv(
+#             f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffen}/SoloRobust/{scaled_or_unscaled}Label/SGM/fico_sgm_runtime.csv',
+#             index_col=0)
+#         fico_robust.name = f'FICO Xpress SGM Only Robust {scaled_or_unscaled} Label'
+#
+#         ficos = [fico_quantile, fico_yeo, fico_robust]
+#         multiple_sgm_plot(ficos, title='FICO Comparison SGM Scaled')
 
-        scip_yeo = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffen}/SoloYeoJohnson/{scaled_or_unscaled}Label/SGM/scip_sgm_runtime.csv',
-            index_col=0)
-        scip_yeo.name = f'SCIP Default SGM Only YeoJohnson {scaled_or_unscaled} Label'
+def get_scaler_runs(df:pd.DataFrame, scaler:str):
+    scaler_runs = [scaler_run for scaler_run in df.index if scaler in scaler_run]
+    scaler_run_df = df.loc[scaler_runs, :]
+    return scaler_run_df
 
-        scip_robust = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffen}/SoloRobust/{scaled_or_unscaled}Label/SGM/scip_sgm_runtime.csv',
-            index_col=0)
-        scip_robust.name = f'SCIP Default SGM Only Robust {scaled_or_unscaled} Label'
+def compare_scalers(path_to_csv:str):
+    acc_df = pd.read_csv(path_to_csv, index_col=0)
+    acc_df = acc_df[['Accuracy', 'Mid Accuracy', 'Extreme Accuracy']]
 
-
-        scippies = [scip_quantile, scip_yeo, scip_robust]
-
-        multiple_sgm_plot(scippies, title='SCIP Comparison SGM Scaled')
-
-    if fico:
-        fico_quantile = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffen}/SoloQuantile/{scaled_or_unscaled}Label/SGM/fico_sgm_runtime.csv',
-            index_col=0)
-        fico_quantile.name = f'FICO Xpress SGM Only Quantile {scaled_or_unscaled} Label'
-
-        fico_yeo = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffen}/SoloYeoJohnson/{scaled_or_unscaled}Label/SGM/fico_sgm_runtime.csv',
-            index_col=0)
-        fico_yeo.name = f'FICO Xpress SGM Only Yeo-Johnson {scaled_or_unscaled} Label'
-
-        fico_robust = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffen}/SoloRobust/{scaled_or_unscaled}Label/SGM/fico_sgm_runtime.csv',
-            index_col=0)
-        fico_robust.name = f'FICO Xpress SGM Only Robust {scaled_or_unscaled} Label'
-
-        ficos = [fico_quantile, fico_yeo, fico_robust]
-        multiple_sgm_plot(ficos, title='FICO Comparison SGM Scaled')
+    scaler_names = ['None', 'StandardScaler', 'MinMaxScaler', 'RobustScaler', 'PowerTransformer', 'QuantileTransformer']
+    linear_rows = [lin_row for lin_row in acc_df.index if 'LinearRegression' in lin_row]
+    forest_rows = [for_row for for_row in acc_df.index if 'RandomForest' in for_row]
+    linear_df = acc_df.loc[linear_rows, :]
+    forest_df = acc_df.loc[forest_rows, :]
+    for scaler_name in scaler_names:
+        linear_scaler_run_df = get_scaler_runs(linear_df, scaler_name)
+        forest_scaler_run_df = get_scaler_runs(forest_df, scaler_name)
+        lin_scaler_sgm_acc = []
+        forest_scaler_sgm_acc = []
+        for acc in acc_df.columns:
+            lin_scaler_sgm_acc.append(shifted_geometric_mean(linear_scaler_run_df[acc], linear_scaler_run_df[acc].mean()))
+            forest_scaler_sgm_acc.append(shifted_geometric_mean(forest_scaler_run_df[acc], forest_scaler_run_df[acc].mean()))
+        # print(scaler_name)
+        # print('Lin', lin_scaler_sgm_acc)
+        # print('For', forest_scaler_sgm_acc)
 
 def compare_train_vs_test(scaled_or_unscaled:str, scaler, treffen='TreffenMasDoce', scip=True, fico=True):
     # Accuracy
@@ -584,23 +609,12 @@ def visualize_fico_on_scip(scaled_or_unscaled:str, scaler, treffen='TreffenMasTr
     multiple_sgm_plot(fico_vs_scip_on_scip_sgm,
                       title=f'FICO Xpress vs SCIP on SCIP Comparison RunTime SGM {scaler} {scaled_or_unscaled} Label')
 
-def ranking_feature_importance_fico(importance_df, title):
-    feature_names = ['Matrix Equality Constraints', 'Matrix Quadratic Elements',
-       'Matrix NLP Formula', 'Presolve Columns', 'Presolve Global Entities',
-       '#nodes in DAG', '#integer violations at root',
-       '#nonlinear violations at root', '% vars in DAG (out of all vars)',
-       '% vars in DAG unbounded (out of vars in DAG)',
-       '% vars in DAG integer (out of vars in DAG)',
-       '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
-       'Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
-       'Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
-       'Avg relative bound change for solving strong branching LPs for spatial branchings (not including infeasible ones) Mixed',
-       'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
-       '#spatial branching entities fixed (at the root) Mixed',
-       'Avg coefficient spread for convexification cuts Mixed']
-    ranking_df = pd.DataFrame(index=feature_names, columns=['Linear Score', 'Forest Score'])
+def ranking_feature_importance(importance_df, feature_names,  title):
+
+    ranking_df = pd.DataFrame(index=feature_names, columns=['Feature', 'Linear Score', 'Forest Score'])
 
     linear_df = importance_df.iloc[:,:100]
+
     forest_df = importance_df.iloc[:,100:]
     lin_scores = pd.DataFrame(index=feature_names)
     for_scores = pd.DataFrame(index=feature_names)
@@ -609,12 +623,16 @@ def ranking_feature_importance_fico(importance_df, title):
         ranked = linear_df[col].abs().rank(method='first', ascending=False) - 1
         lin_scores[col] = ranked.astype(int)
 
+
     for col in forest_df.columns:
         ranked = forest_df[col].abs().rank(method='first', ascending=False) - 1
         for_scores[col] = ranked.astype(int)
 
+    ranking_df['Feature'] = feature_names
     ranking_df['Linear Score'] = lin_scores.sum(axis=1)
     ranking_df['Forest Score'] = for_scores.sum(axis=1)
+    ranking_df['Combined'] = ranking_df['Linear Score']+ranking_df['Forest Score']
+    ranking_df.sort_values(by=['Combined'], ascending=True, inplace=True)
 
     return ranking_df
 
@@ -772,8 +790,11 @@ def time_loss_per_prediction(scip_data, prediction_df):
 # TODO I think i need regression to use all predictions not only relevant, such that everyth9ng matches
 #  for example: len(prediction)=234!=282
 
-scip_data_df = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/cleaned_scip/scip_default_clean_data.csv')
-
-quantile_scaled_prediction_df = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasTrece/FICOonSCIP/SoloQuantile/ScaledLabel/Prediction/fico_on_scip_prediction_df.csv')
+# scip_data_df = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/cleaned_scip/scip_default_clean_data.csv')
+#
+# quantile_scaled_prediction_df = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/TreffenMasTrece/FICOonSCIP/SoloQuantile/ScaledLabel/Prediction/fico_on_scip_prediction_df.csv')
 # time_loss_per_prediction(scip_data_df, quantile_scaled_prediction_df)
 
+#
+# path_to_acc_comp = '/Users/fritz/Downloads/ZIB/Master/June/Iteration1/RelativeLoggedFico/DiverseScalings/ScaledLabel/Accuracy/fico_acc_df.csv'
+# compare_scalers(path_to_acc_comp)

@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sys
 import os
-import re
 
 '''
 @TODO rewrite it again.........
@@ -464,7 +463,7 @@ def create_scip_feature_name_df():
                         index=False)
     return scip_feat_df
 
-def feature_reduction_graph(feature_ranking:str, data_set:str, lin_accuracy=None, lin_sgm=None, for_accuracy=None,
+def feature_reduction_graph(base_set:str, feature_ranking:str, data_set:str, lin_accuracy=None, lin_sgm=None, for_accuracy=None,
                             for_sgm=None):
 
     if (lin_accuracy is None) or (lin_sgm is None) or (for_accuracy is None) or (for_sgm is None):
@@ -479,22 +478,26 @@ def feature_reduction_graph(feature_ranking:str, data_set:str, lin_accuracy=None
 
     for_sgm = (np.array(for_sgm) * 100).tolist()
     for_sgm = [value[0] for value in for_sgm]
-    print(f'In feature_reduction_graph. SGM Forest: {for_sgm}')
 
 
 
     if feature_ranking.lower() == 'combined':
-        colors = ['gold', 'orange', 'turquoise', 'seagreen']
+        print(lin_accuracy.columns)
+        print(for_accuracy.columns)
+        colors = ['gold', 'orange', 'darkgreen', 'green', 'turquoise', 'seagreen']
         plt.figure(figsize=(8, 6))
-        plt.plot(lin_accuracy['Extreme Accuracy'], color=colors[0])
-        plt.plot(for_accuracy['Extreme Accuracy'], color=colors[1])
-        plt.plot(lin_sgm, color=colors[2])
-        plt.plot(for_sgm, color=colors[3])
+        plt.plot(lin_accuracy[['Mid Accuracy']], color=colors[0])
+        plt.plot(lin_accuracy[['Extreme Accuracy']], color=colors[1])
+        plt.plot(for_accuracy[['Mid Accuracy']], color=colors[2])
+        plt.plot(for_accuracy[['Extreme Accuracy']], color=colors[3])
+        plt.plot(lin_sgm, color=colors[4])
+        plt.plot(for_sgm, color=colors[5])
         plt.plot(for_sgm)
-        plt.title(label=f'{data_set.upper()} Linear Accuracy and SGM on Top x-Features Combined')
+        plt.title(label=f'{data_set.upper()} Combined {base_set}')
         plt.axvline(x=15, color='red', linestyle='--', label='Threshold')
-        plt.ylim(0, 115)
-        plt.legend(['Extreme Accuracy Linear', 'Extreme Accuracy Random Forest', 'SGM Linear', 'SGM Random Forest'])
+        plt.ylim(35, 115)
+        plt.legend(['Mid Accuracy Linear', 'Extreme Accuracy Linear', 'Mid Accuracy Random Forest',
+                    'Extreme Accuracy Random Forest', 'SGM Linear', 'SGM Random Forest'])
         plt.xticks(ticks=range(len(lin_accuracy)), labels=x_labels)
         plt.show()
     elif feature_ranking.lower() == 'linear':
@@ -502,40 +505,39 @@ def feature_reduction_graph(feature_ranking:str, data_set:str, lin_accuracy=None
         plt.figure(figsize=(8, 6))
         plt.plot(lin_accuracy)
         plt.plot(lin_sgm)
-        plt.title(label='FICO Linear Accuracy and SGM on Top-X Linear-Features')
+        plt.title(label=f'{data_set.upper()} Linear {base_set}')
         plt.axvline(x=13, color='red', linestyle='--', label='Threshold')
         plt.axvline(x=14, color='orange', linestyle='--', label='Threshold')
         plt.axvline(x=15, color='gold', linestyle='--', label='Threshold')
-        plt.legend(['Accuracy', 'Extreme Accuracy', 'SGM'])
+        plt.legend(['Accuracy', 'Mid Accuracy', 'Extreme Accuracy', 'SGM'])
         plt.xticks(ticks=range(len(lin_accuracy)), labels=x_labels)
-        plt.ylim(0, 115)
+        plt.ylim(35, 115)
         plt.show()
     elif feature_ranking.lower() == 'forest':
         # Forest
         plt.figure(figsize=(8, 6))
         plt.plot(for_accuracy)
         plt.plot(for_sgm)
-        plt.title(label='FICO Forest Accuracy and SGM on Top-X Forest-Features')
-        plt.legend(['Accuracy', 'Extreme Accuracy', 'SGM'])
+        plt.title(label=f'{data_set.upper()} Forest {base_set}')
+        plt.legend(['Accuracy', 'Mid Accuracy', 'Extreme Accuracy', 'SGM'])
         plt.xticks(ticks=range(len(for_accuracy)), labels=x_labels)
         plt.axvline(x=13, color='red', linestyle='--', label='Threshold')
-        plt.ylim(0, 115)
+        plt.ylim(35, 115)
         plt.show()
         plt.close()
     else:
         print(f'Feature ranking {feature_ranking} not implemented.')
         sys.exit(1)
 
-def plot_feature_reduction(treffen:str, fico_or_scip:str, feature_ranking='combined'):
+def plot_feature_reduction(directory:str, fico_or_scip:str, base_data:str, feature_ranking='combined'):
     """
     Plots SGM and Extreme Accuracy from linear model vs the random forest regressor
-    TODO: Add 10% instances and plot them also
     """
-    path = f'/Users/fritz/Downloads/ZIB/Master/Treffen/Präsis/{treffen}/FeatReduction/{fico_or_scip}/'
+    path = f'{directory}/FeatureReduction/{fico_or_scip}/'
     dfs = get_files(path)
+    print(len(dfs))
     accuracy_keys = [key for key in dfs.keys() if 'acc' in key.lower()]
     sgm_keys = [key for key in dfs.keys() if 'sgm' in key.lower()]
-    print(f'{feature_ranking}')
 
     if feature_ranking == 'combined':
         acc_lin_key = [key for key in accuracy_keys if 'combined linear' in key.lower()][0]
@@ -543,30 +545,62 @@ def plot_feature_reduction(treffen:str, fico_or_scip:str, feature_ranking='combi
 
         sgm_lin_key = [key for key in sgm_keys if 'combined linear' in key.lower()][0]
         sgm_for_key = [key for key in sgm_keys if 'combined forest' in key.lower()][0]
-        print(f'AccLinKeys: {acc_lin_key}\nSGMLinKeys: {sgm_lin_key}')
-        print(f'AccForKeys: {acc_for_key}\nSGMForKeys: {sgm_for_key}')
 
-        feature_reduction_graph(feature_ranking, lin_accuracy=dfs[acc_lin_key], lin_sgm=dfs[sgm_lin_key],
+        feature_reduction_graph(base_data, feature_ranking, lin_accuracy=dfs[acc_lin_key], lin_sgm=dfs[sgm_lin_key],
                                 for_accuracy=dfs[acc_for_key], for_sgm=dfs[sgm_for_key], data_set=fico_or_scip)
 
     elif feature_ranking == 'linear':
         acc_lin_key = [key for key in accuracy_keys if 'linear linear' in key.lower()][0]
         sgm_lin_key = [key for key in sgm_keys if 'linear linear' in key.lower()][0]
-        print(f'AccKeys: {acc_lin_key}\nSGMKeys: {sgm_lin_key}')
-        feature_reduction_graph(feature_ranking, lin_accuracy=dfs[acc_lin_key], lin_sgm=dfs[sgm_lin_key],
+        feature_reduction_graph(base_data, feature_ranking, lin_accuracy=dfs[acc_lin_key], lin_sgm=dfs[sgm_lin_key],
                                 for_accuracy=[], for_sgm=[], data_set=fico_or_scip)
 
     elif feature_ranking == 'forest':
         acc_for_key = [key for key in accuracy_keys if 'forest forest' in key.lower()][0]
         sgm_for_key = [key for key in sgm_keys if 'forest forest' in key.lower()][0]
-        print(f'AccKeys: {acc_for_key}\nSGMKeys: {sgm_for_key}')
-        feature_reduction_graph(feature_ranking, lin_accuracy=[], lin_sgm=[],
+        feature_reduction_graph(base_data, feature_ranking, lin_accuracy=[], lin_sgm=[],
                                 for_accuracy=dfs[acc_for_key], for_sgm=dfs[sgm_for_key], data_set=fico_or_scip)
 
+def get_top_x(impo_rank:pd.DataFrame, sort_by:str, x:int):
+    impo_rank.sort_values(by=sort_by, ascending=True, inplace=True)
+    top_x = impo_rank['Feature'].head(x)
+    return top_x
 
-plot_feature_reduction('treffen_02-07', 'fico', feature_ranking='linear')
-plot_feature_reduction('treffen_02-07', 'fico', feature_ranking='forest')
-plot_feature_reduction('treffen_02-07', 'fico', feature_ranking='combined')
+def get_linear_importance_coeff(importance_df:pd.DataFrame, impo_rank:pd.DataFrame):
+    linear_cols = [col_name for col_name in importance_df.columns if 'LinearRegression' in col_name]
+    linear_df = importance_df[linear_cols]
+    importances = []
+    for index, row in linear_df.iterrows():
+        importances.append(shifted_geometric_mean(row, abs(row.min())+0.0001))
+
+    top_5 = get_top_x(impo_rank, sort_by='Linear Score', x=5)
+
+    lin_impo_coeffs_df = pd.DataFrame({'Feature': importance_df.index, 'Coefficient': importances})
+    top_5_df = lin_impo_coeffs_df[lin_impo_coeffs_df['Feature'].isin(top_5)]
+    top_5_df.to_csv('/Users/fritz/Downloads/ZIB/Master/June/Iteration2/RelativeLoggedQuantileFico/ScaledLabel/Importance/fico_top_5_lin_coeffs_importance.csv')
+
+
+# fico_impo_df = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/June/Iteration2/RelativeLoggedQuantileFico/ScaledLabel/Importance/fico_importance_df.csv',
+#                            index_col=0).astype(float)
+# fico_impo_ranking = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/June/Iteration2/RelativeLoggedQuantileFico/ScaledLabel/Importance/fico_importance_ranking.csv')
+#
+# get_linear_importance_coeff(fico_impo_df, fico_impo_ranking)
+
+
+
+# plot_feature_reduction('/Users/fritz/Downloads/ZIB/Master/June/Iteration2/RelativeLoggedQuantileFico', 'fico',
+#                        'RelativeLoggedQuantileFico', feature_ranking='linear')
+# plot_feature_reduction('/Users/fritz/Downloads/ZIB/Master/June/Iteration2/RelativeLoggedQuantileFico', 'fico',
+#                        'RelativeLoggedQuantileFico', feature_ranking='forest')
+# plot_feature_reduction('/Users/fritz/Downloads/ZIB/Master/June/Iteration2/RelativeLoggedQuantileFico', 'fico',
+#                        'RelativeLoggedQuantileFico', feature_ranking='combined')
+
+# plot_feature_reduction('/Users/fritz/Downloads/ZIB/Master/June/Iteration2/AllRelativeFico', 'fico',
+#                        base_data='AllRelative', feature_ranking='linear')
+# plot_feature_reduction('/Users/fritz/Downloads/ZIB/Master/June/Iteration2/AllRelativeFico', 'fico',
+#                        base_data='AllRelative', feature_ranking='forest')
+# plot_feature_reduction('/Users/fritz/Downloads/ZIB/Master/June/Iteration2/AllRelativeFico', 'fico',
+# base_data='AllRelative', feature_ranking='combined')
 
 
 

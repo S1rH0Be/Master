@@ -7,16 +7,23 @@ from sklearn.impute import SimpleImputer
 
 from may_regression import shifted_geometric_mean
 
-def log_df(df):
-    for col in df.columns:
+def log_df(df, cols_to_log):
+    if cols_to_log is None:
+        cols_to_log = df.columns
+    for col in cols_to_log:
         column = df[col]
         value_pos = column[column >= 0]
         value_neg = column[column < 0]
-        value_pos_log = np.log1p(value_pos)
-        value_neg_log = np.log1p(abs(value_neg)) * -1
+        value_pos_log = np.log1p(value_pos)/np.log(10)
+        value_neg_log = (np.log1p(abs(value_neg))/np.log(10)) * -1
         column = pd.concat([value_pos_log, value_neg_log]).sort_index()
         df.loc[:,col] = column
     return df
+
+def get_top_x(impo_rank:pd.DataFrame, sort_by:str, x:int):
+    impo_rank.sort_values(by=sort_by, ascending=True, inplace=True)
+    top_x = impo_rank['Feature'].head(x)
+    return top_x
 
 def replace_and_impute(df, imputation_rule):
     df = df.replace([-1,-1.0], np.nan)
@@ -34,6 +41,16 @@ def create_quantile_scaled_features_zero_one(df):
     df = df.astype(float)
     for i, col in enumerate(df.columns):
         df.loc[:, col] = (transformed[i] / abs(transformed[i]).max())
+    return df
+
+def quantile_scaler(df):
+    df = replace_and_impute(df, 'median')
+    transformer = QuantileTransformer(output_distribution='normal', n_quantiles=int(len(df) * 0.8))
+    transformed = transformer.fit_transform(df)
+    transformed = transformed.transpose()
+    df = df.astype(float)
+    for i, col in enumerate(df.columns):
+        df.loc[:, col] = (transformed[i])
     return df
 
 def create_log_scaled_df(df, imputer):
@@ -61,12 +78,13 @@ def feature_histo(scip_df, fico_df, columns: list, number_bins=10):
     Create histograms for specified columns in a DataFrame.
     """
     for i, col in enumerate(columns):
-        scip_data = scip_df[col]
-        fico_data = fico_df[col]
-        # Plot histogram with color distinction
-        color =  ['violet', 'purple']
-        plot_histo(scip_data, color[0], number_bins, f'{col} SCIP scaled')
-        plot_histo(fico_data, color[1], number_bins, f'{col} FICO scaled')
+        color = ['violet', 'purple']
+        if scip_df is not None:
+            scip_data = scip_df[col]
+            plot_histo(scip_data, color[0], number_bins, f'{col} SCIP scaled')
+        if fico_df is not None:
+            fico_data = fico_df[col]
+            plot_histo(fico_data, color[1], number_bins, f'{col} FICO scaled')
 
 def comp_scip_and_fico(scip_feature, fico_feature):
     scip_feat_names = [feat_name+' SCIP' for feat_name in scip_feature.columns]
@@ -106,12 +124,21 @@ def comp_scip_and_fico(scip_feature, fico_feature):
 
     comp_df.to_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/comp_fico_and_scip_feats.csv')
 
+def plot_top_x_distribution(features:pd.DataFrame, impo_rank:pd.DataFrame, sort_by:str, number_of_feats:int, scip_or_fico:str):
+    # TODO: Add to decide if scip or fico
+    top_feats = get_top_x(impo_rank, sort_by, number_of_feats).values.tolist()
+    feature_histo(None, features, top_feats, )
 
-scip_feats = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/cleaned_scip/scip_default_clean_feats.csv')
-fico_feats = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/base_feats_no_cmp_918_24_01.xlsx', index_col=0)
-common_cols = list(set(fico_feats.columns).intersection(scip_feats.columns))
+# scip_feats = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/cleaned_scip/scip_default_clean_feats.csv')
+# fico_feats = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/base_feats_no_cmp_918_24_01.xlsx', index_col=0)
+# common_cols = list(set(fico_feats.columns).intersection(scip_feats.columns))
 
-
+# rel_quant_log_fico_feats = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/June/Bases/FICO/Scaled/relative_logged_quantile_fico_feats.csv',
+#                                        index_col=0)
+# impo_ranking = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/June/Iteration2/RelativeLoggedQuantileFico/ScaledLabel/Importance/fico_importance_ranking.csv')
+# plot_top_x_distribution(rel_quant_log_fico_feats, impo_ranking, sort_by='Linear Score', number_of_feats=5)
+# plot_top_x_distribution(rel_quant_log_fico_feats, impo_ranking, sort_by='Forest Score', number_of_feats=5)
+# plot_top_x_distribution(rel_quant_log_fico_feats, impo_ranking, sort_by='Combined', number_of_feats=5)
 
 # Scaled features
 # scip_scaled = create_quantile_scaled_features_zero_one(scip_feats)
@@ -125,11 +152,22 @@ common_cols = list(set(fico_feats.columns).intersection(scip_feats.columns))
 # feature_histo(scip_scaled, fico_scaled, common_cols)
 
 
-scip_logged = create_log_scaled_df(scip_feats, 'mean')
-scip_logged.to_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/scaled_feats/scip_logged_feats.csv',
-                   index=False)
-fico_logged = create_log_scaled_df(fico_feats, 'mean')
-fico_logged.to_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/scaled_feats/fico_logged_feats.csv',
-                   index=False)
+# scip_logged = create_log_scaled_df(scip_feats, 'mean')
+# scip_logged.to_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/scaled_feats/scip_logged_feats.csv',
+#                    index=False)
+# fico_logged = create_log_scaled_df(fico_feats, 'mean')
+# fico_logged.to_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/scaled_feats/fico_logged_feats.csv',
+#                    index=False)
 
 # feature_histo(scip_logged, fico_logged, common_cols)
+
+# fico_relative = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/June/Bases/FICO/Scaled/relative_fico_feats.csv')
+fico_relative_logged_quantile = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/June/Bases/FICO/Scaled/relative_logged_quantile_fico_feats.csv',
+                                   index_col=0)
+log_cols = ['Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
+'Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
+'Avg relative bound change for solving strong branching LPs for spatial branchings (not including infeasible ones) Mixed',
+'Avg coefficient spread for convexification cuts Mixed']
+
+
+# feature_histo(None, fico_relative_logged_quantile, fico_relative_logged_quantile.columns)

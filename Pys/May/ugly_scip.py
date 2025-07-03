@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-
+print('WURM')
 DEBUG = False
 '''READ AND RENAME COLUMNS'''
 # input: df, list. Renames columns of df to strings in lst

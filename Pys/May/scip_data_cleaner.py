@@ -3,7 +3,7 @@ import pandas as pd
 import os
 
 
-from ugly import check_col_consistency
+from ugly_scip import check_col_consistency
 
 def drop_trivial(df):
     # Input: DataFrame

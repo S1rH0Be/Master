@@ -45,6 +45,7 @@ def log_feature(data:pd.Series or pd.DataFrame):
 
 def make_feature_relative_again(data:Union[pd.Series, pd.DataFrame]):
     if isinstance(data, pd.Series):
+        print('We deal with Series')
         max_value = data.max()
         if max_value > 0:
             relative_data = data/max_value
@@ -52,12 +53,14 @@ def make_feature_relative_again(data:Union[pd.Series, pd.DataFrame]):
             print(f"Max value equals {max_value}. This shouldn't be. Check data cleaning.")
             sys.exit(1)
     elif isinstance(data, pd.DataFrame):
+        print('We deal with DataFrame')
         if (data.max() <= 0).any():
             for column in data.columns:
                 if data[column].max() <= 0:
                     print(f"Column {column} has max value {data[column].max()}. This shouldn't be. Check data cleaning.")
             sys.exit(1)
         relative_data = data.apply(lambda col: col/col.max() if col.max() != 0 else col)
+
     else:
         print("Not a valid format for values. Use pd.Series or pd.DataFrame")
         sys.exit(1)
@@ -114,18 +117,17 @@ def quantile_scaling(df):
     scaled_df = pd.DataFrame(scaled_array, columns=df.columns, index=df.index)
     return scaled_df
 
-def create_imputed_df(imputation:str):
-    fico_feats = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/fico/base_feats_no_cmp_918_24_01.xlsx',
-                               index_col=0).astype(float)
-    scip_feats = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/cleaned_scip/scip_default_clean_feats.csv').astype(float)
+def create_imputed_df(imputation:str, path_to_feats):
+    fico_feats = pd.read_csv(f'{path_to_feats}/FICO/fico_feats_918_ready_to_ml.csv').astype(float)
+    scip_feats = pd.read_csv(f'{path_to_feats}/SCIP/scip_feats_ready_to_ml.csv').astype(float)
 
     imputed_fico = replace_and_impute(fico_feats.astype(float), imputation)
     imputed_scip = replace_and_impute(scip_feats.astype(float), imputation)
 
-    imputed_fico.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/fico/{imputation}_imputed_fico_feats.csv')
-    imputed_scip.to_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/cleaned_scip/{imputation}_imputed_scip_feats.csv')
+    imputed_fico.to_csv(f'{path_to_feats}/FICO/Imputed/{imputation}_imputed_fico_feats_ready_to_ml.csv')
+    imputed_scip.to_csv(f'{path_to_feats}/SCIP/Imputed/{imputation}_imputed_scip_feats_ready_to_ml.csv')
 
-def main(df: pd.DataFrame, data_set:str, imputation:str, scaler:str, relative=False, log=False):
+def main(df: pd.DataFrame, data_set:str, imputation:str, scaler:str, relative=False, all_relative=False, log=False):
     """
     Input: Unscaled Data as csv or xlsx
     Returns: Scaled Data as csv
@@ -137,10 +139,18 @@ def main(df: pd.DataFrame, data_set:str, imputation:str, scaler:str, relative=Fa
         if len(log_columns)>0:
             working_df.loc[:, log_columns] = log_feature(working_df[log_columns])
     if relative:
-        rel_cols = get_log_cols(working_df)
+        if data_set == 'fico':
+            rel_cols = ['Matrix Equality Constraints', 'Matrix Quadratic Elements', 'Matrix NLP Formula', 'Presolve Columns', 'Presolve Global Entities', '#nodes in DAG', '#integer violations at root', '#nonlinear violations at root', '#spatial branching entities fixed (at the root) Mixed']
+        elif data_set == 'scip':
+            rel_cols = ['#integer violations at root', '#nodes in DAG', 'Presolve Global Entities', 'Presolve Columns', '#nonlinear violations at root', 'Matrix Equality Constraints', 'Matrix NLP Formula', 'Matrix Quadratic Elements']
+        else:
+            print('Data set not recognized.')
+            sys.exit(1)
         working_df.loc[:, rel_cols] = make_feature_relative_again(working_df[rel_cols])
-        working_df.to_csv(f"/Users/fritz/Downloads/ZIB/Master/NewTry/DataSets/cleaned/ready_for_ml/{data_set}_relative_ready_for_ml.csv")
-        print(working_df.min())
+
+    elif all_relative:
+        all_rel_cols = [col_name for col_name in working_df.columns if max(working_df[col_name])>1]
+        working_df.loc[:, all_rel_cols] = make_feature_relative_again(working_df[all_rel_cols])
     if scaler == 'Standard':
         working_df = standard_scaling(working_df)
     elif scaler == 'MinMax':
@@ -151,12 +161,17 @@ def main(df: pd.DataFrame, data_set:str, imputation:str, scaler:str, relative=Fa
 
 
 
-create_imputed_df('median')
+# create_imputed_df('median', '/Users/fritz/Downloads/ZIB/Master/June/Bases')
 
-imputed_fico_feats = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/fico/median_imputed_fico_feats.csv',
+imputed_fico_feats = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/June/Bases/FICO/imputed/median_imputed_fico_feats_ready_to_ml.csv',
                                  index_col=0).astype(float)
-imputed_scip_feats = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/cleaned_scip/median_imputed_scip_feats.csv')
-relative_fico = main(imputed_fico_feats, data_set='fico', imputation='median', scaler='None', relative=True)#.astype(float)
+imputed_scip_feats = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/June/Bases/SCIP/imputed/median_imputed_scip_feats_ready_to_ml.csv',
+                                 index_col=0).astype(float)
+
+# all_relative_fico = main(imputed_fico_feats, data_set='fico', imputation='median', scaler='None', relative=False, all_relative=True)
+# all_relative_fico.to_csv('/Users/fritz/Downloads/ZIB/Master/June/Bases/FICO/Scaled/all_relative_fico_feats.csv')
+# relative_scip = main(imputed_scip_feats, data_set='scip', imputation='median', scaler='None', relative=True)
+# relative_scip.to_csv('/Users/fritz/Downloads/ZIB/Master/June/Bases/SCIP/Scaled/relative_scip_feats.csv', index=False)
 
 # logged_fico = main(imputed_fico_feats, data_set='fico', imputation='median', scaler='None')
 # logged_scip = main(imputed_scip_feats, data_set='scip', imputation='median', scaler='None')
