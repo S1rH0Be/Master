@@ -22,8 +22,8 @@ def regression(feature_space, preset_name='STEFAN', data_set_name='Stefan',
                     '% vars in DAG unbounded (out of vars in DAG)',
                     '% vars in DAG integer (out of vars in DAG)',
                     '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
-                    'Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
-                    'Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
+                    'Avg work for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
+                    'Avg work for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
                     'Avg relative bound change for solving strong branching LPs for spatial branchings (not including infeasible ones) Mixed',
                     'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
                     '#spatial branching entities fixed (at the root) Mixed',
@@ -38,8 +38,8 @@ def regression(feature_space, preset_name='STEFAN', data_set_name='Stefan',
     #        '% vars in DAG unbounded (out of vars in DAG)',
     #        '% vars in DAG integer (out of vars in DAG)',
     #        '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
-    #        'Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
-    #        'Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
+    #        'Avg work for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
+    #        'Avg work for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
     #        'Avg relative bound change for solving strong branching LPs for spatial branchings (not including infeasible ones) Mixed',
     #        'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
     #        'Avg coefficient spread for convexification cuts Mixed']
@@ -49,11 +49,11 @@ def regression(feature_space, preset_name='STEFAN', data_set_name='Stefan',
                          '#integer violations at root']
 
     t3_linear = ['#nodes in DAG',
-                 'Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
+                 'Avg work for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
                  '#integer violations at root']
 
     t2_linear = ['#nodes in DAG',
-                 'Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed']
+                 'Avg work for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed']
 
     t1_linear = ['#nodes in DAG']
 

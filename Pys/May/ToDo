@@ -16,7 +16,6 @@ TODO: 1. Check scip data cleaning
       7. Write over Overfitting in Masterarbeit
       8. Rename Features.
         8.1 e.g.: #Presolve Global Entities to #MIP Instances
-        8.2 Ticks in deterministic work
         8.3 In SCIP Avg pseudocosts are more or less bound change
       9. User threshold for using predicted rule
         9.1 aka If Model is biased towards Mixed rule, only choose mixed if predicted time gain is >= 10%(or so),

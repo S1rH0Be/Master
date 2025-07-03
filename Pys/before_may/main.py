@@ -22,9 +22,9 @@ current_date = datetime.now()
 # Format it as a string
 date_string = current_date.strftime("%d_%m")
 
-top_8_global = ['% vars in DAG integer (out of vars in DAG) Mixed', '% vars in DAG integer (out of vars in DAG) Int', '#MIP nodes Int', '#MIP nodes Mixed', 'Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed', '#nodes in DAG Int', '#nodes in DAG Mixed', 'Avg coefficient spread for convexification cuts Mixed']
+top_8_global = ['% vars in DAG integer (out of vars in DAG) Mixed', '% vars in DAG integer (out of vars in DAG) Int', '#MIP nodes Int', '#MIP nodes Mixed', 'Avg work for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed', '#nodes in DAG Int', '#nodes in DAG Mixed', 'Avg coefficient spread for convexification cuts Mixed']
 top_8_lin = ['Avg relative bound change for solving strong branching LPs for spatial branchings (not including infeasible ones) Mixed', '% vars in DAG unbounded (out of vars in DAG) Int', '% vars in DAG unbounded (out of vars in DAG) Mixed', '% vars in DAG integer (out of vars in DAG) Mixed', '% vars in DAG integer (out of vars in DAG) Int', '#MIP nodes Int', '#MIP nodes Mixed', 'Avg coefficient spread for convexification cuts Mixed']
-top_8_for = ['#MIP nodes Mixed', '#MIP nodes Int', '% vars in DAG integer (out of vars in DAG) Mixed', '#nodes in DAG Mixed', '% vars in DAG integer (out of vars in DAG) Int', '#nodes in DAG Int', 'Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed', 'Avg coefficient spread for convexification cuts Mixed']
+top_8_for = ['#MIP nodes Mixed', '#MIP nodes Int', '% vars in DAG integer (out of vars in DAG) Mixed', '#nodes in DAG Mixed', '% vars in DAG integer (out of vars in DAG) Int', '#nodes in DAG Int', 'Avg work for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed', 'Avg coefficient spread for convexification cuts Mixed']
 
 def read_in_data():
     df = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/CSV/SecondIteration/Jetzt Ernst/CSVs/Master_Excel/pointfive_is_zero_df.xlsx')

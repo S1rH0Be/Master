@@ -61,11 +61,11 @@ def scale_by_hand(feature):
                              '#spatial branching entities fixed (at the root) Int',
                              '#integer violations at root Mixed', '#integer violations at root Int',
                              '% vars in DAG integer (out of vars in DAG) Mixed',
-                             '% vars in DAG integer (out of vars in DAG) Int','Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
-                             'Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones) Int']
+                             '% vars in DAG integer (out of vars in DAG) Int','Avg work for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
+                             'Avg work for solving strong branching LPs for integer branchings (not including infeasible ones) Int']
 
-    eighth_root = ['Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
-                  'Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Int']
+    eighth_root = ['Avg work for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
+                  'Avg work for solving strong branching LPs for spatial branching (not including infeasible ones) Int']
     tenth_root = ['Avg relative bound change for solving strong branching LPs for spatial branchings (not including infeasible ones) Mixed',
                   'Avg relative bound change for solving strong branching LPs for spatial branchings (not including infeasible ones) Int',
                   'Avg coefficient spread for convexification cuts Mixed', 'Avg coefficient spread for convexification cuts Int',
@@ -164,8 +164,8 @@ feature_histo(yeo, ['% vars in DAG (out of all vars)',
        '% vars in DAG unbounded (out of vars in DAG)',
        '% vars in DAG integer (out of vars in DAG)',
        '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
-       'Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
-       'Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
+       'Avg work for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
+       'Avg work for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
        'Avg relative bound change for solving strong branching LPs for spatial branchings (not including infeasible ones) Mixed',
        'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
        'Avg coefficient spread for convexification cuts Mixed'])
@@ -173,8 +173,8 @@ feature_histo(quantile, ['% vars in DAG (out of all vars)',
        '% vars in DAG unbounded (out of vars in DAG)',
        '% vars in DAG integer (out of vars in DAG)',
        '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
-       'Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
-       'Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
+       'Avg work for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
+       'Avg work for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
        'Avg relative bound change for solving strong branching LPs for spatial branchings (not including infeasible ones) Mixed',
        'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
        'Avg coefficient spread for convexification cuts Mixed'])

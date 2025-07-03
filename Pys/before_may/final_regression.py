@@ -30,8 +30,8 @@ linear_feature_importance_df = pd.DataFrame({'Feature': ['Matrix Equality Constr
        '% vars in DAG unbounded (out of vars in DAG)',
        '% vars in DAG integer (out of vars in DAG)',
        '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
-       'Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
-       'Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
+       'Avg work for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
+       'Avg work for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
        'Avg relative bound change for solving strong branching LPs for spatial branchings (not including infeasible ones) Mixed',
        'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
        'Cmp #spatial branching entities fixed (at the root)',
@@ -147,8 +147,8 @@ def scaling_by_hand(feature):
 
     cols_to_4throot_scale = ['#integer violations at root']
 
-    cols_to_8root_scale = ['Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
-                           'Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed']
+    cols_to_8root_scale = ['Avg work for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
+                           'Avg work for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed']
 
     cols_to_10root_scale = ['Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
                             'Avg relative bound change for solving strong branching LPs for spatial branchings (not including infeasible ones) Mixed']
@@ -347,7 +347,7 @@ def pot_time_save_per_intervall():
 
 def main(rand_seeds, acc_to_ex=False, sgm_to_excel=False):
     full_data, feature_df, label_series = read_data()
-    # feature_df = feature_df[['Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
+    # feature_df = feature_df[['Avg work for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
     #                         '% vars in DAG integer (out of vars in DAG)', '% vars in DAG unbounded (out of vars in DAG)',
     #                         'Presolve Global Entities']]
 
@@ -357,8 +357,8 @@ def main(rand_seeds, acc_to_ex=False, sgm_to_excel=False):
     feat_importance_for = {key: 0 for key in feature_df.columns}
 
     columns_to_be_imputed = [
-        'Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
-        'Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
+        'Avg work for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
+        'Avg work for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
         'Avg relative bound change for solving strong branching LPs for spatial branchings (not including infeasible ones) Mixed',
         'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed']
 

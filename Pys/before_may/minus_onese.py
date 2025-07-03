@@ -10,7 +10,7 @@ def find_minus_nonneg_instances(df):
     #columns with 'ticks' or 'bound change' in their name are candidates for having -1 as entries for action not happening
     #ticks for propagation need to be recalculated-> they are deleted
     #Cmp columns also are irrelavant
-    relevant_columns = df.columns[df.columns.str.contains('ticks|bound change')& ~df.columns.str.contains('Cmp|propagation')]
+    relevant_columns = df.columns[df.columns.str.contains('Avg work|bound change')& ~df.columns.str.contains('Cmp|propagation')]
 
     minus_onese_df = df[relevant_columns.insert(0, 'Matrix Name')]
     """Neighbouring entries of relevant_columns form tupels, (1,2),(3,4),(5,6)..., where i want to find the instances with one entry
@@ -18,8 +18,8 @@ def find_minus_nonneg_instances(df):
     relevant_indices = []
     mixed_rule_negative = []
     int_rule_negative = []
-    sb_sb_indices = [] #contains all ticks and bound change -1/not-1 pair indices for strong branching/spatial branching
-    sb_ib_indices = [] #contains all ticks and bound change -1/not-1 pair indices for strong branching/integer branching
+    sb_sb_indices = [] #contains all Avg work and bound change -1/not-1 pair indices for strong branching/spatial branching
+    sb_ib_indices = [] #contains all Avg work and bound change -1/not-1 pair indices for strong branching/integer branching
 
     #first column is matrix name, so we start with second column
     for i in range(1,len(relevant_columns),2):
@@ -35,7 +35,7 @@ def find_minus_nonneg_instances(df):
                         sb_ib_indices.append(index)
 
     df['Absolute Time'] = df['Final solution time (cumulative) Mixed'] - df['Final solution time (cumulative) Int']
-    columns_for_time_comparison_all = ['Matrix Name']+list(df.columns[df.columns.str.contains('ticks|bound change')& ~df.columns.str.contains('Cmp|propagation')]) +['Final solution time (cumulative) Mixed', 'Final solution time (cumulative) Int',
+    columns_for_time_comparison_all = ['Matrix Name']+list(df.columns[df.columns.str.contains('Avg work|bound change')& ~df.columns.str.contains('Cmp|propagation')]) +['Final solution time (cumulative) Mixed', 'Final solution time (cumulative) Int',
                                        'Cmp Final solution time (cumulative)', 'Absolute Time']
     columns_for_time_comparison_spatial_branch = [entry for entry in columns_for_time_comparison_all if "integer" not in entry]
     columns_for_time_comparison_integer_branch = [entry for entry in columns_for_time_comparison_all if "spatial" not in entry]
@@ -99,10 +99,10 @@ def histo_neg_nonneg(df, columns: list, number_bins=10):
     plt.close()
 
 def scatter_neg_nonneg(interesting_minuses_df):
-    tuple_names = ['Ticks strong branching for spatial branching', 'Ticks strong branching for integer branching', 'Bound Change strong branching for spatial branching', 'Bound Change strong branching for integer branching']
+    tuple_names = ['Avg work strong branching for spatial branching', 'Avg work strong branching for integer branching', 'Bound Change strong branching for spatial branching', 'Bound Change strong branching for integer branching']
     # Define your tuples where each tuple consists of two columns from the DataFrame
-    tuple1 = (interesting_minuses_df['Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed'], interesting_minuses_df['Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Int'])  # (x, y) pairs
-    tuple2 = (interesting_minuses_df['Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed'], interesting_minuses_df['Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones) Int'])
+    tuple1 = (interesting_minuses_df['Avg work for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed'], interesting_minuses_df['Avg work for solving strong branching LPs for spatial branching (not including infeasible ones) Int'])  # (x, y) pairs
+    tuple2 = (interesting_minuses_df['Avg work for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed'], interesting_minuses_df['Avg work for solving strong branching LPs for integer branchings (not including infeasible ones) Int'])
     tuple3 = (interesting_minuses_df['Avg relative bound change for solving strong branching LPs for spatial branchings (not including infeasible ones) Mixed'], interesting_minuses_df['Avg relative bound change for solving strong branching LPs for spatial branchings (not including infeasible ones) Int'])
     tuple4 = (interesting_minuses_df['Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed'], interesting_minuses_df['Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Int'])
 

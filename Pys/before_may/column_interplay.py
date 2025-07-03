@@ -44,6 +44,7 @@ def timeout_time(df):
 
 def entities_vs_vars():
     """Again need to check what happens here"""
+
 #only constraint on ticks is, that they are either nonnegative or equal to -1
 def tickst_du_richtig(df):
     negative_ticks = []

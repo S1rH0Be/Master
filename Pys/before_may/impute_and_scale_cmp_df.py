@@ -53,7 +53,7 @@ def update_cmp(df, col_list):
 #     #drop non valid features
 #     lean_df = cmp_df.drop(columns=['Cmp Final Objective', 'Pot Time Save', 'permutation seed', 'Virtual Best'])
 #     #drop cmp cols for deleted features
-#     lean_df = lean_df.drop(columns=['Cmp Avg ticks for propagation + cutting / entity / rootLPticks',
+#     lean_df = lean_df.drop(columns=['Cmp Avg work for propagation + cutting / entity / rootLPticks',
 #                                        'Cmp #non-spatial branch entities fixed (at the root)'])
 #     if excel_it:
 #         lean_df.to_excel(

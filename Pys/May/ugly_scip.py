@@ -61,9 +61,9 @@ def read_and_rename(file):
     '% vars in DAG unbounded (out of vars in DAG)',
     '% vars in DAG integer (out of vars in DAG)',
     '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
-    'Avg ticks for propagation + cutting / entity / rootLPticks',
-    'Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones)',
-    'Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones)',
+    'Avg work for propagation + cutting / entity / rootLPticks',
+    'Avg work for solving strong branching LPs for spatial branching (not including infeasible ones)',
+    'Avg work for solving strong branching LPs for integer branchings (not including infeasible ones)',
     'Avg relative bound change for solving strong branching LPs for spatial branchings (not including infeasible ones)',
     'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones)',
     'Avg coefficient spread for convexification cuts']

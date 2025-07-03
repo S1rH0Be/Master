@@ -152,7 +152,7 @@ stefans_feats.to_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/
 # Avg coefficient spread for convexification cuts Mixed	Check
 # Presolve Global Entities	Check
 # LinReg:
-# Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed
+# Avg work for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed
 #nodes in DAG
 #nonlinear violations at root
 """

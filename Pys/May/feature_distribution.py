@@ -164,8 +164,8 @@ def plot_top_x_distribution(features:pd.DataFrame, impo_rank:pd.DataFrame, sort_
 # fico_relative = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/June/Bases/FICO/Scaled/relative_fico_feats.csv')
 fico_relative_logged_quantile = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/June/Bases/FICO/Scaled/relative_logged_quantile_fico_feats.csv',
                                    index_col=0)
-log_cols = ['Avg ticks for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
-'Avg ticks for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
+log_cols = ['Avg work for solving strong branching LPs for spatial branching (not including infeasible ones) Mixed',
+'Avg work for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed',
 'Avg relative bound change for solving strong branching LPs for spatial branchings (not including infeasible ones) Mixed',
 'Avg coefficient spread for convexification cuts Mixed']
 
