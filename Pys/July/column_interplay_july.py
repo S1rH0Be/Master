@@ -1,7 +1,6 @@
 from typing import List
 import string
 import pandas as pd
-from collections import defaultdict
 
 def delete_instances(df, instances, reason):
     """"Input: df pandas dataframe, instances: set of strings containing names of instances which should be deleted

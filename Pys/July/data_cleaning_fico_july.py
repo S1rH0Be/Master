@@ -1,7 +1,7 @@
 import pandas as pd
 
-import column_interplay
-import ugly_fico_maybe_scip
+import column_interplay_july
+import ugly_fico_maybe_scip_july
 import numpy as np
 from datetime import datetime
 
@@ -61,7 +61,7 @@ def replace_large_with_inf(df):
     quasi_inf = 1 * np.e ** 39
     numeric_df[numeric_df > quasi_inf] = np.inf
     numeric_df[numeric_df < -quasi_inf] = -np.inf
-    inf_count = np.isinf(numeric_df).sum().sum()
+    # inf_count = np.isinf(numeric_df).sum().sum()
     df.loc[:, numeric_df.columns] = numeric_df
     return df
 # TODO: Check if correct
@@ -84,7 +84,7 @@ def data_cleaning(data:str, requirement_data_frame:pd.DataFrame, scip=False, deb
     # 6-9 are set to -1 if they did not happen
 
     # data is the name of the csv file as a string
-    to_be_cleaned_df = ugly_fico_maybe_scip.read_and_rename(data, fico_columns_integer, fico_columns_double)
+    to_be_cleaned_df = ugly_fico_maybe_scip_july.read_and_rename(data, fico_columns_integer, fico_columns_double)
     # replace large values by infintiy
     to_be_cleaned_df = replace_large_with_inf(to_be_cleaned_df)
 
@@ -98,18 +98,18 @@ def data_cleaning(data:str, requirement_data_frame:pd.DataFrame, scip=False, deb
     deleted_columns = deleted_columns + deleted_cols
 
     # try to convert each column to the right datatype, if not possible find instances which are broken
-    clean_df, broken_cols = ugly_fico_maybe_scip.datatype_converter(clean_df)
+    clean_df, broken_cols = ugly_fico_maybe_scip_july.datatype_converter(clean_df)
     if len(broken_cols)>0:
-        deleted_instances += ugly_fico_maybe_scip.check_datatype(clean_df)
+        deleted_instances += ugly_fico_maybe_scip_july.check_datatype(clean_df)
     # deletes all #nodes in dag zeros
-    clean_df, deleted_inst = ugly_fico_maybe_scip.check_col_consistency(clean_df, requirement_data_frame, SCIP=scip)
+    clean_df, deleted_inst = ugly_fico_maybe_scip_july.check_col_consistency(clean_df, requirement_data_frame, SCIP=scip)
     deleted_instances += deleted_inst
     clean_df = clean_df[~clean_df['Matrix Name'].isin(deleted_instances)]
 
     # add column with reason why instance got delete
     # TODO: Check column_interplay
     # TODO: If i want deleted_df i need to rework column_interplay to return instance with deletion reason
-    clean_df, deleted_instances_col_interplay = column_interplay.column_interplay(clean_df, DEBUG=debuggen)
+    clean_df, deleted_instances_col_interplay = column_interplay_july.column_interplay(clean_df, DEBUG=debuggen)
     deleted_instances += list(deleted_instances_col_interplay)
     # create df with deleted instances for checking
     deleted_instances_df = to_be_cleaned_df[to_be_cleaned_df['Matrix Name'].isin(deleted_instances)]

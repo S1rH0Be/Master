@@ -1,7 +1,8 @@
 import pandas as pd
 import os
 
-from visualize_may import shifted_geometric_mean
+
+from visualize_july import shifted_geometric_mean
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -9,23 +10,23 @@ def accuracy_lin_for(data_frame, title:str, run=''):
     def get_sgm_series(pandas_series, shift):
         return shifted_geometric_mean(pandas_series, shift)
 
-    def get_sgm_acc(data_frame):
-        data_frame['Accuracy'] = pd.to_numeric(data_frame['Accuracy'], errors='coerce')
-        data_frame['Mid Accuracy'] = pd.to_numeric(data_frame['Mid Accuracy'], errors='coerce')
-        data_frame['Extreme Accuracy'] = pd.to_numeric(data_frame['Extreme Accuracy'], errors='coerce')
+    def get_sgm_acc(df):
+        df['Accuracy'] = pd.to_numeric(df['Accuracy'], errors='coerce')
+        df['Mid Accuracy'] = pd.to_numeric(df['Mid Accuracy'], errors='coerce')
+        df['Extreme Accuracy'] = pd.to_numeric(df['Extreme Accuracy'], errors='coerce')
 
-        sgm_accuracy = get_sgm_series(data_frame['Accuracy'], data_frame['Accuracy'].mean()+0.1)
-        sgm_mid_accuracy = get_sgm_series(data_frame['Mid Accuracy'], data_frame['Mid Accuracy'].mean()+0.1)
-        sgm_extreme_accuracy = get_sgm_series(data_frame['Extreme Accuracy'].dropna(), data_frame['Extreme Accuracy'].dropna().mean()+0.1)
+        sgm_accuracy = get_sgm_series(df['Accuracy'], df['Accuracy'].mean()+0.1)
+        sgm_mid_accuracy = get_sgm_series(df['Mid Accuracy'], df['Mid Accuracy'].mean()+0.1)
+        sgm_extreme_accuracy = get_sgm_series(df['Extreme Accuracy'].dropna(), df['Extreme Accuracy'].dropna().mean()+0.1)
         return sgm_accuracy, sgm_mid_accuracy, sgm_extreme_accuracy
 
-    def visualize_acc(data_frame, filter_by:str, title: str = 'Accuracy'):
-        acc_df = data_frame.copy()
+    def visualize_acc(df, filter_by:str, plot_title: str = 'Accuracy'):
+        acc_df = df.copy()
         # if no corresponding acc is found just plot it as 0
-        lin_acc, lin_mid_acc, lin_ex_acc, for_acc, for_mid_acc, for_ex_acc = 0, 0, 0, 0, 0, 0
+        lin_accuracy, lin_mid_acc, lin_ex_accuracy, for_accuracy, for_mid_accuracy, for_ex_accuracy = 0, 0, 0, 0, 0, 0
 
         if filter_by != '':
-            wanted_runs = [run for run in data_frame.columns if filter_by in run]
+            wanted_runs = [run_name for run_name in df.columns if filter_by in run]
             acc_df = acc_df.loc[:, wanted_runs]
         linear_rows = [lin_rows for lin_rows in acc_df.index if 'LinearRegression' in lin_rows]
         linear_df = acc_df.loc[linear_rows, :]
@@ -38,17 +39,17 @@ def accuracy_lin_for(data_frame, title:str, run=''):
             return None
         else:
             if len(linear_df)>0:
-                lin_acc, lin_mid_acc, lin_ex_acc = get_sgm_acc(linear_df)
+                lin_accuracy, lin_mid_acc, lin_ex_accuracy = get_sgm_acc(linear_df)
             if len(forest_df)>0:
-                for_acc, for_mid_acc, for_ex_acc = get_sgm_acc(forest_df)
+                for_accuracy, for_mid_acc, for_ex_accuracy = get_sgm_acc(forest_df)
 
-        values = [lin_acc, lin_mid_acc, lin_ex_acc, for_acc, for_mid_acc, for_ex_acc]
+        values = [lin_accuracy, lin_mid_acc, lin_ex_accuracy, for_accuracy, for_mid_accuracy, for_ex_accuracy]
 
         # Create the plot
         bar_colors = ['green' if val >= 75 else 'red' if val < 50 else 'orange' for val in values]
         plt.figure(figsize=(8, 5))
         plt.bar(['LinAcc', 'LinExAcc', 'ForAcc', 'ForExAcc'], values, color=bar_colors)
-        plt.title(title)
+        plt.title(plot_title)
         plt.ylim(min(0, min(values)*0.9), max(100, max(values)*1.1))  # Set y-axis limits for visibility
         plt.xticks(rotation=45, fontsize=6)
         # Create custom legend entries with value annotations
@@ -57,18 +58,18 @@ def accuracy_lin_for(data_frame, title:str, run=''):
         plt.close()
         return lin_acc, lin_ex_acc, for_acc, for_ex_acc
 
-    lin_acc, lin_ex_acc, for_acc, for_ex_acc = visualize_acc(data_frame, filter_by='', title=title)
+    lin_acc, lin_ex_acc, for_acc, for_ex_acc = visualize_acc(data_frame, filter_by='', plot_title=title)
     return lin_acc, lin_ex_acc, for_acc, for_ex_acc
 
-def sgm(data_frame, title:str, complete=False):
+def sgm(data_frame, title:str):
 
-    def get_sgm_of_sgm(data_frame, shift):
-        col_names = data_frame.columns.tolist()
+    def get_sgm_of_sgm(df, shift):
+        col_names = df.columns.tolist()
         # Frage: SGM of relative SGMs oder von total SGMs?
         # Ich mach erstaml total sgms
         sgm_sgm_df = pd.DataFrame(columns=col_names, index=['Value'])
         for col in col_names:
-            sgm_sgm_df.loc[:, col] = shifted_geometric_mean(data_frame[col], shift)
+            sgm_sgm_df.loc[:, col] = shifted_geometric_mean(df[col], shift)
         return sgm_sgm_df
 
     def relative_to_mixed(value_df):
@@ -77,8 +78,8 @@ def sgm(data_frame, title:str, complete=False):
         values = [value/mixed for value in values]
         return values
 
-    def visualize_sgm(data_frame, title: str = 'SGMs'):
-        pred_df = data_frame.copy()
+    def visualize_sgm(df, plot_title: str = 'SGMs'):
+        pred_df = df.copy()
 
         complete_sgm_df = get_sgm_of_sgm(pred_df, pred_df.mean().mean())
         new_order = ['Int', 'Mixed', 'Predicted', 'VBS']
@@ -93,7 +94,7 @@ def sgm(data_frame, title:str, complete=False):
         # Create the plot
         plt.figure(figsize=(8, 5))
         plt.bar(labels, values_relative, color=bar_colors)
-        plt.title(title)
+        plt.title(plot_title)
         plt.ylim(min(values_relative)*0.9, max(values_relative)*1.01)  # Set y-axis limits for visibility
         plt.xticks(rotation=45, fontsize=6)
         # Create custom legend entries with value annotations
@@ -162,7 +163,7 @@ def get_splitup_dfs(stat_version:str, stats_be_filtered:str):
 
     for model in models:
         for imputer in imputers:
-            for scaler in scalers:
+            for scaler_name in scalers:
                 if stats_be_filtered in filter_by_row:
                     for df_tuple in subdirs[stats_be_filtered]:
                         df = df_tuple[0]
@@ -174,30 +175,30 @@ def get_splitup_dfs(stat_version:str, stats_be_filtered:str):
                             df_name = 'scip'
 
                         first_col = df.columns[0]
-                        df = df[df[first_col].astype(str).str.contains(f'{model}_{imputer}_{scaler}', na=False)]
+                        df = df[df[first_col].astype(str).str.contains(f'{model}_{imputer}_{scaler_name}', na=False)]
                         partial_dfs.append(df)
-                        df.to_csv(f'{stat_version}/{stats_be_filtered}/SplitUp/{model}_{imputer}_{scaler}_{df_name}.csv', index=False)
+                        df.to_csv(f'{stat_version}/{stats_be_filtered}/SplitUp/{model}_{imputer}_{scaler_name}_{df_name}.csv', index=False)
 
                         if stats_be_filtered == 'Accuracy':
                             df.set_index(df.columns[0], inplace=True, drop=True)
-                            lin_acc, lin_ex_acc, for_acc, for_ex_acc = accuracy_lin_for(df, f'{model}_{imputer}_{scaler}_{df_name}')
+                            lin_acc, lin_ex_acc, for_acc, for_ex_acc = accuracy_lin_for(df, f'{model}_{imputer}_{scaler_name}_{df_name}')
                             accuritaet = max(lin_acc, for_acc)
                             extreme_accuracy = max(lin_ex_acc, for_ex_acc)
-                            acc_df.loc[len(acc_df)] = [f'{model}_{imputer}_{scaler}_{df_name}', accuritaet, extreme_accuracy]
+                            acc_df.loc[len(acc_df)] = [f'{model}_{imputer}_{scaler_name}_{df_name}', accuritaet, extreme_accuracy]
 
                         if stats_be_filtered == 'RunTime':
-                            inte, mmixer, pred, vbs = sgm(df.iloc[:,1:])
-                            run_df.loc[len(run_df)] = [f'{model}_{imputer}_{scaler}_{df_name}', inte, mmixer, pred, vbs]
+                            inte, mmixer, pred, vbs = sgm(df.iloc[:,1:], title=f'SGM_{model}_{imputer}_{scaler_name}_{df_name}')
+                            run_df.loc[len(run_df)] = [f'{model}_{imputer}_{scaler_name}_{df_name}', inte, mmixer, pred, vbs]
 
                 elif stats_be_filtered in filter_by_col:
                     for df in subdirs[stats_be_filtered]:
                         columns = df[0].columns
-                        relevant_col_names = [col_name for col_name in columns if f'{model}_{imputer}_{scaler}' in col_name]
+                        relevant_col_names = [col_name for col_name in columns if f'{model}_{imputer}_{scaler_name}' in col_name]
                         if stats_be_filtered == 'Importance':
                             relevant_col_names.insert(0, columns[0])
                         df = df[0][relevant_col_names]
                         partial_dfs.append(df)
-                        df.to_csv(f'{stat_version}/{stats_be_filtered}/SplitUp/{stats_be_filtered}_{model}_{imputer}_{scaler}.csv',
+                        df.to_csv(f'{stat_version}/{stats_be_filtered}/SplitUp/{stats_be_filtered}_{model}_{imputer}_{scaler_name}.csv',
                                   index=False)
 
     if len(acc_df) > 0:
@@ -220,19 +221,7 @@ def get_splitup_dfs(stat_version:str, stats_be_filtered:str):
         default.to_csv(f'{stat_version}/{stats_be_filtered}/SplitUp/{stats_be_filtered}_scip_default_per_split.csv')
         no_pseudo.to_csv(f'{stat_version}/{stats_be_filtered}/SplitUp/{stats_be_filtered}_no_pseudocosts_per_split.csv')
 
-# UNSCALED
-# get_splitup_dfs('/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/TreffenMasDiez/UnscaledLabel', 'Accuracy')
-# get_splitup_dfs('/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/TreffenMasDiez/UnscaledLabel', 'Importance')
-# get_splitup_dfs('/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/TreffenMasDiez/UnscaledLabel', 'Prediction')
-# get_splitup_dfs('/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/TreffenMasDiez/UnscaledLabel', 'RunTime')
-
-# SCALED
-# get_splitup_dfs('/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/TreffenMasVeinteUno/ScaledLabel', 'Accuracy')
-# get_splitup_dfs('/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/TreffenMasDiez/ScaledLabel', 'Importance')
-# get_splitup_dfs('/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/TreffenMasDiez/ScaledLabel', 'Prediction')
-# get_splitup_dfs('/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/TreffenMasDiez/ScaledLabel', 'RunTime')
-
-def multiple_sgm_plot(data_frames, title: str, complete=False):
+def multiple_sgm_plot(data_frames, title: str):
     if not isinstance(data_frames, list):
         data_frames = [data_frames]  # ensure it's a list
 
@@ -248,27 +237,28 @@ def multiple_sgm_plot(data_frames, title: str, complete=False):
         mixed = value_df['Mixed'].iloc[0]
         return [value / mixed for value in values]
 
-    def visualize_sgm(data_frames, title: str = 'SGMs'):
+    def visualize_sgm(dfs, plot_title: str = 'SGMs'):
+        values_relative = [0,0,0,0]
         labels = ['Int', 'Mixed', 'Predicted', 'VBS']
         x = np.arange(len(labels))
         bar_width = 0.25
-        n_dfs = len(data_frames)
+        n_dfs = len(dfs)
         colors = ['pink', 'purple', 'turquoise'][:n_dfs]
 
         plt.figure(figsize=(10, 6))
 
-        for i, df in enumerate(data_frames):
+        for i, df in enumerate(dfs):
             pred_df = df.copy()
             sgm_df = get_sgm_of_sgm(pred_df, pred_df.mean().mean())
             sgm_df = sgm_df.reindex(columns=labels)
             values_relative = relative_to_mixed(sgm_df)
-            plt.bar(x + i * bar_width, values_relative, width=bar_width, label=f'{data_frames[i].name}', color=colors[i])
+            plt.bar(x + i * bar_width, values_relative, width=bar_width, label=f'{dfs[i].name}', color=colors[i])
 
         plt.xticks(x + bar_width * (n_dfs - 1) / 2, labels)
-        plt.title(title)
+        plt.title(plot_title)
         plt.ylim(0, max(values_relative)*1.1)  # Ensure scale visibility
         plt.ylabel('Relative SGM (to Mixed)')
-        if 'SCIP' in title:
+        if 'SCIP' in plot_title:
             plt.legend(loc='lower left', frameon=True, facecolor='white', framealpha=1.0)
         else:
             plt.legend()
@@ -277,7 +267,7 @@ def multiple_sgm_plot(data_frames, title: str, complete=False):
         plt.close()
 
     visualize_sgm(data_frames, title)
-# checkled
+# checked
 def multiple_accuracy_plot(data_frames, title: str, run=''):
     if not isinstance(data_frames, list):
         data_frames = [data_frames]  # wrap in list if single DataFrame is passed
@@ -296,20 +286,20 @@ def multiple_accuracy_plot(data_frames, title: str, run=''):
                                               data_frame['Extreme Accuracy'].dropna().mean() + 0.1)
         return sgm_accuracy, sgm_mid_accuracy, sgm_extreme_accuracy
 
-    def visualize_acc(data_frames, filter_by: str, title: str = 'Accuracy'):
+    def visualize_acc(dfs, filter_by: str, plot_title: str = 'Accuracy'):
         categories = ['LinAcc', 'LinMidAcc', 'LinExAcc', 'ForAcc', 'ForMidAcc', 'ForExAcc']
-        n_dfs = len(data_frames)
+        n_dfs = len(dfs)
         x = np.arange(len(categories))  # label locations
         bar_width = 0.25  # width of each bar
         colors = ['turquoise', 'darkorange', 'limegreen', 'purple', 'red'][:n_dfs]
 
         plt.figure(figsize=(10, 6))
 
-        for i, df in enumerate(data_frames):
+        for i, df in enumerate(dfs):
             acc_df = df.copy()
 
             if filter_by != '':
-                wanted_runs = [run for run in df.columns if filter_by in run]
+                wanted_runs = [run_name for run_name in df.columns if filter_by in run]
                 acc_df = acc_df.loc[:, wanted_runs]
 
             linear_rows = [row for row in acc_df.index if 'LinearRegression' in row]
@@ -326,11 +316,11 @@ def multiple_accuracy_plot(data_frames, title: str, run=''):
                 for_acc, for_mid_acc, for_ex_acc = get_sgm_acc(forest_df)
 
             values = [lin_acc, lin_mid_acc, lin_ex_acc, for_acc, for_mid_acc, for_ex_acc]
-            print(values)
-            plt.bar(x + i * bar_width, values, width=bar_width, label=f'{data_frames[i].name}', color=colors[i])
+
+            plt.bar(x + i * bar_width, values, width=bar_width, label=f'{dfs[i].name}', color=colors[i])
 
         plt.xticks(x + bar_width * (n_dfs - 1) / 2, categories)
-        plt.title(title)
+        plt.title(plot_title)
         plt.ylim(0, 105)
         plt.ylabel('Accuracy')
         plt.legend()
@@ -338,21 +328,21 @@ def multiple_accuracy_plot(data_frames, title: str, run=''):
         plt.show()
         plt.close()
 
-    visualize_acc(data_frames, filter_by=run, title=title)
+    visualize_acc(data_frames, filter_by=run, plot_title=title)
 # checked
-def visualisiere_sgm(treffen:str, scaler:str, unscaled=True, scaled=True, scip=False, fico=False):
+def visualisiere_sgm(treffen:str, scaler_name:str, unscaled=True, scaled=True, scip=False, fico=False):
     if unscaled:
         darter = []
         if scip:
-            scip_default = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/{scaler}/UnscaledLabel/SGM/scip_sgm_runtime.csv',
+            scip_default = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/{scaler_name}/UnscaledLabel/SGM/scip_sgm_runtime.csv',
                                        index_col=0)
-            scip_default.name = f'SCIP Default SGM Only {scaler} Unscaled Label'
+            scip_default.name = f'SCIP Default SGM Only {scaler_name} Unscaled Label'
             darter.append(scip_default)
 
         if fico:
-            fico_default = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/{scaler}/UnscaledLabel/SGM/fico_sgm_runtime.csv',
+            fico_default = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/{scaler_name}/UnscaledLabel/SGM/fico_sgm_runtime.csv',
                                        index_col=0)
-            fico_default.name = f'FICO Xpress SGM Only {scaler} Unscaled Label'
+            fico_default.name = f'FICO Xpress SGM Only {scaler_name} Unscaled Label'
             darter.append(fico_default)
 
         for dart in darter:
@@ -361,36 +351,35 @@ def visualisiere_sgm(treffen:str, scaler:str, unscaled=True, scaled=True, scip=F
     if scaled:
         darter = []
         if scip:
-            scip_default = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/{scaler}/ScaledLabel/SGM/scip_sgm_runtime.csv',
+            scip_default = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/{scaler_name}/ScaledLabel/SGM/scip_sgm_runtime.csv',
                                        index_col=0)
-            scip_default.name = f'SCIP Default SGM Only {scaler} Scaled Label'
+            scip_default.name = f'SCIP Default SGM Only {scaler_name} Scaled Label'
             darter.append(scip_default)
 
         if fico:
-            fico_default = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/{scaler}/ScaledLabel/SGM/fico_sgm_runtime.csv',
+            fico_default = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/{scaler_name}/ScaledLabel/SGM/fico_sgm_runtime.csv',
                                        index_col=0)
-            fico_default.name = f'FICO Xpress SGM Only {scaler} Scaled Label'
+            fico_default.name = f'FICO Xpress SGM Only {scaler_name} Scaled Label'
             darter.append(fico_default)
 
         for dart in darter:
             sgm(dart, title=dart.name)
-
 # checked
-def visualisiere_accuracy(treffen: str, scaler: str, unscaled=True, scaled=True, scip=False, fico=False):
+def visualisiere_accuracy(treffen: str, scaler_name: str, unscaled=True, scaled=True, scip=False, fico=False):
     if unscaled:
         dfs = []
         if scip:
             scip_default = pd.read_csv(
-                f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/{scaler}/UnscaledLabel/Accuracy/scip_acc_df.csv',
+                f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/{scaler_name}/UnscaledLabel/Accuracy/scip_acc_df.csv',
                 index_col=0)
-            scip_default.name = f'SCIP Default Accuracy Only {scaler} Unscaled Label'
+            scip_default.name = f'SCIP Default Accuracy Only {scaler_name} Unscaled Label'
             dfs.append(scip_default)
 
         if fico:
             fico_default = pd.read_csv(
-                f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/{scaler}/UnscaledLabel/Accuracy/fico_acc_df.csv',
+                f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/{scaler_name}/UnscaledLabel/Accuracy/fico_acc_df.csv',
                 index_col=0)
-            fico_default.name = f'FICO Xpress Accuracy Only {scaler} Unscaled Label'
+            fico_default.name = f'FICO Xpress Accuracy Only {scaler_name} Unscaled Label'
             dfs.append(fico_default)
 
         multiple_accuracy_plot(dfs, title='Test')
@@ -399,16 +388,16 @@ def visualisiere_accuracy(treffen: str, scaler: str, unscaled=True, scaled=True,
         dfs = []
         if scip:
             scip_default = pd.read_csv(
-                f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/{scaler}/ScaledLabel/Accuracy/scip_acc_df.csv',
+                f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/{scaler_name}/ScaledLabel/Accuracy/scip_acc_df.csv',
                 index_col=0)
-            scip_default.name = f'SCIP Default Accuracy Only {scaler} Scaled Label'
+            scip_default.name = f'SCIP Default Accuracy Only {scaler_name} Scaled Label'
             dfs.append(scip_default)
 
         if fico:
             fico_default = pd.read_csv(
-                f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/{scaler}/ScaledLabel/Accuracy/fico_acc_df.csv',
+                f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/{scaler_name}/ScaledLabel/Accuracy/fico_acc_df.csv',
                 index_col=0)
-            fico_default.name = f'FICO Xpress Accuracy Only {scaler} Scaled Label'
+            fico_default.name = f'FICO Xpress Accuracy Only {scaler_name} Scaled Label'
             dfs.append(fico_default)
 
         multiple_accuracy_plot(dfs, title='Test')
@@ -467,50 +456,9 @@ def compare_scalers_accuracy(scaled_or_unscaled:str, treffen, scip=True, fico=Tr
 
         ficos = [fico_quantile, fico_yeo, fico_robust, fico_none]
         multiple_accuracy_plot(ficos, title='FICO Comparison Accuracy Scaled')
-
-# def compare_scalers_sgm(scaled_or_unscaled:str, treffen='TreffenMasOnce', scip=True, fico=True):
-#     if scip:
-#         scip_quantile = pd.read_csv(
-#                     f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/Quantile/{scaled_or_unscaled}Label/SGM/scip_sgm_runtime.csv',
-#                     index_col=0)
-#         scip_quantile.name = f'SCIP Default SGM Only Quantile {scaled_or_unscaled} Label'
-#
-#         scip_yeo = pd.read_csv(
-#             f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/YeoJohnson/{scaled_or_unscaled}Label/SGM/scip_sgm_runtime.csv',
-#             index_col=0)
-#         scip_yeo.name = f'SCIP Default SGM Only YeoJohnson {scaled_or_unscaled} Label'
-#
-#         scip_robust = pd.read_csv(
-#             f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/Robust/{scaled_or_unscaled}Label/SGM/scip_sgm_runtime.csv',
-#             index_col=0)
-#         scip_robust.name = f'SCIP Default SGM Only Robust {scaled_or_unscaled} Label'
-#
-#
-#         scippies = [scip_quantile, scip_yeo, scip_robust]
-#
-#         multiple_sgm_plot(scippies, title='SCIP Comparison SGM Scaled')
-#
-#     if fico:
-#         fico_quantile = pd.read_csv(
-#             f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/Quantile/{scaled_or_unscaled}Label/SGM/fico_sgm_runtime.csv',
-#             index_col=0)
-#         fico_quantile.name = f'FICO Xpress SGM Only Quantile {scaled_or_unscaled} Label'
-#
-#         fico_yeo = pd.read_csv(
-#             f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/YeoJohnson/{scaled_or_unscaled}Label/SGM/fico_sgm_runtime.csv',
-#             index_col=0)
-#         fico_yeo.name = f'FICO Xpress SGM Only Yeo-Johnson {scaled_or_unscaled} Label'
-#
-#         fico_robust = pd.read_csv(
-#             f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/Robust/{scaled_or_unscaled}Label/SGM/fico_sgm_runtime.csv',
-#             index_col=0)
-#         fico_robust.name = f'FICO Xpress SGM Only Robust {scaled_or_unscaled} Label'
-#
-#         ficos = [fico_quantile, fico_yeo, fico_robust]
-#         multiple_sgm_plot(ficos, title='FICO Comparison SGM Scaled')
 # checked
-def get_scaler_runs(df:pd.DataFrame, scaler:str):
-    scaler_runs = [scaler_run for scaler_run in df.index if scaler in scaler_run]
+def get_scaler_runs(df:pd.DataFrame, scaler_name:str):
+    scaler_runs = [scaler_run for scaler_run in df.index if scaler_name in scaler_run]
     scaler_run_df = df.loc[scaler_runs, :]
     return scaler_run_df
 # checked
@@ -518,12 +466,12 @@ def compare_scalers(path_to_csv:str):
     acc_df = pd.read_csv(path_to_csv, index_col=0)
     acc_df = acc_df[['Accuracy', 'Mid Accuracy', 'Extreme Accuracy']]
 
-    scaler_names = ['None', 'StandardScaler', 'MinMaxScaler', 'RobustScaler', 'PowerTransformer', 'QuantileTransformer']
+    scaler_namen = ['None', 'StandardScaler', 'MinMaxScaler', 'RobustScaler', 'PowerTransformer', 'QuantileTransformer']
     linear_rows = [lin_row for lin_row in acc_df.index if 'LinearRegression' in lin_row]
     forest_rows = [for_row for for_row in acc_df.index if 'RandomForest' in for_row]
     linear_df = acc_df.loc[linear_rows, :]
     forest_df = acc_df.loc[forest_rows, :]
-    for scaler_name in scaler_names:
+    for scaler_name in scaler_namen:
         linear_scaler_run_df = get_scaler_runs(linear_df, scaler_name)
         forest_scaler_run_df = get_scaler_runs(forest_df, scaler_name)
         lin_scaler_sgm_acc = []
@@ -536,32 +484,32 @@ def compare_scalers(path_to_csv:str):
         print('For', forest_scaler_sgm_acc)
 
 # checking....
-def compare_train_vs_test(scaled_or_unscaled:str, scaler, treffen, scip=True, fico=True):
+def compare_train_vs_test(scaled_or_unscaled:str, scaler_name:str, treffen, scip=True, fico=True):
     # Accuracy
     if scip:
         scip_test = pd.read_csv(
-                    f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/SCIP/{scaler}/{scaled_or_unscaled}Label/Accuracy/scip_acc_df.csv',
+                    f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/SCIP/{scaler_name}/{scaled_or_unscaled}Label/Accuracy/scip_acc_df.csv',
                     index_col=0)
-        scip_test.name = f'SCIP Default Accuracy Testset {scaler} {scaled_or_unscaled} Label'
+        scip_test.name = f'SCIP Default Accuracy Testset {scaler_name} {scaled_or_unscaled} Label'
 
         scip_train = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/SCIP/{scaler}/{scaled_or_unscaled}Label/Accuracy/scip_acc_trainset.csv',
+            f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/SCIP/{scaler_name}/{scaled_or_unscaled}Label/Accuracy/scip_acc_trainset.csv',
             index_col=0)
-        scip_train.name = f'SCIP Default Accuracy Trainingset {scaler} {scaled_or_unscaled} Label'
+        scip_train.name = f'SCIP Default Accuracy Trainingset {scaler_name} {scaled_or_unscaled} Label'
 
         train_test = [scip_test, scip_train]
         multiple_accuracy_plot(train_test, 'Comparison Accuracy Train vs Testset')
 
     if fico:
         fico_test = pd.read_csv(
-                    f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/FICO/{scaler}/{scaled_or_unscaled}Label/Accuracy/fico_acc_df.csv',
+                    f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/FICO/{scaler_name}/{scaled_or_unscaled}Label/Accuracy/fico_acc_df.csv',
                     index_col=0)
-        fico_test.name = f'FICO Xpress Accuracy Testset {scaler} {scaled_or_unscaled} Label'
+        fico_test.name = f'FICO Xpress Accuracy Testset {scaler_name} {scaled_or_unscaled} Label'
 
         fico_train = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/FICO/{scaler}/{scaled_or_unscaled}Label/Accuracy/fico_acc_trainset.csv',
+            f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/FICO/{scaler_name}/{scaled_or_unscaled}Label/Accuracy/fico_acc_trainset.csv',
             index_col=0)
-        fico_train.name = f'FICO Xpress Accuracy Trainingset {scaler} {scaled_or_unscaled} Label'
+        fico_train.name = f'FICO Xpress Accuracy Trainingset {scaler_name} {scaled_or_unscaled} Label'
 
         train_test = [fico_test, fico_train]
         multiple_accuracy_plot(train_test, 'Comparison Accuracy Train vs Testset')
@@ -570,64 +518,64 @@ def compare_train_vs_test(scaled_or_unscaled:str, scaler, treffen, scip=True, fi
     # RunTime
     if scip:
         scip_test = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/SCIP/{scaler}/{scaled_or_unscaled}Label/SGM/scip_sgm_runtime.csv',
+            f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/SCIP/{scaler_name}/{scaled_or_unscaled}Label/SGM/scip_sgm_runtime.csv',
             index_col=0)
-        scip_test.name = f'FICO Xpress SGM Testset {scaler} {scaled_or_unscaled} Label'
+        scip_test.name = f'FICO Xpress SGM Testset {scaler_name} {scaled_or_unscaled} Label'
 
         scip_train = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/SCIP/{scaler}/{scaled_or_unscaled}Label/SGM/scip_sgm_trainset.csv',
+            f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/SCIP/{scaler_name}/{scaled_or_unscaled}Label/SGM/scip_sgm_trainset.csv',
             index_col=0)
-        scip_train.name = f'FICO Xpress SGM Trainset {scaler} {scaled_or_unscaled} Label'
+        scip_train.name = f'FICO Xpress SGM Trainset {scaler_name} {scaled_or_unscaled} Label'
 
         scips = [scip_test, scip_train]
-        multiple_sgm_plot(scips, title=f'SCIP Comparison RunTime SGM Train vs Testset {scaler} {scaled_or_unscaled} Label')
+        multiple_sgm_plot(scips, title=f'SCIP Comparison RunTime SGM Train vs Testset {scaler_name} {scaled_or_unscaled} Label')
 
     if fico:
         fico_test = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/FICO/{scaler}/{scaled_or_unscaled}Label/SGM/fico_sgm_runtime.csv',
+            f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/FICO/{scaler_name}/{scaled_or_unscaled}Label/SGM/fico_sgm_runtime.csv',
             index_col=0)
-        fico_test.name = f'FICO Xpress SGM Testset {scaler} {scaled_or_unscaled} Label'
+        fico_test.name = f'FICO Xpress SGM Testset {scaler_name} {scaled_or_unscaled} Label'
 
         fico_train = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/FICO/{scaler}/{scaled_or_unscaled}Label/SGM/fico_sgm_trainset.csv',
+            f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/FICO/{scaler_name}/{scaled_or_unscaled}Label/SGM/fico_sgm_trainset.csv',
             index_col=0)
-        fico_train.name = f'FICO Xpress SGM Trainset {scaler} {scaled_or_unscaled} Label'
+        fico_train.name = f'FICO Xpress SGM Trainset {scaler_name} {scaled_or_unscaled} Label'
 
         ficos = [fico_test, fico_train]
-        multiple_sgm_plot(ficos, title=f'FICO Xpress Comparison RunTime SGM Train vs Testset {scaler} {scaled_or_unscaled} Label')
+        multiple_sgm_plot(ficos, title=f'FICO Xpress Comparison RunTime SGM Train vs Testset {scaler_name} {scaled_or_unscaled} Label')
 
-def visualize_fico_on_scip(scaled_or_unscaled:str, scaler, treffen):
+def visualize_fico_on_scip(scaled_or_unscaled:str, scaler_name:str, treffen):
     # Accuracy
     scip_acc = pd.read_csv(
-        f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/TreffenMasDoce/{scaler}/{scaled_or_unscaled}Label/Accuracy/scip_acc_df.csv',
+        f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/TreffenMasDoce/{scaler_name}/{scaled_or_unscaled}Label/Accuracy/scip_acc_df.csv',
         index_col=0)
-    scip_acc.name = f'SCIP Default Accuracy {scaler} {scaled_or_unscaled} Label'
+    scip_acc.name = f'SCIP Default Accuracy {scaler_name} {scaled_or_unscaled} Label'
 
     fico_on_scip_acc = pd.read_csv(
-        f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/FICOonSCIP/{scaler}/{scaled_or_unscaled}Label/Accuracy/fico_on_scip_acc_df.csv',
+        f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/FICOonSCIP/{scaler_name}/{scaled_or_unscaled}Label/Accuracy/fico_on_scip_acc_df.csv',
         index_col=0)
-    fico_on_scip_acc.name = f'FICO XPRESS On SCIP Accuracy {scaler} {scaled_or_unscaled} Label'
+    fico_on_scip_acc.name = f'FICO XPRESS On SCIP Accuracy {scaler_name} {scaled_or_unscaled} Label'
 
     scip_vs_fico_on_scip_acc = [scip_acc, fico_on_scip_acc]
     multiple_accuracy_plot(scip_vs_fico_on_scip_acc, f'FICO Xpress vs SCIP on SCIP Accuracy {scaled_or_unscaled} Label')
 
     # RunTime
     scip_sgm = pd.read_csv(
-        f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/TreffenMasDoce/{scaler}/{scaled_or_unscaled}Label/SGM/scip_sgm_runtime.csv',
+        f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/TreffenMasDoce/{scaler_name}/{scaled_or_unscaled}Label/SGM/scip_sgm_runtime.csv',
         index_col=0)
-    scip_sgm.name = f'SCIP SGM {scaler} {scaled_or_unscaled} Label'
+    scip_sgm.name = f'SCIP SGM {scaler_name} {scaled_or_unscaled} Label'
 
     fico_on_scip_sgm = pd.read_csv(
-        f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/FICOonSCIP/{scaler}/{scaled_or_unscaled}Label/SGM/fico_on_scip_sgm_runtime.csv',
+        f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/FICOonSCIP/{scaler_name}/{scaled_or_unscaled}Label/SGM/fico_on_scip_sgm_runtime.csv',
         index_col=0)
-    fico_on_scip_sgm.name = f'FICO Xpress on SCIP SGM {scaler} {scaled_or_unscaled} Label'
+    fico_on_scip_sgm.name = f'FICO Xpress on SCIP SGM {scaler_name} {scaled_or_unscaled} Label'
 
     fico_vs_scip_on_scip_sgm = [scip_sgm, fico_on_scip_sgm]
 
     multiple_sgm_plot(fico_vs_scip_on_scip_sgm,
-                      title=f'FICO Xpress vs SCIP on SCIP Comparison RunTime SGM {scaler} {scaled_or_unscaled} Label')
+                      title=f'FICO Xpress vs SCIP on SCIP Comparison RunTime SGM {scaler_name} {scaled_or_unscaled} Label')
 
-def ranking_feature_importance(importance_df, feature_names,  title):
+def ranking_feature_importance(importance_df, feature_names):
 
     ranking_df = pd.DataFrame(index=feature_names, columns=['Feature', 'Linear Score', 'Forest Score'])
 
@@ -657,12 +605,12 @@ def ranking_feature_importance(importance_df, feature_names,  title):
 
     return ranking_df
 
-def importance(treffen, scaler, scaled_or_unscaled:str, scip=False, fico=False):
-    def feature_importance(data_frame, title: str = 'Feature Importance'):
+def importance(treffen, scaler_name:str, scaled_or_unscaled:str, scip=False, fico=False):
+    def feature_importance(data_frame):
         feature_names = data_frame.index.tolist()
         importance_dict = {}
-        linear_columns = [lin_col for lin_col in data_frame.columns if 'LinearRegression' in lin_col]
-        forest_columns = [for_col for for_col in data_frame.columns if 'RandomForest' in for_col]
+        # linear_columns = [lin_col for lin_col in data_frame.columns if 'LinearRegression' in lin_col]
+        # forest_columns = [for_col for for_col in data_frame.columns if 'RandomForest' in for_col]
 
         for feature in feature_names:
             minimum = min(data_frame.loc[feature,:])
@@ -674,7 +622,7 @@ def importance(treffen, scaler, scaled_or_unscaled:str, scip=False, fico=False):
         return sgm_importance_df
 
     def importance_bar_plot(data_frame, title):
-        importance_df = feature_importance(data_frame, title)
+        importance_df = feature_importance(data_frame)
         values = importance_df.iloc[:,0].tolist()
         # Create the plot
         bar_colors = (['turquoise', 'magenta'])
@@ -700,10 +648,10 @@ def importance(treffen, scaler, scaled_or_unscaled:str, scip=False, fico=False):
         importance_bar_plot(forest_importance_df, f'RandomForest {title}')
 
     def get_score(data_series):
-        sorted = data_series.abs().sort_values(ascending=False)
-        score_dict = {feature:0 for feature in sorted.index.tolist()}
+        sorted_series = data_series.abs().sort_values(ascending=False)
+        score_dict = {feature:0 for feature in sorted_series.index.tolist()}
         score = 0
-        for feature in sorted.index.tolist():
+        for feature in sorted_series.index.tolist():
             score_dict[feature] = score
             score += 1
 
@@ -743,18 +691,18 @@ def importance(treffen, scaler, scaled_or_unscaled:str, scip=False, fico=False):
         plt.close()
 
     if fico:
-        fico_impo = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/Fico/{scaler}/{scaled_or_unscaled}Label/Importance/fico_importance_df.csv',
+        fico_impo = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/Fico/{scaler_name}/{scaled_or_unscaled}Label/Importance/fico_importance_df.csv',
                                 index_col=0)
-        plot_importance_score(fico_impo, f'FICO Importance {scaler} Scaled Label')
-        plot_importances_by_regressor(fico_impo, f'FICO Importance {scaler} Scaled Label')
+        plot_importance_score(fico_impo, f'FICO Importance {scaler_name} Scaled Label')
+        plot_importances_by_regressor(fico_impo, f'FICO Importance {scaler_name} Scaled Label')
 
     if scip:
         scip_impo = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/Scip/{scaler}/{scaled_or_unscaled}Label/Importance/scip_importance_df.csv',
+            f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/{treffen}/Scip/{scaler_name}/{scaled_or_unscaled}Label/Importance/scip_importance_df.csv',
             index_col=0)
 
-        plot_importance_score(scip_impo, f'SCIP Importance {scaler} Scaled Label')
-        plot_importances_by_regressor(scip_impo, f'SCIP Importance {scaler} Scaled Label')
+        plot_importance_score(scip_impo, f'SCIP Importance {scaler_name} Scaled Label')
+        plot_importances_by_regressor(scip_impo, f'SCIP Importance {scaler_name} Scaled Label')
 
     # scip_impo_all_runs_scaled = pd.read_csv(
     #     '/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/TreffenMasDiez/ScaledLabel/Importance/scip_importance_df.csv')
@@ -763,8 +711,6 @@ def importance(treffen, scaler, scaled_or_unscaled:str, scip=False, fico=False):
 
     # plot_importances_by_regressor(scip_impo_all_runs_unscaled, 'Feature Importance Unscaled Label')
     # plot_importances_by_regressor(scip_impo_all_runs_scaled, 'Feature Importance Scaled Label')
-
-
 
 def time_loss_per_prediction(scip_data, prediction_df):
     """
@@ -799,24 +745,27 @@ def time_loss_per_prediction(scip_data, prediction_df):
     linear_time_df = get_time_loss_per_prediction(time_df)
     linear_time_df.to_csv('/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/BilderTreffen/ScaledLabel/linear_time_loss.csv', index=False)
 
-    forest_prediction = prediction_df.iloc[:, 100:]
-
-# TODO I think i need regression to use all predictions not only relevant, such that everything matches
-#  for example: len(prediction)=234!=282
-
-# visualisiere_accuracy('Iteration1', 'FICO', unscaled=False, scaled=True, scip=False, fico=True)
-# visualisiere_sgm('Iteration1', 'FICO', unscaled=False, scaled=True, scip=False, fico=True)
-# compare_scalers_accuracy('Scaled', 'Iteration2', scip=False, fico=True)
-# importance('Iteration2', 'Robust', scaled_or_unscaled='Scaled', fico=True)
-# importance('Iteration2', 'NoScaling', scaled_or_unscaled='Scaled', fico=True)
-scaler_names = ['NoScaling', 'MinMax', 'Robust', 'YeoJohnson', 'Quantile']
-for scaler in scaler_names:
-    compare_train_vs_test('scaled', scaler, 'Iteration2', scip=False, fico=True)
-
-
+    # forest_prediction = prediction_df.iloc[:, 100:]
 
 def plot_fico_sgm():
     sgm_fico = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/Iteration1/FICO/ScaledLabel/SGM/fico_sgm_runtime.csv',
                            index_col=0)
     sgm_fico.name = 'Fico SGM Runtime'
     multiple_sgm_plot(sgm_fico, 'FICO')
+
+def call_of_functions():
+    # TODO I think i need regression to use all predictions not only relevant, such that everything matches
+    #  for example: len(prediction)=234!=282
+
+    visualisiere_accuracy('Iteration1', 'FICO', unscaled=False, scaled=True, scip=False, fico=True)
+    visualisiere_sgm('Iteration1', 'FICO', unscaled=False, scaled=True, scip=False, fico=True)
+
+    compare_scalers_accuracy('Scaled', 'Iteration2', scip=False, fico=True)
+
+    importance('Iteration2', 'Robust', scaled_or_unscaled='Scaled', fico=True)
+    importance('Iteration2', 'NoScaling', scaled_or_unscaled='Scaled', fico=True)
+
+
+    scaler_names = ['NoScaling', 'MinMax', 'Robust', 'YeoJohnson', 'Quantile']
+    for scaler in scaler_names:
+        compare_train_vs_test('scaled', scaler, 'Iteration2', scip=False, fico=True)

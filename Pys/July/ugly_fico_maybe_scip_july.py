@@ -1,7 +1,5 @@
 import pandas as pd
 
-
-
 DEBUG = False
 '''READ AND RENAME COLUMNS'''
 # input: df, list. Renames columns of df to strings in lst

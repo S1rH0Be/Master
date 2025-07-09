@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 
 def get_accuracy(prediction, actual, mid_threshold, extreme_threshold):
     # Filter for nonzero labels
@@ -34,3 +35,10 @@ def get_accuracy(prediction, actual, mid_threshold, extreme_threshold):
 
 
     return overall_acc, mid_acc, number_mid_instances, extreme_acc, number_extreme_instances
+
+
+
+acc_test = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/Iteration1/FICO/ScaledLabel/Accuracy/fico_acc_df.csv')
+acc_train = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/Iteration1/FICO/ScaledLabel/Accuracy/fico_acc_trainset.csv')
+for col in acc_train.columns:
+    print(type(acc_train[col].values[0]))

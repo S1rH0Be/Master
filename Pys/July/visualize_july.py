@@ -19,7 +19,7 @@ def get_files(directory_path:str, index_col=False):
 
     Parameters:
         directory_path (str): Path to the directory.
-
+        index_col (bool): If True, the first column is used as index.
     Returns:
         dict: A dictionary with filenames as keys and DataFrames as values.
     """
