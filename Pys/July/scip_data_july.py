@@ -56,7 +56,6 @@ def map_raw_scip_to_feature(df, compper_df, operation_dict):
             # Use \b to ensure we're replacing whole words only
             operation = re.sub(rf'\b{col}\b', f"df['{col}']", operation)
 
-        # print('map_raw_scip_to_feature', compper_df['Matrix Equality Constraints'].min())
         try:
             # Evaluate the expression and create the new column in df
             compper_df[new_col] = eval(operation)
@@ -270,7 +269,6 @@ def extract_instance_data_minlp(file_path):
                 status = None
                 solving_time = None
                 random_seed_shift = None
-
     # Create the pandas DataFrame
     df = pd.DataFrame(rows)
     return df
@@ -287,14 +285,16 @@ def calculate_label(df):
         else:
             df.loc[index, 'Cmp Final solution time (cumulative)'] = (row['Final solution time (cumulative) Int']/row['Final solution time (cumulative) Mixed'])-1
             df.loc[index, 'Virtual Best'] = row['Final solution time (cumulative) Mixed']
-
+    count = 0
     for index, row in df.iterrows():
         if abs(row['Final solution time (cumulative) Mixed'] - row['Final solution time (cumulative) Int']) <= 0.5:
             df.loc[index, 'Cmp Final solution time (cumulative)'] = 0.0
+            count += 1
 
-        if abs(row['Cmp Final solution time (cumulative)']) <= 0.01:
+        elif abs(row['Cmp Final solution time (cumulative)']) <= 0.01:
             # 1% doesnt matter as well
             df.loc[index, 'Cmp Final solution time (cumulative)'] = 0.0
+            count += 1
     return df
 
 def process_directory_both_rules(directory):
@@ -322,6 +322,7 @@ def process_directory_both_rules(directory):
         merged_df = pd.merge(mix0_df, minlp_df, on="Matrix Name")
 
         columns_list = merged_df.columns.tolist()
+
         reordered_columns = columns_list[:-4]+['Status Int', 'Final solution time (cumulative) Mixed', 'Final solution time (cumulative) Int', 'Random Seed Shift']
         merged_df = merged_df[reordered_columns]
         merged_df = calculate_label(merged_df)
@@ -333,8 +334,42 @@ def process_directory_both_rules(directory):
     return complete_df
 
 # TODO write function
-def process_directory_random_noise(path_to_dir:str):
-    pass
+def process_directory_random_noise(directory:str):
+    file_groups = {}
+    merge_seeds_list = []
+
+    for filename in os.listdir(directory):
+        if filename.endswith(".out"):
+            match = re.search(r'(mix0)(?:_s(\d+))?\.out$', filename)
+            if match:
+                category, group_id = match.groups()
+                if group_id is None:
+                    group_id = 0
+                file_groups.setdefault(group_id, {}).update({category: os.path.join(directory, filename)})
+
+    for group_id in range(3):
+        zero_two_one_df = extract_instance_data_mix0(file_groups[str(group_id)]['mix0'])
+        three_four_five_df = extract_instance_data_minlp(file_groups[str(group_id+3)]['mix0'])
+        if zero_two_one_df is not None:
+            zero_two_one_df = zero_two_one_df.loc[:, ~zero_two_one_df.columns.str.endswith('_descr')]
+
+        if three_four_five_df is not None:
+            three_four_five_df = three_four_five_df.loc[:, ~three_four_five_df.columns.str.endswith('_descr')]
+            three_four_five_df = three_four_five_df.drop('Random Seed Shift', axis=1)
+
+        merged_df = pd.merge(zero_two_one_df, three_four_five_df, on="Matrix Name")
+
+        columns_list = merged_df.columns.tolist()
+        reordered_columns = columns_list[:-3] + ['Status Int', 'Final solution time (cumulative) Mixed',
+                                                 'Final solution time (cumulative) Int']
+        merged_df = merged_df[reordered_columns]
+        merged_df = calculate_label(merged_df)
+        merge_seeds_list.append(merged_df)
+
+    # merge the two dataframes for minlp and mix0
+    complete_df = pd.concat(merge_seeds_list, ignore_index=True).sort_values(by=['Matrix Name', 'Random Seed Shift'])
+    complete_df.to_csv(f'{directory}/random_noise_experiment_df.csv', index=False)
+    return complete_df
 
 
 def read_in_and_call_process(data_set: str, random_noise_experiment=False, fico=True, to_csv=True):
@@ -353,15 +388,16 @@ def read_in_and_call_process(data_set: str, random_noise_experiment=False, fico=
     matrices_with_nan = stefans_data_merged[stefans_data_merged.isna().any(axis=1)]['Matrix Name'].unique()
     # Filter out all rows with those matrix names
     stefans_data_merged_all_have_features = stefans_data_merged[~stefans_data_merged['Matrix Name'].isin(matrices_with_nan)]
+    stefans_data_merged_all_have_features.loc[:, ['Status Mixed', 'Status Int']] = stefans_data_merged_all_have_features.loc[:, ['Status Mixed', 'Status Int']].replace('gap limit', 'optimal')
     if to_csv:
-        if data_set == 'Mix_Minlp':
+        if data_set == 'Mix_Minlp' or data_set == 'Current':
             data_set = 'default'
         # save only df where all instances without features are deleted
         stefans_data_merged_all_have_features.to_csv(f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Bases/SCIP/Raw/scip_{data_set}_raw.csv',
                                index=False)
         stefan_data_reduced_cols_no_nan = create_compatible_dataframe(stefans_data_merged_all_have_features)
         stefan_data_reduced_cols_no_nan.to_csv(
-            f"/Users/fritz/Downloads/ZIB/Master/JulyTry/Bases/SCIP/NamedFeatures/Complete/scip_{data_set}_ready_to_ml.csv",
+            f"/Users/fritz/Downloads/ZIB/Master/JulyTry/Bases/SCIP/NamedFeatures/Complete/scip_{data_set}_named_columns.csv",
             index=False)
 
         scip_features_df = stefan_data_reduced_cols_no_nan.drop(['Matrix Name', 'Random Seed Shift', 'Status Mixed',
@@ -394,8 +430,8 @@ def read_in_and_call_process(data_set: str, random_noise_experiment=False, fico=
                                    index=False)
 
 
+# read_in_and_call_process(data_set='012345', random_noise_experiment=True)
+# read_in_and_call_process(data_set='Mix_Minlp', random_noise_experiment=False)
+read_in_and_call_process(data_set='CurrentOuts', random_noise_experiment=False)
 
-# read_in_and_call_process(data_set='default')
-read_in_and_call_process(data_set='Mix_Minlp', random_noise_experiment=False)
-
-# TODO: Wie geh ich mit GAP limit um? ist das optimal oder timeout oder was ganz anderes? Ne schon optimal
+# TODO: When reading in data for random noise experiment: i need to treat seeds 3,4,5 as Int rule and 0,1,2 as mixed

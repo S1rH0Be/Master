@@ -580,75 +580,24 @@ def get_linear_importance_coeff(importance_df:pd.DataFrame, impo_rank:pd.DataFra
     top_5_df.to_csv('/Users/fritz/Downloads/ZIB/Master/June/Iteration2/RelativeLoggedQuantileFico/ScaledLabel/Importance/fico_top_5_lin_coeffs_importance.csv')
 
 
-# fico_impo_df = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/June/Iteration2/RelativeLoggedQuantileFico/ScaledLabel/Importance/fico_importance_df.csv',
-#                            index_col=0).astype(float)
-# fico_impo_ranking = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/June/Iteration2/RelativeLoggedQuantileFico/ScaledLabel/Importance/fico_importance_ranking.csv')
-#
-# get_linear_importance_coeff(fico_impo_df, fico_impo_ranking)
+def plot_label(label:pd.Series):
 
+    plt.boxplot(label)
+    plt.title("Boxplot of Label")
+    plt.show()
 
+fico_data = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/JulyTry/Bases/FICO/Cleaned/fico_clean_data_753.csv')
+fico_label = fico_data['Cmp Final solution time (cumulative)']
 
-# plot_feature_reduction('/Users/fritz/Downloads/ZIB/Master/June/Iteration2/RelativeLoggedQuantileFico', 'fico',
-#                        'RelativeLoggedQuantileFico', feature_ranking='linear')
-# plot_feature_reduction('/Users/fritz/Downloads/ZIB/Master/June/Iteration2/RelativeLoggedQuantileFico', 'fico',
-#                        'RelativeLoggedQuantileFico', feature_ranking='forest')
-# plot_feature_reduction('/Users/fritz/Downloads/ZIB/Master/June/Iteration2/RelativeLoggedQuantileFico', 'fico',
-#                        'RelativeLoggedQuantileFico', feature_ranking='combined')
+scip_data = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/JulyTry/Bases/SCIP/Cleaned/scip_default_clean_data.csv')
+scip_label = scip_data['Cmp Final solution time (cumulative)']
+# print(len(scip_label))
+# print(len(scip_label[scip_label<10]))
+# plot_label(scip_label[scip_label<10])
 
-# plot_feature_reduction('/Users/fritz/Downloads/ZIB/Master/June/Iteration2/AllRelativeFico', 'fico',
-#                        base_data='AllRelative', feature_ranking='linear')
-# plot_feature_reduction('/Users/fritz/Downloads/ZIB/Master/June/Iteration2/AllRelativeFico', 'fico',
-#                        base_data='AllRelative', feature_ranking='forest')
-# plot_feature_reduction('/Users/fritz/Downloads/ZIB/Master/June/Iteration2/AllRelativeFico', 'fico',
-# base_data='AllRelative', feature_ranking='combined')
-
-
-
-
-
-
-
-
-# def main(treffmas, scale_label=True, visualize_sgm=False, visualize_shares=False, visualize_accuracy=False,
-#          visualize_importance=False, visualize_time_save=False, visualize_label=False, comp_ficip=False,
-#          title_add_on='Wurm'):
-#     print('Proper bases amigo?')
-#     scip_default_base = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/cleaned_scip/scip_default_clean_data.csv')
-#     fico_base = pd.read_excel('/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/918/clean_data_final_06_03.xlsx')
-#
-#     if scale_label:
-#         scip_default_base.loc[:, 'Cmp Final solution time (cumulative)'] = label_scaling(scip_default_base.loc[:, 'Cmp Final solution time (cumulative)'])
-#         fico_base.loc[:, 'Cmp Final solution time (cumulative)'] = label_scaling(fico_base.loc[:, 'Cmp Final solution time (cumulative)'])
-#
-#     global global_path
-#     global_path = f'/Users/fritz/Downloads/ZIB/Master/Treffen/{treffmas}'
-#     if visualize_sgm:
-#         sgm(scaled_label=scale_label)
-#     if visualize_shares:
-#         shares(scip_default_base, fico_base, scaledlabel=scale_label, complete_data=True)
-#     if visualize_accuracy:
-#         accuracy_visualize(scale_label, title_add_on)
-#     if visualize_importance:
-#         importance(treffmas)
-#     if visualize_time_save:
-#         time_save(scip_default_base, fico_base)
-#     if visualize_label:
-#         label(scip_default_base, fico_base, scale_label)
-#     if comp_ficip:
-#         scip_fic = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/scip_default_schnitt.csv')
-#         fic_scip = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/fico_schnitt.csv')
-#         comp_fico_scip(scip_fic, fic_scip)
-
-# main('TreffenMasVeinteTres/prescaled/logged/minmax', scale_label=True, visualize_sgm=False, visualize_shares=False,
-#      visualize_accuracy=True, visualize_importance=False, visualize_time_save=False, visualize_label=False,
-#      comp_ficip=False, title_add_on=' Logged MinMax')
-
-# main('TreffenMasVeinteQuattro/prescaled/logged/quantile', scale_label=True, visualize_sgm=False,
-#      visualize_shares=False, visualize_accuracy=False, visualize_importance=False, visualize_time_save=False,
-#      visualize_label=False, comp_ficip=False, title_add_on=' Quantile Logged')
-
-
-
+# plot_label(fico_label[fico_label<1000])
+# print(len(fico_label))
+# print(len(fico_label[fico_label<350]))
 
 
 

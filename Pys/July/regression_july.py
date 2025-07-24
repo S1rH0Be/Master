@@ -178,6 +178,7 @@ def label_scaling(label):
     return y_log
 
 def get_accuracy(prediction, actual, mid_threshold, extreme_threshold):
+
     # Filter for nonzero labels
     nonzero_indices = actual != 0
     y_test_nonzero = actual[nonzero_indices]
@@ -204,15 +205,11 @@ def get_accuracy(prediction, actual, mid_threshold, extreme_threshold):
             y_test_relevant) > 0 else np.nan
         return accuracy_threshold, number_relevant_instances
 
-
-
     overall_acc = overall_accuracy()
     mid_acc, number_mid_instances = threshold_accuracy(mid_threshold)
     extreme_acc, number_extreme_instances = threshold_accuracy(extreme_threshold)
 
     return overall_acc, mid_acc, number_mid_instances, extreme_acc, number_extreme_instances
-
-
 # TODO Delete get_sgm_comparison if it runs without it
 # def get_sgm_comparison(y_pred, y_test):
 #     pred_df = pd.DataFrame({'Prediction': y_pred, 'Actual': y_test},
@@ -252,6 +249,12 @@ def get_prediction_df(dictionary):
         dictionary[key] += [0] * (max_len - len(dictionary[key]))
     return pd.DataFrame.from_dict(dictionary, orient='columns')
 
+def kick_outlier(feat_df, label_series, threshold : int):
+    indices_to_keep = label_series[label_series.abs() <= threshold].index
+    feats_to_keep = feat_df.loc[indices_to_keep, :]
+    labels_to_keep = label_series.loc[indices_to_keep]
+    return feats_to_keep, labels_to_keep
+
 def feature_reduction(data_set: str, model: str, treffmas, scaling):
     create_directory(f'{treffmas}/FeatureReduction')
     accuracy_lin = []
@@ -259,8 +262,9 @@ def feature_reduction(data_set: str, model: str, treffmas, scaling):
     accuracy_for = []
     sgm_for = []
 
-    def acc_sgm_to_csv(accuracy_drops_lin, sgm_drops_lin, accuracy_drops_for, sgm_drops_for, feature_ranking, dir):
-        path = f'/Users/fritz/Downloads/ZIB/Master/June/{dir}/FeatureReduction/{data_set}'
+    def acc_sgm_to_csv(accuracy_drops_lin, sgm_drops_lin, accuracy_drops_for, sgm_drops_for, feature_ranking, directory):
+        path = f'{directory}/FeatureReduction/{data_set}'
+        print(path)
         create_directory(path)
 
         if len(accuracy_drops_lin)>0:
@@ -291,9 +295,10 @@ def feature_reduction(data_set: str, model: str, treffmas, scaling):
         feature_list = impo_df['Feature'].tolist()
         for reduce_by in range(len(feature_list)):
             treff = f'{treffmas}/FeatureReduction/forest/{reduce_by}'
+            print((number_features - reduce_by))
             feature_set = feature_list[:(number_features - reduce_by)]
-
-            acc, sgm = main(treff, scip_default, fico, treffplusx=treff, feature_scaling=['NoScaling'], prescaling=scaling,
+            treffmas = treffmas.replace('/FICO', '')
+            acc, sgm = main('/Users/fritz/Downloads/ZIB/Master/JulyTry/Bases', scip_default, fico, treffplusx=treff, feature_scaling=['Quantile'], prescaling=scaling,
                  label_scalen=True, feature_subset=feature_set,
                  models={'RandomForest': RandomForestRegressor(n_estimators=100, random_state=0, n_jobs=-1)})
 
@@ -312,7 +317,8 @@ def feature_reduction(data_set: str, model: str, treffmas, scaling):
                 sys.exit(1)
             treff = f'{treffmas}/FeatureReduction/{add_on}/linear/{reduce_by}'
             feature_set = feature_list[:(number_features - reduce_by)]
-            acc, sgm = main(treff, scip_default, fico, treffplusx=treff, feature_scaling=['NoScaling'], prescaling=scaling,
+            base_path = '/Users/fritz/Downloads/ZIB/Master/JulyTry/Bases'
+            acc, sgm = main(base_path, scip_default, fico, treffplusx=treff, feature_scaling=['NoScaling'], prescaling=scaling,
                  label_scalen=True, feature_subset=feature_set, models={'LinearRegression': LinearRegression()})
 
             accuracy_lin.append(acc)
@@ -321,7 +327,7 @@ def feature_reduction(data_set: str, model: str, treffmas, scaling):
     if data_set.lower() == 'fico':
         # TODO: change path to be interactive
         impo_df = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/June/{treffmas}/ScaledLabel/Importance/fico_importance_ranking.csv')
+            f'{treffmas}/Logged/ScaledLabel/Importance/fico_importance_ranking.csv')
         scip_default = False
         fico = True
         treffmas = f'{treffmas}'
@@ -329,7 +335,7 @@ def feature_reduction(data_set: str, model: str, treffmas, scaling):
 
     elif data_set.lower() == 'scip':
         impo_df = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/June/{treffmas}/ScaledLabel/Importance/scip_default_importance_ranking.csv')
+            f'{treffmas}/ScaledLabel/Importance/scip_default_importance_ranking.csv')
         scip_default = True
         fico = False
         treffmas = f'{treffmas}'
@@ -338,25 +344,25 @@ def feature_reduction(data_set: str, model: str, treffmas, scaling):
     else:
         print(f'Data set {data_set} not recognized. use scip or fico')
         sys.exit(1)
-
+    print(treffmas)
     if model.lower() == 'linear':
         impo_df = impo_df.sort_values(by=['Linear Score'], ascending=True)
         linear_reduction(scip_default, fico, impo_df, number_features, treffmas, scaling)
         acc_sgm_to_csv(accuracy_drops_lin=accuracy_lin, sgm_drops_lin=sgm_lin, accuracy_drops_for=[], sgm_drops_for=[],
-                       feature_ranking='linear', dir=treffmas)
+                       feature_ranking='linear', directory=treffmas)
 
     elif model.lower() == 'forest':
         impo_df = impo_df.sort_values(by=['Forest Score'], ascending=True)
         forest_reduction(scip_default, fico, impo_df, number_features, treffmas, scaling)
         acc_sgm_to_csv(accuracy_drops_lin=[], sgm_drops_lin=[], accuracy_drops_for=accuracy_for, sgm_drops_for=sgm_for,
-                       feature_ranking='forest', dir=treffmas)
+                       feature_ranking='forest', directory=treffmas)
 
     elif model.lower() == 'combined':
         print('LINEAR')
         linear_reduction(scip_default, fico, impo_df, number_features, treffmas, scaling)
         print('FOREST')
         forest_reduction(scip_default, fico, impo_df, number_features, treffmas, scaling)
-        acc_sgm_to_csv(accuracy_lin, sgm_lin, accuracy_for, sgm_for, 'combined', dir=treffmas)
+        acc_sgm_to_csv(accuracy_lin, sgm_lin, accuracy_for, sgm_for, 'combined', directory=treffmas)
 
     else:
         print(f'Model {model} not recognized. use linear, forest or combined')
@@ -395,8 +401,9 @@ def predict(pipeline, X_test, y_test):
     end = time.time()
     return y_pred_relevant, y_test_relevant, end - start
 
-def regression(data, data_set_name, features_df, feature_names, models, scalers, imputer, random_seeds,
+def regression(data, data_set_name, label, features, feature_names, models, scalers, imputer, random_seeds,
                label_scale=False, mid_threshold=0.1, extreme_threshold=4.0):
+
     """
     Gets a csv file as input
     trains a ml model
@@ -405,7 +412,6 @@ def regression(data, data_set_name, features_df, feature_names, models, scalers,
     start_time = time.time()
     training_time = 0
     prediction_time = 0
-    features, label = get_features_label(data, features_df, feature_names)
 
     if label_scale:
         label = label_scaling(label)
@@ -480,8 +486,7 @@ def regression(data, data_set_name, features_df, feature_names, models, scalers,
     else:
         feature_importance_df = pd.DataFrame.from_dict(importance_dictionary, orient='columns').astype(float)
         feature_importance_df.index = feature_names
-        impo_ranking = ranking_feature_importance(feature_importance_df, feature_importance_df.index.tolist(),
-                                                       f'{data_set_name.upper()} Feature Importance Ranking')
+        impo_ranking = ranking_feature_importance(feature_importance_df, feature_importance_df.index.tolist())
         accuracy_df = pd.DataFrame.from_dict(accuracy_dictionary, orient='index')
         accuracy_df.columns = ['Accuracy', 'Mid Accuracy', 'Mid Instances', 'Extreme Accuracy', 'Extreme Instances']
         accuracy_df.loc[:, ['Accuracy', 'Mid Accuracy','Extreme Accuracy']] = accuracy_df.loc[:, ['Accuracy', 'Mid Accuracy','Extreme Accuracy']].astype(float)
@@ -507,8 +512,8 @@ def regression(data, data_set_name, features_df, feature_names, models, scalers,
     return accuracy_df, run_time_df, prediction_df, feature_importance_df, impo_ranking, accuracy_df_trainset, run_time_df_trainset
 
 def run_regression_pipeline(data_name, data_path, feats_path, is_excel, prefix, treffplusx, models, imputer, scalers,
-                            hundred_seeds:list, feature_subset:list, label_scale=False):
-    # print(data_path)
+                            hundred_seeds:list, feature_subset:list, label_scale=False, remove_outlier=False,
+                            outlier_threshold=350):
     # Load data
     if is_excel:
         data = pd.read_excel(data_path)
@@ -519,8 +524,17 @@ def run_regression_pipeline(data_name, data_path, feats_path, is_excel, prefix, 
     # treat -1 as missing value
     # TODO check which features have this property
     data = data.replace([-1, -1.0], np.nan)
-
     features = features.replace([-1, -1.0], np.nan)
+    label = data['Cmp Final solution time (cumulative)']
+
+    if remove_outlier:
+        if data_name == 'fico':
+            features, label = kick_outlier(features, label, threshold=350)
+        elif data_name == 'scip':
+            features, label = kick_outlier(features, label, threshold=40)
+        else:
+            sys.exit(f'Invalid data_name: {data_name}')
+
     # if feature_subset is None, it means that we use all features
     if feature_subset is not None:
         features = features[feature_subset]
@@ -531,7 +545,7 @@ def run_regression_pipeline(data_name, data_path, feats_path, is_excel, prefix, 
                 'MinMax':MinMaxScaler(),
                 'Robust':RobustScaler(),
                 'Yeo':PowerTransformer(method='yeo-johnson'),
-                'Quantile': QuantileTransformer(output_distribution='normal', n_quantiles=int(len(data) * 0.8))
+                'Quantile': QuantileTransformer(output_distribution='normal', n_quantiles=int(len(features) * 0.8))
                 }
         scalers = [scaler_dict[scaler] for scaler in scalers]
 
@@ -543,8 +557,7 @@ def run_regression_pipeline(data_name, data_path, feats_path, is_excel, prefix, 
 
     # Run regression
     acc_df, runtime_df, prediction_df, importance_df, impo_ranking, acc_train, sgm_train = (
-        regression(data, data_name, features, features.columns, models, scalers, imputer, hundred_seeds, label_scale
-    ))
+        regression(data, data_name, label, features, features.columns, models, scalers, imputer, hundred_seeds, label_scale))
 
     # Save results
     base_path = f'{treffplusx}'
@@ -563,15 +576,18 @@ def run_regression_pipeline(data_name, data_path, feats_path, is_excel, prefix, 
     return print_accuracy(acc_df), print_sgm(runtime_df, data_name, len(features.columns))
 
 def main(path_to_data:str, scip_default=False, fico=False, treffplusx='Wurm', label_scalen=True,
-         feature_scaling=None, prescaling=None, feature_subset=None, models=None):
+         feature_scaling=None, prescaling=None, experiment=False, feature_subset=None, models=None, kick_outlier=False):
     start_time = time.time()
 
     setup_directory(treffplusx)
+
+    akk, ess_geh_ehm = None, None
 
     if label_scalen:
         treffplusx = treffplusx+'/ScaledLabel'
     else:
         treffplusx = treffplusx + '/UnscaledLabel'
+
 
     if models is None:
         models = {
@@ -597,13 +613,32 @@ def main(path_to_data:str, scip_default=False, fico=False, treffplusx='Wurm', la
 
     create_directory(treffplusx)
 
-    if not prescaling:
+    if experiment:
+        print('Experiment!')
+        akk, ess_geh_ehm = run_regression_pipeline(
+            data_name='scip_default',
+            data_path=f'{path_to_data}/SCIP/Cleaned/scip_experiment_clean_data.csv',
+            feats_path=f'{path_to_data}/SCIP/Cleaned/scip_experiment_features_cleaned.csv',
+            is_excel=False,
+            prefix='scip',
+            treffplusx=treffplusx,
+            models=models,
+            imputer=imputer,
+            scalers=feature_scaling,
+            hundred_seeds=hundred_seeds,
+            label_scale=label_scalen,
+            feature_subset=feature_subset,
+            remove_outlier=kick_outlier
+            )
+
+    elif not prescaling:
         print('Not prescaled!')
         if scip_default:
+            print('SCIP')
             akk, ess_geh_ehm = run_regression_pipeline(
                 data_name = 'scip_default',
-                data_path=f'{path_to_data}/SCIP/scip_clean_data.csv',
-                feats_path=f'{path_to_data}/SCIP/scip_feats_ready_to_ml.csv',
+                data_path=f'{path_to_data}/SCIP/Cleaned/scip_default_clean_data.csv',
+                feats_path=f'{path_to_data}/SCIP/Cleaned/scip_default_features_cleaned.csv',
                 is_excel=False,
                 prefix='scip',
                 treffplusx=treffplusx,
@@ -612,10 +647,12 @@ def main(path_to_data:str, scip_default=False, fico=False, treffplusx='Wurm', la
                 scalers=feature_scaling,
                 hundred_seeds=hundred_seeds,
                 label_scale=label_scalen,
-                feature_subset=feature_subset
+                feature_subset=feature_subset,
+                remove_outlier=kick_outlier
             )
 
         if fico:
+            print('FICO')
             akk, ess_geh_ehm = run_regression_pipeline(
                 data_name='fico',
                 data_path=f'{path_to_data}/FICO/Cleaned/fico_clean_data_753.csv',
@@ -628,7 +665,8 @@ def main(path_to_data:str, scip_default=False, fico=False, treffplusx='Wurm', la
                 scalers=feature_scaling,
                 hundred_seeds=hundred_seeds,
                 label_scale=label_scalen,
-                feature_subset=feature_subset
+                feature_subset=feature_subset,
+                remove_outlier=kick_outlier
             )
 
         if not (fico|scip_default):
@@ -637,13 +675,15 @@ def main(path_to_data:str, scip_default=False, fico=False, treffplusx='Wurm', la
 
     else:
         print('Prescaled!')
+        # TODO: Macht gar kein sinn data_path must be prescaled before hand
+        # TODO: Create featues from base csv
         imputer = ['median']
         if scip_default:
             print('SCIP')
             akk, ess_geh_ehm = run_regression_pipeline(
                 data_name='scip_default',
-                data_path=f'/Users/fritz/Downloads/ZIB/Master/June/Bases/SCIP/scip_clean_data.csv',
-                feats_path=f'/Users/fritz/Downloads/ZIB/Master/June/Bases/SCIP/Scaled/{prescaling}_scip_feats.csv',
+                data_path=f'{path_to_data}/SCIP/Scaled/{prescaling}_scip_clean_data.csv',
+                feats_path=f'{path_to_data}/SCIP/Scaled/{prescaling}_scip_feats.csv',
                 is_excel=False,
                 prefix='scip',
                 treffplusx=treffplusx,
@@ -652,14 +692,15 @@ def main(path_to_data:str, scip_default=False, fico=False, treffplusx='Wurm', la
                 scalers=feature_scaling,
                 hundred_seeds=hundred_seeds,
                 label_scale=label_scalen,
-                feature_subset=feature_subset
+                feature_subset=feature_subset,
+                remove_outlier=kick_outlier
             )
         if fico:
             print('FICO')
             akk, ess_geh_ehm = run_regression_pipeline(
                 data_name='fico',
-                data_path=f'/Users/fritz/Downloads/ZIB/Master/June/Bases/FICO/fico_clean_data.csv',
-                feats_path=f'/Users/fritz/Downloads/ZIB/Master/June/Bases/FICO/Scaled/{prescaling}_fico_feats.csv',
+                data_path=f'{path_to_data}/FICO/Scaled/{prescaling}_fico_clean_data.csv',
+                feats_path=f'{path_to_data}/FICO/Scaled/{prescaling}_fico_feats.csv',
                 is_excel=False,
                 prefix='fico',
                 treffplusx=treffplusx,
@@ -668,11 +709,13 @@ def main(path_to_data:str, scip_default=False, fico=False, treffplusx='Wurm', la
                 scalers=feature_scaling,
                 hundred_seeds=hundred_seeds,
                 label_scale=label_scalen,
-                feature_subset=feature_subset
+                feature_subset=feature_subset,
+                remove_outlier=kick_outlier
             )
         if not (fico|scip_default):
             print('Neither fico or scip_default is specified. use one of them!')
             sys.exit(1)
+
     end_time = time.time()
     print(f'Time elapsed: {end_time - start_time}')
     return akk, ess_geh_ehm
@@ -685,7 +728,6 @@ def get_number_of_runs(path_to_runs):
     folders = [f for f in os.listdir(path_to_runs) if os.path.isdir(os.path.join(path_to_runs, f))]
     return len(folders)
 
-
 base_data_directory = '/Users/fritz/Downloads/ZIB/Master/JulyTry/Bases'
 number_of_runs = get_number_of_runs("/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs")
 # relative fico prescaled
@@ -695,43 +737,38 @@ treffplustage_fico_yeo = f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/Iterat
 treffplustage_fico_robust = f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/Iteration{number_of_runs+1}/FICO/Robust'
 treffplustage_fico_minmax = f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/Iteration{number_of_runs+1}/FICO/MinMax'
 treffplustage_fico_none = f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/Iteration{number_of_runs+1}/FICO/NoScaling'
+treffplustage_fico_feat_reduction_Run = f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/Iteration{number_of_runs+1}/FICO'
+
+treffplustage_fico_logged = f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/Iteration{number_of_runs+1}/FICO/Logged'
 
 treffplustage_scip = f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/Iteration{number_of_runs+1}/SCIP'
+treffplustage_scip_feat_reduction_Run3 = f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/Iteration3/SCIP'
+treffplustage_scip_experiment = f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/Iteration{number_of_runs+1}/SCIP/Experiment'
 
+testy_testy = f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/TEST'
+
+# main(base_data_directory, scip_default=True, fico=False, treffplusx=treffplustage_scip, label_scalen=True,
+#      feature_scaling=['Quantile'], prescaling=None)
+#
+# main(base_data_directory, scip_default=False, fico=True, treffplusx=treffplustage_fico, label_scalen=True,
+#      feature_scaling=['Quantile'], prescaling=None)
+
+# main('/Users/fritz/Downloads/ZIB/Master/JulyTry/Bases', scip_default=False, fico=True,
+#      treffplusx=treffplustage_fico_logged, label_scalen=True, feature_scaling=['Quantile'], prescaling='logged')
 
 scaler_names = ['NoScaling', 'Standard', 'MinMax', 'Robust', 'Yeo', 'Quantile']
 
-# # TODO Call main with proper base csvs aka unscaled or scaled base set to regress on
-# main(path_to_data=base_data_directory, scip_default=False, fico=True, treffplusx=treffplustage,
-#      feature_scaling=['NoScaling'], prescaling='all_relative', label_scalen=True, models=None)
+treffplustage_no_outlier = f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/NoOutlier'
 
-# main(path_to_data=base_data_directory, scip_default=False, fico=True, treffplusx=treffplustage_fico_quantile,
-#      feature_scaling=['Quantile'], prescaling=None, label_scalen=True, models=None)
-# main(path_to_data=base_data_directory, scip_default=False, fico=True, treffplusx=treffplustage_fico_yeo,
-#      feature_scaling=['Yeo'], prescaling=None, label_scalen=True, models=None)
-# main(path_to_data=base_data_directory, scip_default=False, fico=True, treffplusx=treffplustage_fico_robust,
-#      feature_scaling=['Robust'], prescaling=None, label_scalen=True, models=None)
-# main(path_to_data=base_data_directory, scip_default=False, fico=True, treffplusx=treffplustage_fico_minmax,
-#      feature_scaling=['MinMax'], prescaling=None, label_scalen=True, models=None)
-# main(path_to_data=base_data_directory, scip_default=False, fico=True, treffplusx=treffplustage_fico_none,
-#      feature_scaling=['NoScaling'], prescaling=None, label_scalen=True, models=None)
-main(path_to_data=base_data_directory, scip_default=False, fico=True, treffplusx=treffplustage_fico,
-     feature_scaling=scaler_names, prescaling=None, label_scalen=True, models=None)
+# main(base_data_directory, scip_default=True, fico=True,
+#      treffplusx=treffplustage_no_outlier, label_scalen=True,
+#      feature_scaling=scaler_names, prescaling=False, experiment=False, kick_outlier=True)
 
-
-# feature_reduction(data_set='scip', model='linear', treffmas=treffplustage)
-# feature_reduction(data_set='scip', model='forest', treffmas=treffplustage)
-# print('Linear')
-# feature_reduction(data_set='fico', model='linear', treffmas=treffplustage, scaling='relative_logged_quantile')
-# print('Forest')
-# feature_reduction(data_set='fico', model='forest', treffmas=treffplustage, scaling='relative_logged_quantile')
-# print('Combined')
-# feature_reduction(data_set='fico', model='combined', treffmas=treffplustage, scaling='relative_logged_quantile')
+main(base_data_directory, scip_default=True, fico=True,
+     treffplusx=f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/Iteration{number_of_runs+1}', label_scalen=True,
+     feature_scaling=scaler_names, prescaling=False, experiment=False, kick_outlier=False)
 
 
 
-
-
-# TODO: 3. SGM auch strange
 
 

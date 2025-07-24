@@ -59,7 +59,7 @@ def tickst_du_richtig(df):
     negative_ticks = []
     return df, negative_ticks
 # TODO: Get columns which should be equal in one permutation
-def permutations(df):
+def permutations(df, fico):
     """columns where each instance needs to be equal to its permutations"""
     broken_cols = []
     bad_instances = []
@@ -90,15 +90,15 @@ def permutations(df):
         x =  check_same_entries_for_permutations(df, col)
         bad_instances += x
 
-
-    broken_cols += check_equality(df, equal_cols)
+    if fico:
+        broken_cols += check_equality(df, equal_cols)
 
     if len(broken_cols) > 0:
         for tupel in broken_cols:
             bad_instances += df['Matrix Name'].loc[df[tupel[0]] != df[tupel[1]],:].to_list()
     return bad_instances
 
-def perm_consistent(df, DEBUG=False):
+def perm_consistent(df, fico:bool, DEBUG=False):
     eq_cols = df[['Matrix Name', 'Matrix Equality Constraints',
                   'Matrix Quadratic Elements', 'Matrix NLP Formula']]
     not_eq = []
@@ -116,114 +116,109 @@ def perm_consistent(df, DEBUG=False):
     # Drop inconsistent permutations
     df = df[~df['Matrix Name'].isin(not_eq)]
 
-    # check it
-    eq_opt = df[['Matrix Name', 'Status Int', 'Status Mixed',
-                 'Final Objective Int', 'Final Objective Mixed', 'Cmp Final Objective']]
+    # only fico data has objective value, scip doesnt
+    if fico:
+        eq_opt = df[['Matrix Name', 'Status Int', 'Status Mixed',
+                     'Final Objective Int', 'Final Objective Mixed', 'Cmp Final Objective']]
 
-    eq_opt_int = eq_opt[eq_opt['Status Int'] == 'Optimal']
-    eq_opt_mixed = eq_opt[eq_opt['Status Mixed'] == 'Optimal']
+        eq_opt_int = eq_opt[eq_opt['Status Int'] == 'Optimal']
+        eq_opt_mixed = eq_opt[eq_opt['Status Mixed'] == 'Optimal']
 
-    eq_opt_int_indices = eq_opt_int.index
-    eq_opt_mixed_indices = eq_opt_mixed.index
+        eq_opt_int_indices = eq_opt_int.index
+        eq_opt_mixed_indices = eq_opt_mixed.index
 
-    """
-    Idee: if both rules solve the same permutation and only this permutation => delete perm
-    """
+        number_status_opt_int = eq_opt_int['Matrix Name'].value_counts() # pandas series, index is matrix name
+        number_status_opt_mixed = eq_opt_mixed['Matrix Name'].value_counts() # pandas series, index is matrix name
 
+        unique_opt = number_status_opt_int[number_status_opt_int == 1].index.to_list()+number_status_opt_mixed[number_status_opt_mixed == 1].index.to_list()
 
+        for matrix in unique_opt:
+            matrix_indices = df[df['Matrix Name'] == matrix].index
+            count_of_index_appearances = [0,0,0]
+            current_count = 0
+            for index in matrix_indices:
+                if index in eq_opt_int_indices:
+                    count_of_index_appearances[current_count] += 1
+                if index in eq_opt_mixed_indices:
+                    count_of_index_appearances[current_count] += 1
+                current_count += 1
+            if count_of_index_appearances.count(0)<2:
+                unique_opt.remove(matrix)
 
-    number_status_opt_int = eq_opt_int['Matrix Name'].value_counts() # pandas series, index is matrix name
-    number_status_opt_mixed = eq_opt_mixed['Matrix Name'].value_counts() # pandas series, index is matrix name
+        # Drop unique optimals
+        for i in unique_opt:
+            eq_opt.drop(eq_opt[eq_opt['Matrix Name'] == i].index, inplace=True)
+        # TODO resolve if i should use absolute or relative threshold. i guess relative
+        # TODO Propably abs(1-(int/mixed))
+        # not_same_opt stores all matrix names which should be deleted later
+        not_same_opt = []
 
-    unique_opt = number_status_opt_int[number_status_opt_int == 1].index.to_list()+number_status_opt_mixed[number_status_opt_mixed == 1].index.to_list()
+        # check if two permutations are solved to optimality if the optimal value is equal
+        pair_opt_int = number_status_opt_int[number_status_opt_int == 2].index.to_list()
+        pair_opt_mixed = number_status_opt_mixed[number_status_opt_mixed == 2].index.to_list()
+        triple_opt_int = number_status_opt_int[number_status_opt_int == 3].index.to_list()
+        triple_opt_mixed = number_status_opt_mixed[number_status_opt_mixed == 3].index.to_list()
 
-    for matrix in unique_opt:
-        matrix_indices = df[df['Matrix Name'] == matrix].index
-        count_of_index_appearances = [0,0,0]
-        current_count = 0
-        for index in matrix_indices:
-            if index in eq_opt_int_indices:
-                count_of_index_appearances[current_count] += 1
-            if index in eq_opt_mixed_indices:
-                count_of_index_appearances[current_count] += 1
-            current_count += 1
-        if count_of_index_appearances.count(0)<2:
-            unique_opt.remove(matrix)
+        for matrix in triple_opt_int:
+            if matrix in pair_opt_mixed:
+                pair_opt_mixed.remove(matrix)
+            if matrix in pair_opt_int:
+                pair_opt_int.remove(matrix)
+        for matrix in triple_opt_mixed:
+            if matrix in pair_opt_mixed:
+                pair_opt_mixed.remove(matrix)
+            if matrix in pair_opt_int:
+                pair_opt_int.remove(matrix)
 
-    # Drop unique optimals
-    for i in unique_opt:
-        eq_opt.drop(eq_opt[eq_opt['Matrix Name'] == i].index, inplace=True)
-    # TODO resolve if i should use absolute or relative threshold. i guess relative
-    # TODO Propably abs(1-(int/mixed))
-    # not_same_opt stores all matrix names which should be deleted later
-    not_same_opt = []
+        pair_opt_int_df = eq_opt_int[eq_opt_int['Matrix Name'].isin(pair_opt_int)]
+        pair_opt_mixed_df = eq_opt_mixed[eq_opt_mixed['Matrix Name'].isin(pair_opt_mixed)]
 
-    # check if two permutations are solved to optimality if the optimal value is equal
-    pair_opt_int = number_status_opt_int[number_status_opt_int == 2].index.to_list()
-    pair_opt_mixed = number_status_opt_mixed[number_status_opt_mixed == 2].index.to_list()
-    triple_opt_int = number_status_opt_int[number_status_opt_int == 3].index.to_list()
-    triple_opt_mixed = number_status_opt_mixed[number_status_opt_mixed == 3].index.to_list()
+        index_pairs_int = [pair_opt_int_df[pair_opt_int_df['Matrix Name']==matrix].index for matrix in pair_opt_int]
+        index_pairs_mixed = [pair_opt_mixed_df[pair_opt_mixed_df['Matrix Name']==matrix].index for matrix in pair_opt_mixed]
 
-    for matrix in triple_opt_int:
-        if matrix in pair_opt_mixed:
-            pair_opt_mixed.remove(matrix)
-        if matrix in pair_opt_int:
-            pair_opt_int.remove(matrix)
-    for matrix in triple_opt_mixed:
-        if matrix in pair_opt_mixed:
-            pair_opt_mixed.remove(matrix)
-        if matrix in pair_opt_int:
-            pair_opt_int.remove(matrix)
+        cmp_opt_pairs_int = [(abs(eq_opt['Final Objective Int'].loc[i[0]]) -
+                              abs(eq_opt['Final Objective Int'].loc[i[1]])) for i in index_pairs_int]
+        cmp_opt_pairs_mixed = [(abs(eq_opt['Final Objective Mixed'].loc[i[0]]) -
+                              abs(eq_opt['Final Objective Mixed'].loc[i[1]])) for i in index_pairs_mixed]
 
-    pair_opt_int_df = eq_opt_int[eq_opt_int['Matrix Name'].isin(pair_opt_int)]
-    pair_opt_mixed_df = eq_opt_mixed[eq_opt_mixed['Matrix Name'].isin(pair_opt_mixed)]
+        not_same_opt_int = [x for x in cmp_opt_pairs_int if abs(x) > 10**(-3)]
+        not_same_opt_mixed = [x for x in cmp_opt_pairs_mixed if abs(x) > 10 ** (-3)]
+        not_same_opt_index_int = [index_pairs_int[i] for i in range(len(not_same_opt_int)) if abs(not_same_opt_int[i]) > 10**(-3)]
+        not_same_opt_index_mixed = [index_pairs_mixed[i] for i in range(len(not_same_opt_mixed)) if
+                              abs(not_same_opt_mixed[i]) > 10 ** (-3)]
 
-    index_pairs_int = [pair_opt_int_df[pair_opt_int_df['Matrix Name']==matrix].index for matrix in pair_opt_int]
-    index_pairs_mixed = [pair_opt_mixed_df[pair_opt_mixed_df['Matrix Name']==matrix].index for matrix in pair_opt_mixed]
+        all_indices_which_should_be_deleted = not_same_opt_index_int+not_same_opt_index_mixed
+        set_indices = []
+        for i in all_indices_which_should_be_deleted:
+            if i[0] not in set_indices:
+                set_indices.append(i[0])
+            if i[1] not in set_indices:
+                set_indices.append(i[1])
 
-    cmp_opt_pairs_int = [(abs(eq_opt['Final Objective Int'].loc[i[0]]) -
-                          abs(eq_opt['Final Objective Int'].loc[i[1]])) for i in index_pairs_int]
-    cmp_opt_pairs_mixed = [(abs(eq_opt['Final Objective Mixed'].loc[i[0]]) -
-                          abs(eq_opt['Final Objective Mixed'].loc[i[1]])) for i in index_pairs_mixed]
+        matrix_names_which_should_de_deleted = [df['Matrix Name'].loc[index] for index in set_indices]
+        not_same_opt+=matrix_names_which_should_de_deleted
 
-    not_same_opt_int = [x for x in cmp_opt_pairs_int if abs(x) > 10**(-3)]
-    not_same_opt_mixed = [x for x in cmp_opt_pairs_mixed if abs(x) > 10 ** (-3)]
-    not_same_opt_index_int = [index_pairs_int[i] for i in range(len(not_same_opt_int)) if abs(not_same_opt_int[i]) > 10**(-3)]
-    not_same_opt_index_mixed = [index_pairs_mixed[i] for i in range(len(not_same_opt_mixed)) if
-                          abs(not_same_opt_mixed[i]) > 10 ** (-3)]
-
-    all_indices_which_should_be_deleted = not_same_opt_index_int+not_same_opt_index_mixed
-    set_indices = []
-    for i in all_indices_which_should_be_deleted:
-        if i[0] not in set_indices:
-            set_indices.append(i[0])
-        if i[1] not in set_indices:
-            set_indices.append(i[1])
-
-    matrix_names_which_should_de_deleted = [df['Matrix Name'].loc[index] for index in set_indices]
-    not_same_opt+=matrix_names_which_should_de_deleted
-
-    for i in triple_opt_int:
-        all_perms = eq_opt[eq_opt['Matrix Name'] == i]
-        max_opt_int = all_perms['Final Objective Int'].max()
-        min_opt_int = all_perms['Final Objective Int'].min()
-        wurm = pd.Series((max_opt_int - min_opt_int), index=all_perms.index)
-        if wurm.max() > 0.001:
-            not_same_opt.append(i)
-
-    for i in triple_opt_mixed:
-        all_perms = eq_opt[eq_opt['Matrix Name'] == i]
-        max_opt_mixed = all_perms['Final Objective Mixed'].max()
-        min_opt_mixed = all_perms['Final Objective Mixed'].min()
-        min_max_diff = max_opt_mixed - min_opt_mixed
-        if min_max_diff > 0.001:
-            if i not in not_same_opt_mixed:
+        for i in triple_opt_int:
+            all_perms = eq_opt[eq_opt['Matrix Name'] == i]
+            max_opt_int = all_perms['Final Objective Int'].max()
+            min_opt_int = all_perms['Final Objective Int'].min()
+            wurm = pd.Series((max_opt_int - min_opt_int), index=all_perms.index)
+            if wurm.max() > 0.001:
                 not_same_opt.append(i)
 
-    # Drop inconsistent optimal values across permutations
-    for instance_name in not_same_opt:
-        df.drop(df[df['Matrix Name'] == instance_name].index, inplace=True)
-        drop_instances.append(instance_name)
+        for i in triple_opt_mixed:
+            all_perms = eq_opt[eq_opt['Matrix Name'] == i]
+            max_opt_mixed = all_perms['Final Objective Mixed'].max()
+            min_opt_mixed = all_perms['Final Objective Mixed'].min()
+            min_max_diff = max_opt_mixed - min_opt_mixed
+            if min_max_diff > 0.001:
+                if i not in not_same_opt_mixed:
+                    not_same_opt.append(i)
+
+        # Drop inconsistent optimal values across permutations
+        for instance_name in not_same_opt:
+            df.drop(df[df['Matrix Name'] == instance_name].index, inplace=True)
+            drop_instances.append(instance_name)
     return df, drop_instances
 
 def equal_cols_to_static(dataframe):
@@ -239,11 +234,12 @@ def equal_cols_to_static(dataframe):
 
     return static_df
 
-def column_interplay(df:pd.DataFrame, DEBUG=True):
+def column_interplay(df:pd.DataFrame, fico:bool, DEBUG=True):
     #important: first timeout_time checken, then scale columns with +100
     deleted_instances = []
     # check if optimal val is equal if both rules solved instance to optimality
     cleaner_df, del_instances = opt_opt(df)
+
     cleaner_df = delete_instances(cleaner_df, del_instances, 'Optimal Value too different')
     deleted_instances += del_instances
     if DEBUG:
@@ -262,13 +258,13 @@ def column_interplay(df:pd.DataFrame, DEBUG=True):
     if DEBUG:
         print('too_long', len(set(del_instances)), set(del_instances))
     # check if values across permutations are equal where there should be
-    del_instances = permutations(cleaner_df)
-    cleaner_df = delete_instances(cleaner_df, permutations(cleaner_df), 'Permutations not consistent')
-    deleted_instances += permutations(cleaner_df)
+    del_instances = permutations(cleaner_df, fico=fico)
+    cleaner_df = delete_instances(cleaner_df, del_instances, 'Permutations not consistent')
+    deleted_instances += del_instances
     if DEBUG:
         print('perms', len(set(del_instances)), set(del_instances))
     # check if values across permutations are equal where there should be
-    cleaner_df, del_instances = perm_consistent(cleaner_df)
+    cleaner_df, del_instances = perm_consistent(cleaner_df, fico=fico)
     deleted_instances += del_instances
     if DEBUG:
         print('perms II', del_instances)
