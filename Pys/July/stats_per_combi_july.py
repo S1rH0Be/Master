@@ -358,9 +358,9 @@ def train_vs_test_acuracy(data_frame_path, version: str, fico_or_scip, save_to):
         plt.ylabel('Accuracy')
         plt.legend()
         plt.tight_layout()
-        filename = f"{save_to}/{fico_or_scip}_9{version}_train_vs_test_acc.png"
+        filename = f"{save_to}/{fico_or_scip}_{version}_train_vs_test_acc.png"
         plt.savefig(filename)
-        plt.show()
+        # plt.show()
         plt.close()
 
     if fico_or_scip == "scip":
