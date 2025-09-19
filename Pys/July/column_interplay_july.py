@@ -112,7 +112,7 @@ def perm_consistent(df, fico:bool, DEBUG=False):
             not_eq.append(instance)
             drop_instances.append(instance)
     if DEBUG:
-        print(f"Dropping instances: {drop_instances}")
+        print(f"PERM CONSISTENT Dropping instances: {drop_instances}")
     # Drop inconsistent permutations
     df = df[~df['Matrix Name'].isin(not_eq)]
 
@@ -130,34 +130,38 @@ def perm_consistent(df, fico:bool, DEBUG=False):
         number_status_opt_int = eq_opt_int['Matrix Name'].value_counts() # pandas series, index is matrix name
         number_status_opt_mixed = eq_opt_mixed['Matrix Name'].value_counts() # pandas series, index is matrix name
 
-        unique_opt = number_status_opt_int[number_status_opt_int == 1].index.to_list()+number_status_opt_mixed[number_status_opt_mixed == 1].index.to_list()
-
+        unique_opt = set(number_status_opt_int[number_status_opt_int == 1].index.to_list()+number_status_opt_mixed[number_status_opt_mixed == 1].index.to_list())
+        unique_combined_opt = []
         for matrix in unique_opt:
             matrix_indices = df[df['Matrix Name'] == matrix].index
-            count_of_index_appearances = [0,0,0]
+            count_of_index_appearances_int = [0,0,0]
+            count_of_index_appearances_mixed = [0, 0, 0]
             current_count = 0
             for index in matrix_indices:
                 if index in eq_opt_int_indices:
-                    count_of_index_appearances[current_count] += 1
+                    count_of_index_appearances_int[current_count] += 1
                 if index in eq_opt_mixed_indices:
-                    count_of_index_appearances[current_count] += 1
+                    count_of_index_appearances_mixed[current_count] += 1
                 current_count += 1
-            if count_of_index_appearances.count(0)<2:
-                unique_opt.remove(matrix)
+            count_of_index_appearances = count_of_index_appearances_int+count_of_index_appearances_mixed
+            if count_of_index_appearances.count(0)>=5:
+                unique_combined_opt.append(matrix)
 
         # Drop unique optimals
-        for i in unique_opt:
+        for i in unique_combined_opt:
             eq_opt.drop(eq_opt[eq_opt['Matrix Name'] == i].index, inplace=True)
         # TODO resolve if i should use absolute or relative threshold. i guess relative
         # TODO Propably abs(1-(int/mixed))
         # not_same_opt stores all matrix names which should be deleted later
         not_same_opt = []
 
+
         # check if two permutations are solved to optimality if the optimal value is equal
         pair_opt_int = number_status_opt_int[number_status_opt_int == 2].index.to_list()
         pair_opt_mixed = number_status_opt_mixed[number_status_opt_mixed == 2].index.to_list()
         triple_opt_int = number_status_opt_int[number_status_opt_int == 3].index.to_list()
         triple_opt_mixed = number_status_opt_mixed[number_status_opt_mixed == 3].index.to_list()
+
 
         for matrix in triple_opt_int:
             if matrix in pair_opt_mixed:
@@ -173,11 +177,13 @@ def perm_consistent(df, fico:bool, DEBUG=False):
         pair_opt_int_df = eq_opt_int[eq_opt_int['Matrix Name'].isin(pair_opt_int)]
         pair_opt_mixed_df = eq_opt_mixed[eq_opt_mixed['Matrix Name'].isin(pair_opt_mixed)]
 
+
         index_pairs_int = [pair_opt_int_df[pair_opt_int_df['Matrix Name']==matrix].index for matrix in pair_opt_int]
         index_pairs_mixed = [pair_opt_mixed_df[pair_opt_mixed_df['Matrix Name']==matrix].index for matrix in pair_opt_mixed]
 
         cmp_opt_pairs_int = [(abs(eq_opt['Final Objective Int'].loc[i[0]]) -
                               abs(eq_opt['Final Objective Int'].loc[i[1]])) for i in index_pairs_int]
+
         cmp_opt_pairs_mixed = [(abs(eq_opt['Final Objective Mixed'].loc[i[0]]) -
                               abs(eq_opt['Final Objective Mixed'].loc[i[1]])) for i in index_pairs_mixed]
 
@@ -225,6 +231,7 @@ def equal_cols_to_static(dataframe):
     eq_col_names = {}
     static_df = dataframe
 
+    # HIIIIIIIIIIAAAAAAAAHHHHHHHHHHHHHHH
     for i in range(0, len(dataframe.columns)-1):
         if (dataframe.iloc[:, i] == dataframe.iloc[:, i + 1]).all():
             eq_col_names[dataframe.columns[i]] = dataframe.columns[i].replace(' Mixed', '')
@@ -264,10 +271,11 @@ def column_interplay(df:pd.DataFrame, fico:bool, DEBUG=True):
     if DEBUG:
         print('perms', len(set(del_instances)), set(del_instances))
     # check if values across permutations are equal where there should be
-    cleaner_df, del_instances = perm_consistent(cleaner_df, fico=fico)
+    cleaner_df, del_instances = perm_consistent(cleaner_df, fico=fico, DEBUG=DEBUG)
     deleted_instances += del_instances
     if DEBUG:
-        print('perms II', del_instances)
+        print('perms II', len(set(del_instances)), del_instances)
+
     # TODO: Ask timo if work<=100, if yes rework. Right now this does nothing
     cleaner_df, del_instances = tickst_du_richtig(cleaner_df)
     cleaner_df = delete_instances(cleaner_df, del_instances, 'Ticks > 100')

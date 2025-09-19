@@ -30,6 +30,9 @@ def create_directory(parent_name):
     return 0
 
 def shifted_geometric_mean(values, shift):
+    if len(values)==0:
+        print("Nothing Extreme Here")
+        return 0
     values = np.array(values)
 
     if values.dtype == 'object':
@@ -60,13 +63,17 @@ def print_accuracy(acc_df):
 
         sgm_accuracy = get_sgm_series(data_frame['Accuracy'], data_frame['Accuracy'].mean()+0.1)
         sgm_mid_accuracy = get_sgm_series(data_frame['Mid Accuracy'], data_frame['Mid Accuracy'].mean()+0.1)
-        sgm_extreme_accuracy = get_sgm_series(data_frame['Extreme Accuracy'].dropna(), data_frame['Extreme Accuracy'].dropna().mean()+0.1)
+        if len(data_frame['Extreme Accuracy'])>0:
+            sgm_extreme_accuracy = get_sgm_series(data_frame['Extreme Accuracy'].dropna(), data_frame['Extreme Accuracy'].dropna().mean()+0.1)
+        else:
+            sgm_extreme_accuracy = 0
         return [sgm_accuracy, sgm_mid_accuracy, sgm_extreme_accuracy]
 
     def visualize_acc(data_frame, title: str = 'Accuracy'):
         """Gets sgm of accuracy of a run for the linear and the forest model."""
         acc_df = data_frame.copy()
         # if no corresponding acc is found just plot it as 0
+        lin_acc, lin_ex_acc, for_acc, for_ex_acc = 0, 0, 0, 0
 
         linear_rows = [lin_rows for lin_rows in acc_df.index if 'LinearRegression' in lin_rows]
         linear_df = acc_df.loc[linear_rows, :]
@@ -88,6 +95,17 @@ def print_accuracy(acc_df):
     return visualize_acc(acc_df, title='Accuracy')
 
 def print_sgm(sgm_df, data_set, number_features):
+
+    def get_sgm_of_sgm(data_frame, shift):
+        col_names = data_frame.columns.tolist()
+        # Frage: SGM of relative SGMs oder von total SGMs?
+        # Ich mach erstmal total sgms
+        sgm_sgm_df = pd.DataFrame(columns=col_names, index=['Value'])
+        for col in col_names:
+            print(f'GetSGMofSGM shift: {shift}')
+            sgm_sgm_df.loc[:, col] = shifted_geometric_mean(data_frame[col], shift)
+        return sgm_sgm_df
+
     def relative_to_default(value_dict:dict, dataset:str):
         if dataset.lower() == 'fico':
             default_rule = 'Mixed'
@@ -112,6 +130,11 @@ def print_sgm(sgm_df, data_set, number_features):
         means = [mixed.quantile(0.05).min(), pref_int.quantile(0.05).min(), prediction.quantile(0.05).min(),
                  vbs.quantile(0.05).min()]
         mean_mean = np.min(means)
+        # print("Means", means)
+        means = [mixed.mean(), pref_int.mean(), prediction.mean(), vbs.mean()]
+        # print("Means", means)
+        sums = [mixed.sum(), pref_int.sum(), prediction.sum(), vbs.sum()]
+        # print("Sums", sums)
 
 
         mixed_values = shifted_geometric_mean(mixed, mean_mean)
@@ -256,8 +279,9 @@ def kick_outlier(feat_df, label_series, threshold : int):
     labels_to_keep = label_series.loc[indices_to_keep]
     return feats_to_keep, labels_to_keep
 
-def feature_reduction(data_path, feature_path, data_set, model: str, treffmas, skalierer, remove_outlier=False):
-    create_directory(f'{treffmas}/FeatureReduction')
+def feature_reduction(train_data_path, test_data_path, train_feature_path, test_feature_path, fico_or_scip, model: str,
+                      treffen, scaling, wie_tief, anzahl_estimators, feats_per_tree, remove_outlier=True):
+    create_directory(f'{treffen}/FeatureReduction')
     accuracy_lin = []
     sgm_lin = []
     accuracy_for = []
@@ -291,92 +315,105 @@ def feature_reduction(data_path, feature_path, data_set, model: str, treffmas, s
                 f'{path}/sgm_{data_set}_{feature_ranking}_forest.csv',
                 index=False)
 
-    def forest_reduction(data_path, feature_path,scip_default, fico, impo_df, number_features, treffmas, scaling_for_features, outlier_removal=False):
+    def forest_reduction(data_path_train, data_path_test, feature_path_train, feature_path_test,
+                            scip_or_fico, impo_df, number_features, treffmas, scaling_for_features,
+                         tiefe, estimatoren, anzahl_feat_per_tree, outlier_removal=True):
         feature_list = impo_df['Feature'].tolist()
         for reduce_by in range(len(feature_list)):
             treff = f'{treffmas}/FeatureReduction/forest/{reduce_by}'
             feature_set = feature_list[:(number_features - reduce_by)]
             print("#Features in ForesReduction:", len(feature_set))
             treffmas = treffmas.replace('/FICO', '')
-            acc, sgm = main(data_path, feature_path, scip_default, fico, treffplusx=treff, feature_scaling=scaling_for_features,
-                 label_scalen=True, feature_subset=feature_set,
-                 models={'RandomForest': RandomForestRegressor(n_estimators=100, random_state=0, n_jobs=-1)}, kick_outliers=outlier_removal)
+            print('SCALING:', scaling)
+            acc, sgm = main(path_to_trainset_data=data_path_train, path_to_testset_data=data_path_test,
+                            path_to_trainset_feat=feature_path_train, path_to_testset_feat=feature_path_test,
+                            scip_or_fico=scip_or_fico, treffplusx=treff, feature_scaling=scaling_for_features,
+                            label_scalen=True, feature_subset=feature_set,
+                            models={'RandomForest': RandomForestRegressor(n_estimators=100, random_state=0, n_jobs=-1)},
+                            kick_outlier=outlier_removal, max_depth=tiefe, estimatoren=estimatoren,
+                            max_feature_number=anzahl_feat_per_tree)
 
             accuracy_for.append(acc)
             sgm_for.append(sgm)
 
-    def linear_reduction(data_path, feature_path, scip_default, fico, impo_df, number_features, treffmas, scaling_for_features, outlier_removal = False):
+    def linear_reduction(data_path_train, data_path_test, feature_path_train, feature_path_test,
+                            scip_or_fico, impo_df, number_features, treffmas, scaling_for_features,
+                         tiefe, estimatoren, anzahl_feat_per_tree, outlier_removal=True):
+
         feature_list = impo_df['Feature'].tolist()
         for reduce_by in range(len(feature_list)):
-            if scip_default:
-                add_on = 'scip'
-            elif fico:
-                add_on = 'fico'
-            else:
-                print("Neither scip nor fico")
-                sys.exit(1)
+            add_on = scip_or_fico
+
             treff = f'{treffmas}/FeatureReduction/{add_on}/linear/{reduce_by}'
             if reduce_by>0:
                 print(feature_list[(number_features - reduce_by)])
             feature_set = feature_list[:(number_features - reduce_by)]
 
-            acc, sgm = main(data_path, feature_path, scip_default, fico, treffplusx=treff, feature_scaling=scaling_for_features,
-                 label_scalen=True, feature_subset=feature_set, models={'LinearRegression': LinearRegression()}, kick_outliers=outlier_removal)
+            acc, sgm = main(path_to_trainset_data=data_path_train, path_to_testset_data=data_path_test,
+                            path_to_trainset_feat=feature_path_train, path_to_testset_feat=feature_path_test,
+                            scip_or_fico=scip_or_fico, treffplusx=treff, feature_scaling=scaling_for_features,
+                            label_scalen=True, feature_subset=feature_set, models={'LinearRegression': LinearRegression()},
+                            kick_outlier=outlier_removal, max_depth=tiefe, estimatoren=estimatoren,
+                            max_feature_number=anzahl_feat_per_tree)
 
             accuracy_lin.append(acc)
             sgm_lin.append(sgm)
 
-    if data_set.lower() == 'fico':
+    if fico_or_scip.lower() == 'fico':
         # TODO: change path to be interactive
-        impo_df = pd.read_csv(
-            f'{treffmas}/NoOutlier/Logged/ScaledLabel/Importance/fico_importance_ranking.csv')
-        scip_default = False
-        fico = True
-        treffmas = f'{treffmas}'
-        number_features = len(impo_df)
+        import_df = pd.read_csv(
+            f'{treffen}/NoOutlier/Logged/ScaledLabel/Importance/fico_importance_ranking.csv')
+        num_features = len(import_df)
 
-    elif data_set.lower() == 'scip':
-        impo_df = pd.read_csv(
-            f'{treffmas}/NoOutlier/Logged/ScaledLabel/Importance/scip_default_importance_ranking.csv')
-        scip_default = True
-        fico = False
-        treffmas = f'{treffmas}'
-        number_features = len(impo_df)
+    elif fico_or_scip.lower() == 'scip':
+        import_df = pd.read_csv(
+            f'{treffen}/NoOutlier/Logged/ScaledLabel/Importance/scip_default_importance_ranking.csv')
+        num_features = len(import_df)
 
     else:
-        print(f'Data set {data_set} not recognized. use scip or fico')
+        print(f'Data set {fico_or_scip} not recognized. use scip or fico')
         sys.exit(1)
 
     if model.lower() == 'linear':
-        impo_df = impo_df.sort_values(by=['Linear Score'], ascending=True)
-        linear_reduction(data_path=data_path, feature_path=feature_path, scip_default=scip_default, fico=fico,
-                         impo_df=impo_df, number_features=number_features, treffmas=treffmas, scaling_for_features=skalierer, outlier_removal=remove_outlier)
-        acc_sgm_to_csv(accuracy_drops_lin=accuracy_lin, sgm_drops_lin=sgm_lin, data_set=data_set, accuracy_drops_for=[], sgm_drops_for=[],
-                       feature_ranking='linear', directory=treffmas)
+        import_df = import_df.sort_values(by=['Linear Score'], ascending=True)
+        linear_reduction(data_path_train=train_data_path, data_path_test=test_data_path,
+                         feature_path_train=train_feature_path, feature_path_test=test_feature_path, scip_or_fico=fico_or_scip,
+                         impo_df=import_df, number_features=num_features, treffmas=treffen, scaling_for_features=scaling,
+                         tiefe=wie_tief, estimatoren=anzahl_estimators, anzahl_feat_per_tree=feats_per_tree,
+                         outlier_removal=remove_outlier)
+        acc_sgm_to_csv(accuracy_drops_lin=accuracy_lin, sgm_drops_lin=sgm_lin, data_set=fico_or_scip, accuracy_drops_for=[], sgm_drops_for=[],
+                       feature_ranking='linear', directory=treffen)
 
     elif model.lower() == 'forest':
-        impo_df = impo_df.sort_values(by=['Forest Score'], ascending=True)
-        forest_reduction(data_path=data_path, feature_path=feature_path, scip_default=scip_default, fico=fico,
-                         impo_df=impo_df, number_features=number_features, treffmas=treffmas, scaling_for_features=skalierer, outlier_removal=remove_outlier)
-        acc_sgm_to_csv(accuracy_drops_lin=[], sgm_drops_lin=[], data_set=data_set, accuracy_drops_for=accuracy_for, sgm_drops_for=sgm_for,
-                       feature_ranking='forest', directory=treffmas)
+        import_df = import_df.sort_values(by=['Forest Score'], ascending=True)
+        forest_reduction(data_path_train=train_data_path, data_path_test=test_data_path,
+                         feature_path_train=train_feature_path, feature_path_test=test_feature_path,
+                         scip_or_fico=fico_or_scip,
+                         impo_df=import_df, number_features=num_features, treffmas=treffen, scaling_for_features=scaling,
+                         tiefe=wie_tief, estimatoren=anzahl_estimators, anzahl_feat_per_tree=feats_per_tree,
+                         outlier_removal=remove_outlier)
+        acc_sgm_to_csv(accuracy_drops_lin=[], sgm_drops_lin=[], data_set=fico_or_scip, accuracy_drops_for=accuracy_for, sgm_drops_for=sgm_for,
+                       feature_ranking='forest', directory=treffen)
 
     elif model.lower() == 'combined':
         print('LINEAR')
-        linear_reduction(data_path=data_path, feature_path=feature_path, scip_default=scip_default, fico=fico,
-                         impo_df=impo_df, number_features=number_features, treffmas=treffmas, scaling_for_features=skalierer)
+        linear_reduction(train_data_path, test_data_path, train_feature_path, test_feature_path, scip_or_fico=fico_or_scip,
+                         impo_df=import_df, number_features=num_features, treffmas=treffen, scaling_for_features=scaling,
+                         tiefe=wie_tief, estimatoren=anzahl_estimators, anzahl_feat_per_tree=feats_per_tree,
+                         outlier_removal=remove_outlier)
         print('FOREST')
-        forest_reduction(data_path=data_path, feature_path=feature_path, scip_default=scip_default, fico=fico,
-                         impo_df=impo_df, number_features=number_features, treffmas=treffmas, scaling_for_features=skalierer)
-        acc_sgm_to_csv(accuracy_drops_lin=accuracy_lin, sgm_drops_lin=sgm_lin, data_set=data_set,
-                       accuracy_drops_for=accuracy_for, sgm_drops_for=sgm_for,
-                       feature_ranking='combined', directory=treffmas)
+        forest_reduction(train_data_path, test_data_path, train_feature_path, test_feature_path, scip_or_fico=fico_or_scip,
+                         impo_df=import_df, number_features=num_features, treffmas=treffen, scaling_for_features=scaling,
+                         tiefe=wie_tief, estimatoren=anzahl_estimators, anzahl_feat_per_tree=feats_per_tree,
+                         outlier_removal=remove_outlier)
+        acc_sgm_to_csv(accuracy_lin, sgm_lin, fico_or_scip, accuracy_for, sgm_for, feature_ranking='combined',
+                       directory=treffen)
 
     else:
         print(f'Model {model} not recognized. use linear, forest or combined')
         sys.exit(1)
 
-def trainer(imputation, scaler, model, model_name, X_train, y_train, seed):
+def trainer(imputation, model, model_name, X_train, y_train, seed, data_set):
     start = time.time()
     # Build pipeline
     # Update model-specific parameters
@@ -384,9 +421,6 @@ def trainer(imputation, scaler, model, model_name, X_train, y_train, seed):
         model.random_state = seed
     # Add imputation
     steps = [('imputer', SimpleImputer(strategy=imputation))]
-    # Add scaling if applicable
-    if scaler:
-        steps.append(('scaler', scaler))
     # Add model
     steps.append(('model', model))
     # Create pipeline
@@ -407,7 +441,7 @@ def predict(pipeline, X_test, y_test):
     end = time.time()
     return y_pred_relevant, y_test_relevant, end - start
 
-def regression(data, data_set_name, label, features, feature_names, models, scalers, imputer, random_seeds,
+def regression(data_train, data_test, data_set_name, label_train, label_test, features_train, features_test, feature_names, models, scalers, imputer, random_seeds,
                label_scale=False, mid_threshold=0.1, extreme_threshold=4.0):
 
     """
@@ -420,7 +454,8 @@ def regression(data, data_set_name, label, features, feature_names, models, scal
     prediction_time = 0
 
     if label_scale:
-        label = label_scaling(label)
+        label_train = label_scaling(label_train)
+        label_test = label_scaling(label_test)
         mid_threshold = np.log1p(mid_threshold)/np.log(10.0)
         extreme_threshold = np.log1p(extreme_threshold)/np.log(10.0)
 
@@ -437,21 +472,22 @@ def regression(data, data_set_name, label, features, feature_names, models, scal
     prediction_dictionary_train = {}
 
     for model_name, model in models.items():
+        randos = random_seeds
         # print(f'Training {model_name}')
         if model_name not in ['LinearRegression', 'RandomForest']:
             logging.info(f'AHHHHHHHHHHHHHHHHHHHHHHHH. {model_name} is not a valid regressor!')
             continue
         if model_name == 'LinearRegression':
             print("LINEAR")
+            randos = [random_seeds[0]] #for linear regressor its no difference what random seed
         elif model_name == 'RandomForest':
             print("RANDOMFOREST")
         for imputation in imputer:
             for scaler in scalers:
-                for seed in random_seeds:
-                    X_train, X_test, y_train, y_test = train_test_split(features, label, test_size=0.2,
-                                                                        random_state=seed)
+                for seed in randos:
+                    X_train, X_test, y_train, y_test = features_train, features_test, label_train, label_test
                     # train the model
-                    trained_model, tt = trainer(imputation, scaler, model, model_name, X_train, y_train, seed, data_set_name)
+                    trained_model, tt = trainer(imputation, model, model_name, X_train, y_train, seed, data_set_name)
                     training_time += tt
 
                     # let the model make predictions
@@ -461,8 +497,8 @@ def regression(data, data_set_name, label, features, feature_names, models, scal
                     # get accuracy measure for the model
                     accuracy_dictionary[model_name+'_'+imputation+'_'+str(scaler)+'_'+str(seed)] = get_accuracy(y_pred_relevant, y_test_relevant, mid_threshold=mid_threshold, extreme_threshold=extreme_threshold)
                     # add sgm of run time for this setting to run_time_df
-                    run_time_dictionary[model_name+'_'+imputation+'_'+str(scaler)+'_'+str(seed)] = get_predicted_run_time_sgm(y_pred_relevant, data, shift=50)
-                    sum_time_dictionary[model_name+'_'+imputation+'_'+str(scaler)+'_'+str(seed)] = get_predicted_sum_time(y_pred_relevant, data)
+                    run_time_dictionary[model_name+'_'+imputation+'_'+str(scaler)+'_'+str(seed)] = get_predicted_run_time_sgm(y_pred_relevant, data_test, shift=50)
+                    sum_time_dictionary[model_name+'_'+imputation+'_'+str(scaler)+'_'+str(seed)] = get_predicted_sum_time(y_pred_relevant, data_test)
                     # return actual prediction
                     prediction_dictionary[model_name+'_'+imputation+'_'+str(scaler)+'_'+str(seed)] = y_pred_relevant.to_list()
                     # feature importance
@@ -479,7 +515,7 @@ def regression(data, data_set_name, label, features, feature_names, models, scal
                         y_pred_train, y_test_train, mid_threshold, extreme_threshold)
                     # add sgm of run time for this setting to run_time_df
                     run_time_dictionary_train[model_name + '_' + imputation + '_' + str(scaler) + '_' + str(
-                        seed)] = get_predicted_run_time_sgm(y_pred_train, data, shift=data["Final solution time (cumulative)"].mean())
+                        seed)] = get_predicted_run_time_sgm(y_pred_train, data_train, shift=data_train["Final solution time (cumulative)"].mean())
                     prediction_dictionary_train[
                         model_name + '_' + imputation + '_' + str(scaler) + '_' + str(seed)] = y_pred_train.to_list()
 
@@ -527,52 +563,77 @@ def regression(data, data_set_name, label, features, feature_names, models, scal
     logging.info(f'Prediction time: {prediction_time}')
     logging.info(f'Final time: {end_time - start_time}')
 
-    return accuracy_df, run_time_df, sum_time_df, prediction_df, feature_importance_df, impo_ranking, accuracy_df_trainset, run_time_df_trainset, prediction_dictionary_train_df
+    return accuracy_df, run_time_df, sum_time_df, prediction_df, feature_importance_df,  impo_ranking, accuracy_df_trainset, run_time_df_trainset, prediction_dictionary_train_df
 
-def run_regression_pipeline(data_name, data_path, feats_path, is_excel, prefix, treffplusx, models, imputer, scalers,
-                            hundred_seeds:list, feature_subset:list, label_scale=False,
-                            remove_outlier=False, outlier_threshold=350):
-    # Load data
-    if is_excel:
-        data = pd.read_excel(data_path)
-        features = pd.read_excel(feats_path).iloc[:, 1:]
-    else:
-        data = pd.read_csv(data_path)
-        features = pd.read_csv(feats_path)
+def run_regression_pipeline(data_name, trainset_data, testset_data, trainset_feat, testset_feat, prefix, treffplusx, models, imputer, scalers,
+                            hundred_seeds:list, feature_subset:list, label_scale=False, outlier_threshold=None,remove_outlier=False):
+    train_data = pd.read_csv(trainset_data)
+    test_data = pd.read_csv(testset_data)
+    train_features = pd.read_csv(trainset_feat)
+    test_features = pd.read_csv(testset_feat)
 
-    # print(features.max())
     # treat -1 as missing value
-    # TODO check which features have this property
-    data = data.replace([-1, -1.0], np.nan)
-    features = features.replace([-1, -1.0], np.nan)
-    label = data['Cmp Final solution time (cumulative)']
+    train_data = train_data.replace([-1, -1.0], np.nan)
+    test_data = test_data.replace([-1, -1.0], np.nan)
+    train_features = train_features.replace([-1, -1.0], np.nan)
+    test_features = test_features.replace([-1, -1.0], np.nan)
+
+    train_label = train_data['Cmp Final solution time (cumulative)']
+    test_label = test_data['Cmp Final solution time (cumulative)']
+
     if remove_outlier:
-        features, label = kick_outlier(features, label, threshold=outlier_threshold)
+        if data_name == 'fico':
+            if outlier_threshold is None:
+                train_features, train_label = kick_outlier(train_features, train_label, threshold=350)
+                test_features, test_label = kick_outlier(test_features, test_label, threshold=350)
+            else:
+                train_features, train_label = kick_outlier(train_features, train_label, threshold=outlier_threshold)
+                test_features, test_label = kick_outlier(test_features, test_label, threshold=outlier_threshold)
+        elif data_name == 'scip_default':
+            if outlier_threshold is None:
+                train_features, train_label = kick_outlier(train_features, train_label, threshold=40)
+                test_features, test_label = kick_outlier(test_features, test_label, threshold=40)
+            else:
+                train_features, train_label = kick_outlier(train_features, train_label, threshold=outlier_threshold)
+                test_features, test_label = kick_outlier(test_features, test_label, threshold=outlier_threshold)
+        else:
+            sys.exit(f'Invalid data_name: {data_name}')
 
     # if feature_subset is None, it means that we use all features
+
     if feature_subset is not None:
-        features = features[feature_subset]
-    print("In Regression Features:", len(features.columns))
+        train_features = train_features[feature_subset]
+        test_features = test_features[feature_subset]
+    print("In Regression: Train Features:", len(train_features.columns), "Test Features:", len(test_features.columns))
     # Set scalers
-    if scalers is not None:
-        scaler_dict = { 'NoScaling':None,
-                'Standard':StandardScaler(),
-                'MinMax':MinMaxScaler(),
-                'Robust':RobustScaler(),
-                'Yeo':PowerTransformer(method='yeo-johnson'),
-                'Quantile': QuantileTransformer(output_distribution='normal', n_quantiles=int(len(features) * 0.8))
-                }
-        scalers = [scaler_dict[scaler] for scaler in scalers]
+    def scale_feats(df, scaler):
+        if scaler == 'Quantile':
+            qt = QuantileTransformer(output_distribution='normal', n_quantiles=int(len(df) * 0.8))
+        elif scaler == 'Yeo':
+            qt = PowerTransformer(method='yeo-johnson')
+        else:
+            sys.exit(f'Invalid scaler: {scaler}')
+        # Fit and transform the DataFrame
+        if isinstance(df, pd.Series):
+            # Reshape data for transformation
+            df = pd.DataFrame(data=df, index= df.index, columns = [df.name])
 
-    elif scalers is None:
-        scalers = [None]
+        scaled_data = qt.fit_transform(df)
+        # Create a new DataFrame with the same index and column names.
+        scaled_df = pd.DataFrame(scaled_data, index=df.index, columns=df.columns)
+        return scaled_df
+    if data_name == 'fico':
+        scaler_for_data = 'Quantile'
     else:
-        print("Check input for scalers. Needs to be None or list of valid scalers.")
-        sys.exit(1)
-
+        scaler_for_data = 'Yeo'
+    train_features = scale_feats(train_features, scaler_for_data)
+    test_features = scale_feats(test_features, scaler_for_data)
     # Run regression
     acc_df, runtime_df, sumtime_df, prediction_df, importance_df, impo_ranking, acc_train, sgm_train, pred_train = (
-        regression(data, data_name, label, features, features.columns, models, scalers, imputer, hundred_seeds, label_scale))
+        regression(data_train=train_data, data_test=test_data, data_set_name=data_name, label_train=train_label,
+                   label_test=test_label, features_train=train_features, features_test=test_features,
+                   feature_names=test_features.columns, models=models, imputer=imputer, random_seeds=hundred_seeds,
+                   label_scale=label_scale, scalers=[scaler_for_data]))
 
     # Save results
     base_path = f'{treffplusx}'
@@ -590,16 +651,13 @@ def run_regression_pipeline(data_name, data_path, feats_path, is_excel, prefix, 
     sgm_train.to_csv(f'{base_path}/SGM/{prefix}_sgm_trainset.csv', index=True)
     pred_train.to_csv(f'{base_path}/Prediction/{prefix}_prediction_trainset.csv')
 
-    return print_accuracy(acc_df), print_sgm(runtime_df, data_name, len(features.columns))
+    return print_accuracy(acc_df), print_sgm(runtime_df, data_name, len(train_features.columns))
 
-def main(path_to_data:str, path_to_features:str, scip_default=False, fico=False, treffplusx='Wurm', label_scalen=True,
-         feature_scaling=None, feature_subset=None, models=None, kick_outliers=False,
-         outlier_value = None, max_tiefe=200, estimatoren=100, number_features_tree=17):
-    start_time = time.time()
-
+def main(path_to_trainset_data:str, path_to_testset_data:str, path_to_trainset_feat:str, path_to_testset_feat:str,
+         scip_or_fico:str, treffplusx='Wurm', label_scalen=True, feature_scaling=None, feature_subset=None, models=None,
+         outlier_value = None, kick_outlier=False, max_depth=200, estimatoren=100, max_feature_number=17):
     setup_directory(treffplusx)
 
-    akk, ess_geh_ehm = None, None
 
     if label_scalen:
         treffplusx = treffplusx+'/ScaledLabel'
@@ -610,8 +668,8 @@ def main(path_to_data:str, path_to_features:str, scip_default=False, fico=False,
     if models is None:
         models = {
             'LinearRegression': LinearRegression(),
-            'RandomForest': RandomForestRegressor(n_estimators=estimatoren, max_depth=max_tiefe,
-                                                  max_features=number_features_tree, random_state=0, n_jobs=-1)
+            'RandomForest': RandomForestRegressor(n_estimators=estimatoren, max_depth=max_depth,
+                                                  max_features=max_feature_number, random_state=0, n_jobs=-1)
         }
 
     imputer = ['median']
@@ -632,52 +690,23 @@ def main(path_to_data:str, path_to_features:str, scip_default=False, fico=False,
 
     create_directory(treffplusx)
 
-
-    if scip_default:
-        print('SCIP')
-        akk, ess_geh_ehm = run_regression_pipeline(
-            data_name = 'scip_default',
-            data_path=f'{path_to_data}',
-            feats_path=f'{path_to_features}',
-            is_excel=False,
-            prefix='scip',
-            treffplusx=treffplusx,
-            models=models,
-            imputer=imputer,
-            scalers=feature_scaling,
-            hundred_seeds=hundred_seeds,
-            label_scale=label_scalen,
-            feature_subset=feature_subset,
-            remove_outlier=kick_outliers,
-            outlier_threshold=outlier_value
-        )
-
-    if fico:
-        print('FICO')
-        akk, ess_geh_ehm = run_regression_pipeline(
-            data_name='fico',
-            data_path=f'{path_to_data}',
-            feats_path=f'{path_to_features}',
-            is_excel=False,
-            prefix='fico',
-            treffplusx=treffplusx,
-            models=models,
-            imputer=imputer,
-            scalers=feature_scaling,
-            hundred_seeds=hundred_seeds,
-            label_scale=label_scalen,
-            feature_subset=feature_subset,
-            remove_outlier=kick_outlier,
-            outlier_threshold=outlier_value
-        )
-
-        if not (fico|scip_default):
-            print('Neither fico or scip_default is specified. use one of them!')
-            sys.exit(1)
-
-
-    end_time = time.time()
-    print(f'Time elapsed: {end_time - start_time}')
+    akk, ess_geh_ehm = run_regression_pipeline(
+        data_name=scip_or_fico,
+        trainset_data=f'{path_to_trainset_data}',
+        testset_data=f'{path_to_testset_data}',
+        trainset_feat=f'{path_to_trainset_feat}',
+        testset_feat=f'{path_to_testset_feat}',
+        prefix=scip_or_fico,
+        treffplusx=treffplusx,
+        models=models,
+        imputer=imputer,
+        scalers=feature_scaling,
+        hundred_seeds=hundred_seeds,
+        label_scale=label_scalen,
+        feature_subset=feature_subset,
+        outlier_threshold=outlier_value,
+        remove_outlier=kick_outlier
+    )
     return akk, ess_geh_ehm
 
 
@@ -688,27 +717,136 @@ def get_number_of_runs(path_to_runs):
     folders = [f for f in os.listdir(path_to_runs) if os.path.isdir(os.path.join(path_to_runs, f))]
     return len(folders)
 
+base_data_directory = '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases'
 
-def hyper_hyper_tuner_tuner_fico(main_regression=True, feat_reduction=False):
-    fico_data_5 = '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_5_ready_to_ml.csv'
-    fico_feats_5 = '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_5_ready_to_ml_features.csv'
+fico_data_5 = '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_5_ready_to_ml.csv'
+fico_feats_5 = '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_5_ready_to_ml_features.csv'
 
-    fico_data_6 = '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_6_ready_to_ml.csv'
-    fico_feats_6 = '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_6_ready_to_ml_features.csv'
+fico_data_6 = '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_6_ready_to_ml.csv'
+fico_feats_6 = '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_6_ready_to_ml_features.csv'
 
-    data_sets = [(fico_data_5, fico_feats_5, "5"), (fico_data_6, fico_feats_6, "6")]
-    combinations = [(5, 2), (5, 17), (10, 2), (10, 17)]
-    for data_set in data_sets:
-        for combination in combinations:
-            if main_regression:
-                fico_final = (f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/'
-                              f'FICO{data_set[2]}/depth{combination[0]}feats{combination[1]}/NoOutlier/Logged/')
-                main(path_to_data=data_set[0], path_to_features=data_set[1], scip_default=False, fico=True,
-                     treffplusx=fico_final, label_scalen=True, feature_scaling=['Quantile'], kick_outliers=True)
+fiveonsix_5_17 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/5on6/depth5feats17/NoOutlier/Logged'
+sixonfive_5_17 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/6on5/depth5feats17/NoOutlier/Logged'
+fiveonsix_feat_reduction_5_17 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/5on6/depth5feats17'
+sixonfive_feat_reduction_5_17 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/6on5/depth5feats17'
 
-            if feat_reduction:
-                fico_feat_reduction = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/FICO{data_set[2]}'
+fiveonsix_5_2 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/5on6/depth5feats2/NoOutlier/Logged'
+sixonfive_5_2 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/6on5/depth5feats2/NoOutlier/Logged'
+fiveonsix_feat_reduction_5_2 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/5on6/depth5feats2'
+sixonfive_feat_reduction_5_2 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/6on5/depth5feats2'
 
-                feature_reduction(data_set[0], data_set[1], 'fico', model='linear', treffmas=fico_feat_reduction, skalierer=['Quantile'], remove_outlier=True)
-                feature_reduction(data_set[0], data_set[1], 'fico' , model='forest', treffmas=fico_feat_reduction, skalierer=['Quantile'], remove_outlier=True)
+fiveonsix_10_2 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/5on6/depth10feats2/NoOutlier/Logged'
+sixonfive_10_2 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/6on5/depth10feats2/NoOutlier/Logged'
+fiveonsix_feat_reduction_10_2 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/5on6/depth10feats2'
+sixonfive_feat_reduction_10_2 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/6on5/depth10feats2'
 
+fiveonsix_10_17 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/5on6/depth10feats17/NoOutlier/Logged'
+sixonfive_10_17 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/6on5/depth10feats17/NoOutlier/Logged'
+fiveonsix_feat_reduction_10_17 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/5on6/depth10feats17'
+sixonfive_feat_reduction_10_17 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/6on5/depth10feats17'
+
+
+feats = 2
+depth = 5
+estis = 100
+def feat_reduction_hyperparameter_tuning():
+    list = [(5, 2,   fiveonsix_5_2,   sixonfive_5_2,   fiveonsix_feat_reduction_5_2,   sixonfive_feat_reduction_5_2),
+            (5, 17,  fiveonsix_5_17,  sixonfive_5_17,  fiveonsix_feat_reduction_5_17,  sixonfive_feat_reduction_5_17),
+            (10, 2,  fiveonsix_10_2,  sixonfive_10_2,  fiveonsix_feat_reduction_10_2,  sixonfive_feat_reduction_10_2),
+            (10, 17, fiveonsix_10_17, sixonfive_10_17, fiveonsix_feat_reduction_10_17, sixonfive_feat_reduction_10_17)]
+
+    for combination in list:
+        depth = combination[0]
+        feats = combination[1]
+        fiveonsix = combination[2]
+        sixonfive = combination[3]
+        fiveonsix_feat_reduction = combination[4]
+        sixonfive_feat_reduction = combination[5]
+        estis = 100
+        main(path_to_trainset_data=fico_data_5, path_to_testset_data=fico_data_6,
+                             path_to_trainset_feat=fico_feats_5, path_to_testset_feat=fico_feats_6,
+                             scip_or_fico='fico', treffplusx=sixonfive, label_scalen=True, feature_scaling=['Quantile'], kick_outlier=True,
+                             max_depth=depth, estimatoren=estis, max_feature_number=feats)
+
+        main(path_to_trainset_data=fico_data_6, path_to_testset_data=fico_data_5,
+                             path_to_trainset_feat=fico_feats_6, path_to_testset_feat=fico_feats_5,
+                             scip_or_fico='fico', treffplusx=fiveonsix, label_scalen=True, feature_scaling=['Quantile'], kick_outlier=True,
+                             max_depth=depth, estimatoren=estis, max_feature_number=feats)
+
+
+
+        feature_reduction(train_data_path=fico_data_6, test_data_path=fico_data_5, train_feature_path=fico_feats_6,
+                          test_feature_path=fico_feats_5, fico_or_scip='fico', model='linear',
+                          treffen=fiveonsix_feat_reduction, scaling='Quantile', wie_tief=depth,
+                          anzahl_estimators=estis, feats_per_tree=feats, remove_outlier=True)
+
+        feature_reduction(train_data_path=fico_data_6, test_data_path=fico_data_5, train_feature_path=fico_feats_6,
+                          test_feature_path=fico_feats_5, fico_or_scip='fico', model='forest',
+                          treffen=fiveonsix_feat_reduction, scaling='Quantile', wie_tief=depth,
+                          anzahl_estimators=estis, feats_per_tree=feats, remove_outlier=True)
+
+        feature_reduction(train_data_path=fico_data_5, test_data_path=fico_data_6, train_feature_path=fico_feats_5,
+                          test_feature_path=fico_feats_6, fico_or_scip='fico', model='linear',
+                          treffen=sixonfive_feat_reduction, scaling='Quantile', wie_tief=depth,
+                          anzahl_estimators=estis, feats_per_tree=feats, remove_outlier=True)
+
+        feature_reduction(train_data_path=fico_data_5, test_data_path=fico_data_6, train_feature_path=fico_feats_5,
+                          test_feature_path=fico_feats_6, fico_or_scip='fico', model='forest',
+                          treffen=sixonfive_feat_reduction, scaling='Quantile', wie_tief=depth,
+                          anzahl_estimators=estis, feats_per_tree=feats, remove_outlier=True)
+
+
+import stats_per_combi_july
+def plot_hyperparameter_tuning(regress=True, acc=True, sgm=False):
+    tiefen = [5, 10] # 5
+    number_estimators = [100]
+    maximum_features = [2, 17]#,4,6,8,10,12,14,16,17]
+    print("------6on5------")
+    for depth in tiefen:
+        for estimator in number_estimators:
+            for feat_num in maximum_features:
+                print(depth, estimator, feat_num)
+                maximum_depth = depth
+
+                sixonfive = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/6on5_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/'
+                if regress:
+                    main(path_to_trainset_data=fico_data_5, path_to_testset_data=fico_data_6,
+                         path_to_trainset_feat=fico_feats_5, path_to_testset_feat=fico_feats_6,
+                         scip_or_fico='fico', treffplusx=sixonfive, label_scalen=True, feature_scaling=['Quantile'], kick_outlier=True,
+                         max_depth=maximum_depth, estimatoren=estimator, max_feature_number=feat_num)
+
+                print("PLOTTING")
+                if acc:
+                    stats_per_combi_july.train_vs_test_acuracy(f"/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/6on5_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/ScaledLabel",
+                                          version=f"Trainingset: 9.5, Testset 9.6, Depth: {depth}, #Feats: {feat_num}", fico_or_scip='fico',
+                                          save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/96auf95_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/Overfitting")
+                if sgm:
+                    stats_per_combi_july.train_vs_test_sgm(f"/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/6on5_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/ScaledLabel",
+                                          version=f"Trainingset: 9.5, Testset 9.6, Depth: {depth}, #Feats: {feat_num}", fico_or_scip='fico',
+                                          save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/96auf95_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/Overfitting")
+    print("------5on6------")
+    for depth in tiefen:
+        for estimator in number_estimators:
+            for feat_num in maximum_features:
+                print(depth, estimator, feat_num)
+                maximum_depth = depth
+
+                fiveonsix = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/5on6_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/'
+                if regress:
+                    main(path_to_trainset_data=fico_data_6, path_to_testset_data=fico_data_5,
+                         path_to_trainset_feat=fico_feats_6, path_to_testset_feat=fico_feats_5,
+                         scip_or_fico='fico', treffplusx=fiveonsix, label_scalen=True, feature_scaling=['Quantile'], kick_outlier=True,
+                         max_depth=maximum_depth, estimatoren=estimator, max_feature_number=feat_num)
+                print("PLOTTING")
+                if acc:
+                    stats_per_combi_july.train_vs_test_acuracy(
+                        f"/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/5on6_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/ScaledLabel",
+                        version=f"Trainingset: 9.6, Testset 9.5, Depth: {depth}, #Feats: {feat_num}", fico_or_scip='fico',
+                        save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/95auf96_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/Overfitting")
+                if sgm:
+                    stats_per_combi_july.train_vs_test_sgm(
+                        f"/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/5on6_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/ScaledLabel",
+                        version=f"Trainingset: 9.6, Testset 9.5, Depth: {depth}, #Feats: {feat_num}", fico_or_scip='fico',
+                        save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/95auf96_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/Overfitting")
+
+# plot_hyperparameter_tuning(regress=True, acc=True, sgm=False)

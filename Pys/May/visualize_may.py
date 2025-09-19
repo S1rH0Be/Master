@@ -11,7 +11,7 @@ Ich inputte TreffenMasVeinte, dann sucht es sich alles von dort aus wie accuracy
 1. Add functions to find best imputer/scaling kombi
 '''
 
-global_path = '/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs'
+global_path = '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs'
 
 def get_files(directory_path:str, index_col=False):
     """

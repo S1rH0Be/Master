@@ -46,13 +46,13 @@ def log_data(data_frame:pd.DataFrame):
                   'Avg coefficient spread for convexification cuts Mixed']
 
     data[columns_to_be_logged] = data[columns_to_be_logged].apply(lambda entry: np.log10(1 + entry))
-    data.to_csv('/Users/fritz/Downloads/ZIB/Master/JulyTry/Bases/FICO/Scaled/logged_fico_clean_data.csv', index=False)
+    data.to_csv('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Scaled/logged_fico_clean_data.csv', index=False)
     features = data[fico_feats]
-    features.to_csv('/Users/fritz/Downloads/ZIB/Master/JulyTry/Bases/FICO/Scaled/logged_fico_feats.csv', index=False)
+    features.to_csv('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Scaled/logged_fico_feats.csv', index=False)
     return data, columns_to_be_logged
 
 
-fico_data_clean = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/JulyTry/Bases/FICO/Cleaned/fico_clean_data_753.csv')
+fico_data_clean = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/fico_clean_data_753.csv')
 
 fico_logged, cols = log_data(fico_data_clean)
 

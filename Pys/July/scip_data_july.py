@@ -8,7 +8,7 @@ import json
 This script reads in the .out files for different runs in SCIP and merges them into one.
 The runs are differentiated by the branching rule which is used: 
 1. minlp(Default, always branch on integer variables first)
-2. mix0 
+2. mix1 
 3. mix1
 and by the permutation seed of the instances, to get a bigger data set
 '''
@@ -72,11 +72,13 @@ def create_compatible_dataframe(df, fico_only=False):
     name_mapping_fico_only = {'#integer violations at root': 'nintpseudocost',
                     '#nodes in DAG': 'nnonlinearvars+nauxvars',#weiß nicht warum ich nur nauxvars bisher hatte #aber vielleicht sind auch nnonlinearexpr oder nnonconvexexpr interessant
                     'Avg coefficient spread for convexification cuts Mixed': 'sumcoefspreadnonlinrows / nnonlinrows',#aber vielleicht ist auch sumcoefspreadactnonlinrows / nactnonlinrows interessant.
-                    'Presolve Global Entities': 'nintegervars',
+                    'Presolve Global Entities': 'nintegervars+nbinaryvars',
                     'Presolve Columns': 'ncontinuousvars + nbinaryvars + nintegervars',
                     '#nonlinear violations at root': 'nviolconss', #'nnlviolcands waeren die anzahl der branching candidates fuers spatial branching, also die anzahl von variables in nichtkonvexen termen in verletzen nichtlinear constraints',
-                    'Matrix Equality Constraints': 'nlinearequconss + nnonlinearequconss',
-                    'Matrix NLP Formula': 'nnonlinearconss',
+                    'Matrix Equality Constraints': '(nlinearequconss + nnonlinearequconss)', # /(nlinearconss+nnonlinearconss)',
+                    'Matrix NLP Formula': 'nnonlinearconss', # /(nlinearconss+nnonlinearconss)',
+                    '#Constraints': '(nlinearconss+nnonlinearconss)',
+                    'Matrix non-zeros': 'nlinnz',
                     '% vars in DAG (out of all vars)': '(nnonlinearvars + nauxvars) / (ncontinuousvars+nbinaryvars+nintegervars+nauxvars)',
                     '% vars in DAG integer (out of vars in DAG)': '(nnonlinearbinvars + nnonlinearintvars + nintauxvars) / (nnonlinearvars+nauxvars)',
                     '% vars in DAG unbounded (out of vars in DAG)': '(nnonlinearunboundedvars + nunboundedauxvars) / (nnonlinearvars+nauxvars)',
@@ -88,18 +90,21 @@ def create_compatible_dataframe(df, fico_only=False):
     name_mapping_with_more_scip_features = {'#integer violations at root': 'nintpseudocost',
                                             '#nodes in DAG': 'nnonlinearvars+nauxvars',
                                             'Avg coefficient spread for convexification cuts Mixed': 'sumcoefspreadnonlinrows / nnonlinrows',
-                                            'Presolve Global Entities': 'nintegervars',
+                                            'Presolve Global Entities': 'nintegervars+nbinaryvars',
                                             'Presolve Columns': 'ncontinuousvars + nbinaryvars + nintegervars',
+                                            'Matrix non-zeros': 'nlinnz',
                                             '#nonlinear violations at root': 'nviolconss',
                                             'Avg strong branching iterations in root': 'avgstrongbranchrootiter',
-                                            'Matrix Equality Constraints': 'nlinearequconss + nnonlinearequconss',
-                                            'Matrix NLP Formula': 'nnonlinearconss',
+                                            'Matrix Equality Constraints': '(nlinearequconss + nnonlinearequconss)',#/(nlinearconss+nnonlinearconss)',
+                                            'Matrix NLP Formula': 'nnonlinearconss', #/(nlinearconss+nnonlinearconss)',
+                                            '#Constraints':'(nlinearconss+nnonlinearconss)',
                                             'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed': 'sumintpseudocost / nintpseudocost',
                                             '% vars in DAG (out of all vars)': '(nnonlinearvars + nauxvars) / (ncontinuousvars+nbinaryvars+nintegervars+nauxvars)',
                                             '% vars in DAG integer (out of vars in DAG)': '(nnonlinearbinvars + nnonlinearintvars + nintauxvars) / (nnonlinearvars+nauxvars)',
                                             '% vars in DAG unbounded (out of vars in DAG)': '(nnonlinearunboundedvars + nunboundedauxvars) / (nnonlinearvars+nauxvars)',
                                             '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)': 'nquadexpr / (nquadexpr + nsuperquadexpr)',
-                                            'Matrix Quadratic Elements': 'nquadcons'
+                                            'Matrix Quadratic Elements': 'nquadcons',
+                                            'Strong Branching Work': 'avgstrongbranchrootiter * nnz'
                                             }
 
 
@@ -158,7 +163,7 @@ def get_randomseed(string: str) -> int|None:
 def get_solving_time(string: str) -> str:
     return string.split(':')[1].strip()
 
-def extract_instance_data_mix0(file_path):
+def extract_instance_data_mix1(file_path):
     rows = []
 
     with open(file_path, 'r') as file:
@@ -303,7 +308,7 @@ def process_directory_both_rules(directory):
 
     for filename in os.listdir(directory):
         if filename.endswith(".out"):
-            match = re.search(r'(mix0|minlp)(?:-s(\d+))?\.out$', filename)
+            match = re.search(r'(mix1|minlp)(?:-s(\d+))?\.out$', filename)
             if match:
                 category, group_id = match.groups()
                 if group_id is None:
@@ -311,15 +316,15 @@ def process_directory_both_rules(directory):
                 file_groups.setdefault(group_id, {}).update({category: os.path.join(directory, filename)})
 
     for group_id, files in file_groups.items():
-        #read in data for the minlp and mix0_ runs
-        mix0_df = extract_instance_data_mix0(files.get('mix0')) if 'mix0' in files else None
-        if mix0_df is not None:
-            mix0_df = mix0_df.loc[:, ~mix0_df.columns.str.endswith('_descr')]
-            mix0_df = mix0_df.drop('Random Seed Shift', axis=1)
+        #read in data for the minlp and mix1_ runs
+        mix1_df = extract_instance_data_mix1(files.get('mix1')) if 'mix1' in files else None
+        if mix1_df is not None:
+            mix1_df = mix1_df.loc[:, ~mix1_df.columns.str.endswith('_descr')]
+            mix1_df = mix1_df.drop('Random Seed Shift', axis=1)
 
-        mix0_df.to_csv(f'{directory}/mixo_s{group_id}.csv', index=False)
+        mix1_df.to_csv(f'{directory}/mixo_s{group_id}.csv', index=False)
         minlp_df = extract_instance_data_minlp(files.get('minlp')) if 'minlp' in files else None
-        merged_df = pd.merge(mix0_df, minlp_df, on="Matrix Name")
+        merged_df = pd.merge(mix1_df, minlp_df, on="Matrix Name")
 
         columns_list = merged_df.columns.tolist()
 
@@ -328,7 +333,7 @@ def process_directory_both_rules(directory):
         merged_df = calculate_label(merged_df)
         merge_seeds_list.append(merged_df)
 
-    # merge the two dataframes for minlp and mix0
+    # merge the two dataframes for minlp and mix1
     complete_df = pd.concat(merge_seeds_list, ignore_index=True).sort_values(by=['Matrix Name', 'Random Seed Shift'])
 
     return complete_df
@@ -340,7 +345,7 @@ def process_directory_random_noise(directory:str):
 
     for filename in os.listdir(directory):
         if filename.endswith(".out"):
-            match = re.search(r'(mix0)(?:_s(\d+))?\.out$', filename)
+            match = re.search(r'(mix1)(?:_s(\d+))?\.out$', filename)
             if match:
                 category, group_id = match.groups()
                 if group_id is None:
@@ -348,8 +353,8 @@ def process_directory_random_noise(directory:str):
                 file_groups.setdefault(group_id, {}).update({category: os.path.join(directory, filename)})
 
     for group_id in range(3):
-        zero_two_one_df = extract_instance_data_mix0(file_groups[str(group_id)]['mix0'])
-        three_four_five_df = extract_instance_data_minlp(file_groups[str(group_id+3)]['mix0'])
+        zero_two_one_df = extract_instance_data_mix1(file_groups[str(group_id)]['mix1'])
+        three_four_five_df = extract_instance_data_minlp(file_groups[str(group_id+3)]['mix1'])
         if zero_two_one_df is not None:
             zero_two_one_df = zero_two_one_df.loc[:, ~zero_two_one_df.columns.str.endswith('_descr')]
 
@@ -366,15 +371,14 @@ def process_directory_random_noise(directory:str):
         merged_df = calculate_label(merged_df)
         merge_seeds_list.append(merged_df)
 
-    # merge the two dataframes for minlp and mix0
+    # merge the two dataframes for minlp and mix1
     complete_df = pd.concat(merge_seeds_list, ignore_index=True).sort_values(by=['Matrix Name', 'Random Seed Shift'])
     complete_df.to_csv(f'{directory}/random_noise_experiment_df.csv', index=False)
     return complete_df
 
-
 def read_in_and_call_process(data_set: str, random_noise_experiment=False, fico=True, to_csv=True):
     # directory_path = f"/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/{data_set}/Outs"
-    directory_path = f"/Users/fritz/Downloads/ZIB/Master/JulyTry/Bases/SCIP/Outs/{data_set}"
+    directory_path = f"/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/SCIP/Outs/{data_set}"
 
     # if data_set == '345':
     #     directory_path = "/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/345/Outs"
@@ -393,26 +397,27 @@ def read_in_and_call_process(data_set: str, random_noise_experiment=False, fico=
         if data_set == 'Mix_Minlp' or data_set == 'Current':
             data_set = 'default'
         # save only df where all instances without features are deleted
-        stefans_data_merged_all_have_features.to_csv(f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Bases/SCIP/Raw/scip_{data_set}_raw.csv',
+        stefans_data_merged_all_have_features.to_csv(f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/SCIP/Raw/scip_{data_set}_raw.csv',
                                index=False)
         stefan_data_reduced_cols_no_nan = create_compatible_dataframe(stefans_data_merged_all_have_features)
         stefan_data_reduced_cols_no_nan.to_csv(
-            f"/Users/fritz/Downloads/ZIB/Master/JulyTry/Bases/SCIP/NamedFeatures/Complete/scip_{data_set}_named_columns.csv",
+            f"/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/SCIP/NamedFeatures/Complete/scip_{data_set}_named_columns.csv",
             index=False)
 
         scip_features_df = stefan_data_reduced_cols_no_nan.drop(['Matrix Name', 'Random Seed Shift', 'Status Mixed',
                                                                  'Status Int', 'Final solution time (cumulative) Mixed',
                                                                  'Final solution time (cumulative) Int',
                                                                  'Cmp Final solution time (cumulative)',
-                                                                 'Virtual Best'], axis=1)
+                                                                 'Virtual Best', 'Avg strong branching iterations in root'],# maybe add iterations again and delete work
+                                                                axis=1)
         scip_features_df.to_csv(
-            f"/Users/fritz/Downloads/ZIB/Master/JulyTry/Bases/SCIP/NamedFeatures/Features/scip_{data_set}_features.csv",
+            f"/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/SCIP/NamedFeatures/Features/scip_{data_set}_features_logged.csv",
             index=False)
 
     if fico:
         # all instances
         scip_to_fic_df = create_compatible_dataframe(stefans_data_merged_all_have_features, fico_only=True)
-        scip_to_fic_df.to_csv(f"/Users/fritz/Downloads/ZIB/Master/JulyTry/Bases/SCIP/NamedFeatures/SCICO/scip_{data_set}_fico_compatible.csv",
+        scip_to_fic_df.to_csv(f"/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/SCIP/NamedFeatures/SCICO/scip_{data_set}_fico_compatible.csv",
                                 index=False)
 
         stefans_feats = scip_to_fic_df[['#integer violations at root',
@@ -426,12 +431,12 @@ def read_in_and_call_process(data_set: str, random_noise_experiment=False, fico=
                '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
                '% vars in DAG unbounded (out of vars in DAG)']].copy()
 
-        stefans_feats.to_csv(f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Bases/SCIP/NamedFeatures/SCICO/scip_{data_set}_fico_features.csv',
+        stefans_feats.to_csv(f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/SCIP/NamedFeatures/SCICO/scip_{data_set}_fico_features.csv',
                                    index=False)
 
 
 # read_in_and_call_process(data_set='012345', random_noise_experiment=True)
 # read_in_and_call_process(data_set='Mix_Minlp', random_noise_experiment=False)
-read_in_and_call_process(data_set='CurrentOuts', random_noise_experiment=False)
+# read_in_and_call_process(data_set='CurrentOuts', random_noise_experiment=False)
 
 # TODO: When reading in data for random noise experiment: i need to treat seeds 3,4,5 as Int rule and 0,1,2 as mixed

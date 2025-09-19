@@ -1,6 +1,12 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import QuantileTransformer, StandardScaler
+from sklearn.impute import SimpleImputer
+
+
 import sys
 import os
 
@@ -11,7 +17,7 @@ Ich inputte TreffenMasVeinte, dann sucht es sich alles von dort aus wie accuracy
 1. Add functions to find best imputer/scaling kombi
 '''
 
-global_path = '/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs'
+global_path = '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final'
 
 def get_files(directory_path:str, index_col=False):
     """
@@ -149,14 +155,43 @@ def sgm(scaled_label=True):
 
     call_sgm_visualization(scaledlabel=scaled_label)
 
+
+hundred_seeds = [2207168494, 288314836, 1280346069, 1968903417, 1417846724, 2942245439, 2177268096, 571870743,
+                     1396620602, 3691808733, 4033267948, 3898118442, 24464804, 882010483, 2324915710, 316013333,
+                     3516440788, 535561664, 1398432260, 572356937, 398674085, 4189070509, 429011752, 2112194978,
+                     3234121722, 2237947797, 738323230, 3626048517, 733189883, 4126737387, 2399898734, 1856620775,
+                     829894663, 3495225726, 1844165574, 1282240360, 2872252636, 1134263538, 1174739769, 2128738069,
+                     1900004914, 3146722243, 3308693507, 4218641677, 563163990, 568995048, 263097927, 1693665289,
+                     1341861657, 1387819803, 157390416, 2921975935, 1640670982, 4226248960, 698121968, 1750369715,
+                     3843330071, 2093310729, 1822225600, 958203997, 2478344316, 3925818254, 2912980295, 1684864875,
+                     362704412, 859117595, 2625349598, 3108382227, 1891799436, 1512739996, 1533327828, 1210988828,
+                     3504138071, 1665201999, 1023133507, 4024648401, 1024137296, 3118826909, 4052173232, 3143265894,
+                     1584118652, 1023587314, 666405231, 2782652704, 744281271, 3094311947, 3882962880, 325283101,
+                     923999093, 4013370079, 2033245880, 289901203, 3049281880, 1507732364, 698625891, 1203175353,
+                     1784663289, 2270465462, 537517556, 2411126429]
+
+
 # WHAT RULES DID THE MODELS CHOOSE
-def shares(scip_default_original_data, fico_original_data, scaledlabel=True, complete_data=False):
+def show_shares(scip_default_original_data=None, fico_original_data=None, dataset_name="",  scaledlabel=True, complete_data=False,
+           subdirectory=""):
     def get_share_mixed_and_int(data_frame):
         mixed = (data_frame > 0).sum().sum()
         pref_int = (data_frame < 0).sum().sum()
         return [mixed, pref_int]
 
-    def histogram_shares(data_frame, title_add_on, origis=False):
+    def real_shares(dataset):
+        test_set = {}
+        train_set = {}
+        for seed in hundred_seeds:
+            X_train, X_test, y_train, y_test = train_test_split(dataset,
+                                                                dataset['Cmp Final solution time (cumulative)'],
+                                                                test_size=0.2,
+                                                                random_state=seed)
+            test_set[seed] = y_test
+            train_set[seed] = y_train
+        return pd.DataFrame.from_dict(test_set, orient='columns'), pd.DataFrame.from_dict(train_set, orient='columns')
+
+    def histogram_shares(data_frame, title_add_on, dataset_name=dataset_name, test_or_train="", origis=False):
         if origis:
             values = get_share_mixed_and_int(data_frame['Cmp Final solution time (cumulative)'])
         else:
@@ -164,11 +199,16 @@ def shares(scip_default_original_data, fico_original_data, scaledlabel=True, com
 
         total_relevant_predictions = sum(values)
         values = [(value/total_relevant_predictions)*100 for value in values]
-        bar_colors = (['turquoise', 'magenta'])
-        title = f'Share of Mixed and Preferred Int {title_add_on}'
+        bar_colors = (['purple', 'darkgreen'])
+        title = f'Predicted share of Mixed and Int on {dataset_name} {test_or_train} by {title_add_on}'
         # Create the plot
         plt.figure(figsize=(8, 5))
-        plt.bar(['Mixed', 'Prefer Int'], values, color=bar_colors)
+        bars = plt.bar(['Mixed', 'Prefer Int'], values, color=bar_colors)
+        for bar in bars:
+            height = bar.get_height()
+            plt.text(bar.get_x() + bar.get_width() / 2., height,
+                     f'{height:.2f}',
+                     ha='center', va='bottom')
         plt.title(title)
         plt.ylim(0, 105)  # Set y-axis limits for visibility
         plt.xticks(rotation=45, fontsize=6)
@@ -180,22 +220,27 @@ def shares(scip_default_original_data, fico_original_data, scaledlabel=True, com
         plt.close()
 
     if scaledlabel:
-        dataframes = get_files(global_path+'/ScaledLabel/Prediction/', index_col=True)
+        dataframes = get_files(global_path+subdirectory+'/ScaledLabel/Prediction/', index_col=True)
     else:
-        dataframes = get_files(global_path+'/UnscaledLabel/Prediction/', index_col=True)
-    print(global_path+'/ScaledLabel/Prediction/')
+        dataframes = get_files(global_path+subdirectory+'/UnscaledLabel/Prediction/', index_col=True)
     for dataframe in dataframes.keys():
         df = dataframes[dataframe]
         lin_cols = [col_name for col_name in df.columns if "Linear" in col_name]
         forest_df = [col_name for col_name in df.columns if "Forest" in col_name]
-        histogram_shares(df[lin_cols], title_add_on=dataframe+" Linear", origis=False)
-        histogram_shares(df[forest_df], title_add_on=dataframe+" Forest", origis=False)
-        histogram_shares(df, dataframe+" Lin and For Combined", origis=False)
-    # TODO: Keep in mind when changing base files
-    if complete_data:
-        histogram_shares(fico_original_data, 'FICO Complete Set', origis=True)
-        histogram_shares(scip_default_original_data, 'SCIP Complete Set', origis=True)
-
+        if 'Trainset' in dataframe:
+            tester_or_trainer = 'Trainset'
+        else:
+            tester_or_trainer = 'Testset'
+        histogram_shares(df[lin_cols], title_add_on="Linear", test_or_train=tester_or_trainer, origis=False)
+        histogram_shares(df[forest_df], title_add_on="RandomForest", test_or_train=tester_or_trainer, origis=False)
+    if scip_default_original_data is not None:
+        real_test, real_train = real_shares(scip_default_original_data)
+    elif fico_original_data is not None:
+        real_test, real_train = real_shares(fico_original_data)
+    else:
+        sys.exit(1)
+    histogram_shares(real_test, "Actual", test_or_train="Testset")
+    histogram_shares(real_train, "Actual", test_or_train="Trainset")
 # ACCURACY BLOCK
 def accuracy_visualize(scaled_label=True, title_add_on='', plot=True):
     def get_sgm_series(pandas_series, shift):
@@ -235,7 +280,6 @@ def accuracy_visualize(scaled_label=True, title_add_on='', plot=True):
                 for_acc, for_ex_acc = get_sgm_acc(forest_df)
 
         values = [lin_acc, lin_ex_acc, for_acc, for_ex_acc]
-        print(values)
 
         if plot:
             # Create the plot
@@ -463,27 +507,36 @@ def create_scip_feature_name_df():
                         index=False)
     return scip_feat_df
 
-def feature_reduction_graph(base_set:str, feature_ranking:str, data_set:str, lin_accuracy=None, lin_sgm=None, for_accuracy=None,
-                            for_sgm=None):
+def feature_reduction_graph(base_set:str, feature_ranking:str, data_set:str, saving_directory,
+                            fico_or_scip, lin_accuracy=None, lin_sgm=None, for_accuracy=None,
+                            for_sgm=None, title_add_on="", axvline_position=14):
 
     if (lin_accuracy is None) or (lin_sgm is None) or (for_accuracy is None) or (for_sgm is None):
         print(f'None values inputed.')
         sys.exit(1)
-
     number_of_features = max(len(lin_accuracy), len(lin_sgm), len(for_accuracy), len(for_sgm))
     x_labels = [str(i) for i in range(number_of_features, 0, -1)]
+    if feature_ranking == "linear":
+        lin_vbs = (np.array(lin_sgm["VBS"]) * 100).tolist()
+        lin_sgm = (np.array(lin_sgm["SGM relative to Default"]) * 100).tolist()
+        # lin_sgm = [value[0] for value in lin_sgm]
+    if feature_ranking == "forest":
+        for_vbs = (np.array(for_sgm["VBS"]) * 100).tolist()
+        for_sgm = (np.array(for_sgm["SGM relative to Default"]) * 100).tolist()
 
-    lin_sgm = (np.array(lin_sgm) * 100).tolist()
-    lin_sgm = [value[0] for value in lin_sgm]
 
-    for_sgm = (np.array(for_sgm) * 100).tolist()
-    for_sgm = [value[0] for value in for_sgm]
-
+    if data_set == 'scip':
+        if isinstance(lin_accuracy, list):
+            pass
+        else:
+            lin_accuracy.drop('Extreme Accuracy', axis=1, inplace=True)
+        if isinstance(for_accuracy, list):
+            pass
+        else:
+            for_accuracy.drop('Extreme Accuracy', axis=1, inplace=True)
 
 
     if feature_ranking.lower() == 'combined':
-        print(lin_accuracy.columns)
-        print(for_accuracy.columns)
         colors = ['gold', 'orange', 'darkgreen', 'green', 'turquoise', 'seagreen']
         plt.figure(figsize=(8, 6))
         plt.plot(lin_accuracy[['Mid Accuracy']], color=colors[0])
@@ -496,32 +549,54 @@ def feature_reduction_graph(base_set:str, feature_ranking:str, data_set:str, lin
         plt.title(label=f'{data_set.upper()} Combined {base_set}')
         plt.axvline(x=15, color='red', linestyle='--', label='Threshold')
         plt.ylim(35, 115)
-        plt.legend(['Mid Accuracy Linear', 'Extreme Accuracy Linear', 'Mid Accuracy Random Forest',
-                    'Extreme Accuracy Random Forest', 'SGM Linear', 'SGM Random Forest'])
+        plt.legend(['MidLabel Accuracy Linear', 'LargeLabel Accuracy Linear', 'MidLabel Accuracy Random Forest',
+                    'LargeLabel Accuracy Random Forest', 'SGM Linear', 'SGM Random Forest'])
         plt.xticks(ticks=range(len(lin_accuracy)), labels=x_labels)
         plt.show()
     elif feature_ranking.lower() == 'linear':
         # Linear
         plt.figure(figsize=(8, 6))
-        plt.plot(lin_accuracy)
-        plt.plot(lin_sgm)
-        plt.title(label=f'{data_set.upper()} Linear {base_set}')
-        plt.axvline(x=13, color='red', linestyle='--', label='Threshold')
-        plt.axvline(x=14, color='orange', linestyle='--', label='Threshold')
-        plt.axvline(x=15, color='gold', linestyle='--', label='Threshold')
-        plt.legend(['Accuracy', 'Mid Accuracy', 'Extreme Accuracy', 'SGM'])
+        plt.plot(lin_accuracy.iloc[:,0], color='green')
+        plt.plot(lin_accuracy.iloc[:,1], color='purple')
+        plt.plot(lin_accuracy.iloc[:,2], color='blue')
+        plt.plot(lin_sgm, color='red')
+        plt.plot(lin_vbs, color='lightcoral')
+        plt.title(label=f'LinearModel {title_add_on}')
+        plt.xlabel('Number of Features')
+        if data_set == 'scip':
+            plt.legend(['Accuracy', 'MidLabel Accuracy', 'Predicted Run Time', 'Virtual Best Run Time'])
+            plt.axvline(x=axvline_position, color='red', linestyle='--', label='Threshold')
+        else:
+            plt.legend(['Accuracy', 'MidLabel Accuracy', 'LargeLabel Accuracy', 'Predicted Run Time', 'Virtual Best Run Time'])
+            plt.axvline(x=axvline_position, color='red', linestyle='--', label='Threshold')
         plt.xticks(ticks=range(len(lin_accuracy)), labels=x_labels)
         plt.ylim(35, 115)
+        safe = title_add_on.replace(' ', '_')
+        filename = f"{saving_directory}/{fico_or_scip}_{safe}_feat_reduction_linear.png"
+        plt.savefig(filename)
         plt.show()
+
     elif feature_ranking.lower() == 'forest':
         # Forest
         plt.figure(figsize=(8, 6))
-        plt.plot(for_accuracy)
-        plt.plot(for_sgm)
-        plt.title(label=f'{data_set.upper()} Forest {base_set}')
-        plt.legend(['Accuracy', 'Mid Accuracy', 'Extreme Accuracy', 'SGM'])
+        plt.plot(for_accuracy.iloc[:, 0], color='green')
+        plt.plot(for_accuracy.iloc[:, 1], color='purple')
+        plt.plot(for_accuracy.iloc[:, 2], color='blue')
+        plt.plot(for_sgm, color='red')
+        plt.plot(for_vbs, color='lightcoral')
+        plt.title(label=f'RandomForestModel {title_add_on}')
+        plt.xlabel('Number of Features')
+        if data_set == 'scip':
+            plt.legend(['Accuracy', 'MidLabel Accuracy', 'Predicted Run Time', 'Virtual Best Run Time'])
+            plt.axvline(x=axvline_position, color='red', linestyle='--', label='Threshold')
+        else:
+            plt.legend(['Accuracy', 'MidLabel Accuracy', 'LargeLabel Accuracy', 'Predicted Run Time', 'Virtual Best Run Time'])
+            # plt.axvline(x=13, color='red', linestyle='--', label='Threshold')
+            plt.axvline(x=axvline_position, color='red', linestyle='--', label='Threshold')
         plt.xticks(ticks=range(len(for_accuracy)), labels=x_labels)
-        plt.axvline(x=13, color='red', linestyle='--', label='Threshold')
+        safe = title_add_on.replace(' ', '_')
+        filename = f"{saving_directory}/{fico_or_scip}_{safe}_feat_reduction_forest.png"
+        plt.savefig(filename)
         plt.ylim(35, 115)
         plt.show()
         plt.close()
@@ -529,13 +604,14 @@ def feature_reduction_graph(base_set:str, feature_ranking:str, data_set:str, lin
         print(f'Feature ranking {feature_ranking} not implemented.')
         sys.exit(1)
 
-def plot_feature_reduction(directory:str, fico_or_scip:str, base_data:str, feature_ranking='combined'):
+def plot_feature_reduction(directory:str, fico_or_scip:str, base_data:str, save_to, feature_ranking='combined',
+                           title_add_on:str='', threshold=14):
     """
     Plots SGM and Extreme Accuracy from linear model vs the random forest regressor
     """
-    path = f'{directory}/FeatureReduction/{fico_or_scip}/'
-    dfs = get_files(path)
-    print(len(dfs))
+    # path = f'{directory}/FeatureReduction/{fico_or_scip}/'
+    dfs = get_files(directory)
+
     accuracy_keys = [key for key in dfs.keys() if 'acc' in key.lower()]
     sgm_keys = [key for key in dfs.keys() if 'sgm' in key.lower()]
 
@@ -547,19 +623,25 @@ def plot_feature_reduction(directory:str, fico_or_scip:str, base_data:str, featu
         sgm_for_key = [key for key in sgm_keys if 'combined forest' in key.lower()][0]
 
         feature_reduction_graph(base_data, feature_ranking, lin_accuracy=dfs[acc_lin_key], lin_sgm=dfs[sgm_lin_key],
-                                for_accuracy=dfs[acc_for_key], for_sgm=dfs[sgm_for_key], data_set=fico_or_scip)
+                                for_accuracy=dfs[acc_for_key], for_sgm=dfs[sgm_for_key], data_set=fico_or_scip,
+                                title_add_on=title_add_on, axvline_position=threshold, saving_directory=save_to,
+                                fico_or_scip=fico_or_scip)
 
     elif feature_ranking == 'linear':
         acc_lin_key = [key for key in accuracy_keys if 'linear linear' in key.lower()][0]
         sgm_lin_key = [key for key in sgm_keys if 'linear linear' in key.lower()][0]
         feature_reduction_graph(base_data, feature_ranking, lin_accuracy=dfs[acc_lin_key], lin_sgm=dfs[sgm_lin_key],
-                                for_accuracy=[], for_sgm=[], data_set=fico_or_scip)
+                                for_accuracy=[], for_sgm=[], data_set=fico_or_scip, title_add_on=title_add_on,
+                                axvline_position=threshold, saving_directory=save_to,
+                                fico_or_scip=fico_or_scip)
 
     elif feature_ranking == 'forest':
         acc_for_key = [key for key in accuracy_keys if 'forest forest' in key.lower()][0]
         sgm_for_key = [key for key in sgm_keys if 'forest forest' in key.lower()][0]
         feature_reduction_graph(base_data, feature_ranking, lin_accuracy=[], lin_sgm=[],
-                                for_accuracy=dfs[acc_for_key], for_sgm=dfs[sgm_for_key], data_set=fico_or_scip)
+                                for_accuracy=dfs[acc_for_key], for_sgm=dfs[sgm_for_key], data_set=fico_or_scip,
+                                title_add_on=title_add_on, axvline_position=threshold, saving_directory=save_to,
+                                fico_or_scip=fico_or_scip)
 
 def get_top_x(impo_rank:pd.DataFrame, sort_by:str, x:int):
     impo_rank.sort_values(by=sort_by, ascending=True, inplace=True)
@@ -579,25 +661,129 @@ def get_linear_importance_coeff(importance_df:pd.DataFrame, impo_rank:pd.DataFra
     top_5_df = lin_impo_coeffs_df[lin_impo_coeffs_df['Feature'].isin(top_5)]
     top_5_df.to_csv('/Users/fritz/Downloads/ZIB/Master/June/Iteration2/RelativeLoggedQuantileFico/ScaledLabel/Importance/fico_top_5_lin_coeffs_importance.csv')
 
-
 def plot_label(label:pd.Series):
 
     plt.boxplot(label)
     plt.title("Boxplot of Label")
     plt.show()
 
-fico_data = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/JulyTry/Bases/FICO/Cleaned/fico_clean_data_753.csv')
-fico_label = fico_data['Cmp Final solution time (cumulative)']
+def plot_feats_distribution(features, directory, scaler_name): 
+    fico_feats = features.replace(-1, np.nan)
+    # Create the imputer (strategy can be 'mean', 'median', 'most_frequent', or 'constant')
+    imputer = SimpleImputer(strategy='mean')
+    fico_feats_imputed = pd.DataFrame(imputer.fit_transform(fico_feats), columns=fico_feats.columns)
+    # Fit and transform the DataFrame
+    if scaler_name != 'unscaled':
+        qt = QuantileTransformer(output_distribution='normal', n_quantiles=int(len(fico_feats) * 0.8))
 
-scip_data = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/JulyTry/Bases/SCIP/Cleaned/scip_default_clean_data.csv')
-scip_label = scip_data['Cmp Final solution time (cumulative)']
-# print(len(scip_label))
-# print(len(scip_label[scip_label<10]))
-# plot_label(scip_label[scip_label<10])
-
-# plot_label(fico_label[fico_label<1000])
-# print(len(fico_label))
-# print(len(fico_label[fico_label<350]))
-
+        qt_ff = qt.fit_transform(fico_feats)
+        qt_ff = np.array(qt_ff).T.tolist()
 
 
+        qt_ff_imputed = qt.fit_transform(fico_feats_imputed)
+        qt_ff_imputed = np.array(qt_ff_imputed).T.tolist()
+
+        for i, (orig, imputed) in enumerate(zip(qt_ff, qt_ff_imputed)):
+            plt.figure()
+            feat_name = fico_feats.columns[i].replace("(out of all non-plus/sum/scalar-mult operator nodes in DAG)",
+                                                      "").replace("% ", "%").replace(" (not including infeasible ones)", "").replace("Avg relative bound change for solving strong branching LPs", "Avg relative bound change for solving strong branching LPs\n")
+
+            if orig != imputed:
+                orig_counts, orig_bins, orig_patches = plt.hist(imputed, bins=15, label='Imputed', color='deeppink')
+                plt.legend()
+            else:
+                orig_counts, orig_bins, orig_patches = plt.hist(orig, bins=15, color='deeppink')
+
+                # # Annotate the counts over each bar, centered
+                # for count, left_edge, right_edge in zip(orig_counts, orig_bins[:-1], orig_bins[1:]):
+                #     center = 0.5 * (left_edge + right_edge)
+                #     if count > 0:
+                #         plt.annotate(f'{int(count)}', xy=(center, count), ha='center', va='bottom', fontsize=8,
+                #                      color='black')
+
+            plt.title(f'{feat_name}')
+            plt.xlabel('Value')
+            plt.ylabel('Frequency')
+            feat_name = feat_name.replace("Avg relative bound change for solving strong branching LPs\n",
+                                          "Avg relative bound change for solving strong branching LPs")
+            filename = f"{directory}/QuantileScaled/{feat_name}_{scaler_name}.png"
+            plt.savefig(filename)
+            plt.show()
+            plt.close()
+    else:
+        for feature in fico_feats.columns:
+            plt.figure()
+            feat_name = feature.replace("(out of all non-plus/sum/scalar-mult operator nodes in DAG)",
+                                                      "").replace("% ", "%").replace(" (not including infeasible ones)",
+                                                                                     "").replace("Avg relative bound change for solving strong branching LPs", "Avg relative bound change for solving strong branching LPs\n")
+
+            orig_counts, orig_bins, orig_patches = plt.hist(fico_feats[feature], bins=15, color='deeppink')
+
+
+            # Annotate the counts over each bar, centered
+            # for count, left_edge, right_edge in zip(orig_counts, orig_bins[:-1], orig_bins[1:]):
+            #     center = 0.5 * (left_edge + right_edge)
+            #     if count > 0:
+            #         plt.annotate(f'{int(count)}', xy=(center, count), ha='center', va='bottom', fontsize=8, color='black')
+
+            plt.title(f'{feat_name}')
+            plt.xlabel('Value')
+            plt.ylabel('Frequency')
+            feat_name = feat_name.replace("Avg relative bound change for solving strong branching LPs\n", "Avg relative bound change for solving strong branching LPs")
+            filename = f"{directory}/Unscaled/{feat_name}_{scaler_name}.png"
+            plt.savefig(filename)
+            plt.show()
+            plt.close()
+
+def plotten_motten(title_add_one, title_add_two, performance_drop_5on6_lin, performance_drop_5on6_for,
+                   performance_drop_6on5_lin, performance_drop_6on5_for, sub_directory_one="", sub_directory_two="",
+                   distri=True, feat_red=True, shares=True, fico=True, scip=True):
+    if fico:
+        fico_5 = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_5_ready_to_ml.csv")
+        fico_5_feats = pd.read_csv(
+            "/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_5_ready_to_ml_features.csv")
+        fico_6 = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_6_ready_to_ml.csv")
+        fico_6_feats = pd.read_csv(
+            "/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_6_ready_to_ml_features.csv")
+
+        if distri:
+            plot_feats_distribution(fico_5_feats, "/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FICO/95_normal/CompleteSet",
+                                scaler_name="quantile")
+            plot_feats_distribution(fico_5_feats, "/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FICO/95_normal/CompleteSet",
+                                scaler_name="unscaled")
+            plot_feats_distribution(fico_6_feats, "/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FICO/96_normal/CompleteSet",
+                                scaler_name="quantile")
+            plot_feats_distribution(fico_6_feats, "/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FICO/96_normal/CompleteSet",
+                                scaler_name="unscaled")
+        if feat_red:
+            plot_feature_reduction(f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/{sub_directory_one}/FeatureReduction/fico', 'fico', base_data="", feature_ranking='linear', title_add_on=title_add_one, threshold=performance_drop_5on6_lin,
+                                   save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/95auf96/FeatureReduction")
+            plot_feature_reduction(f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/{sub_directory_one}/FeatureReduction/fico', 'fico',base_data="", feature_ranking= 'forest', title_add_on=title_add_one, threshold=performance_drop_5on6_for,
+                                   save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/95auf96/FeatureReduction")
+            plot_feature_reduction(f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/{sub_directory_two}/FeatureReduction/fico', 'fico', base_data="", feature_ranking='linear', title_add_on=title_add_two, threshold=performance_drop_6on5_lin,
+                                   save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/96auf95/FeatureReduction")
+            plot_feature_reduction(f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/{sub_directory_two}/FeatureReduction/fico', 'fico',base_data="", feature_ranking= 'forest', title_add_on=title_add_two, threshold=performance_drop_6on5_for,
+                                   save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/96auf95/FeatureReduction")
+        if shares:
+            show_shares(fico_original_data=fico_5, dataset_name='FICO XPress 9.5', subdirectory="/FICO5/NoOutlier/logged")
+            show_shares(fico_original_data=fico_6, dataset_name='FICO XPress 9.6', subdirectory="/FICO6/NoOutlier/logged")
+    if scip:
+        scip = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/JulyTry/Bases/SCIP/Cleaned/scip_data_for_ml.csv")
+        if distri:
+            pass
+        if feat_red:
+            pass
+        if shares:
+            pass
+
+def plotten_motten_plotten():
+    combinations = [('5','2', 5, 13, 10, 2),('5','17', 5, 11, 10, 10),('10','2', 5, 12, 10, 2),('10','17', 5, 10, 10, 9)]
+    for combination in combinations:
+        depth = combination[0]
+        feats = combination[1]
+        drop_lin_5on6 = combination[2]
+        drop_for_5on6 = combination[3]
+        drop_lin_6on5 = combination[4]
+        drop_for_6on5 = combination[5]
+        plotten_motten(title_add_one=f"Trainingset=9.6 Testset=9.5, Depth={depth}, #Feats={feats}", title_add_two=f"Trainingset=9.5, Testset=9.6, Depth={depth}, #Feats={feats}", sub_directory_one=f"FightOverfitting/5on6/depth{depth}feats{feats}", sub_directory_two=f"FightOverfitting/6on5/depth{depth}feats{feats}", distri=False, shares=False,
+                       performance_drop_5on6_lin=drop_lin_5on6, performance_drop_5on6_for=drop_for_5on6, performance_drop_6on5_lin=drop_lin_6on5, performance_drop_6on5_for=drop_for_6on5)

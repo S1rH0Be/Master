@@ -8,9 +8,18 @@ def rename_cols(df, int_cols, dbl_cols):
     named_df = df
     # Create a mapping for renaming patterns
     replacements = {
+        # FICO Original
         "(Fritz Global PR - Public Discrete Nonconvex GLOBALSPATIALBRANCHIFPREFERINT=1)": "Int",
         "(Fritz Global PR - Public Discrete Nonconvex def)": "Mixed",
         "(Fritz Global PR - Public Discrete Nonconvex def vs Fritz Global PR - Public Discrete Nonconvex GLOBALSPATIALBRANCHIFPREFERINT=1)": "",
+        # ANONYM 9.2
+        "(Fritz Global Pull Request GLOBALSPATIALBRANCHIFPREFERINT=1)":"Int",
+        "(Fritz Global Pull Request def)":"Mixed",
+        "(Fritz Global Pull Request def vs Fritz Global Pull Request GLOBALSPATIALBRANCHIFPREFERINT=1)":"",
+        # ANONYM 9.6
+        "(Fritz 9.6 Global Pull Request GLOBALSPATIALBRANCHIFPREFERINT=1)": "Int",
+        "(Fritz 9.6 Global Pull Request default)": "Mixed",
+        "(Fritz 9.6 Global Pull Request default vs Fritz 9.6 Global Pull Request GLOBALSPATIALBRANCHIFPREFERINT=1)": "",
         "(User-defined attribute)": "",
         "# ":"#",
         "  ":" "
@@ -63,7 +72,7 @@ def read_and_rename(path_to_file:str, int_cols:list, dbl_cols:list):
 
     renamed_df[perm_cols] = renamed_df[perm_cols].fillna(0.0)
     renamed_df.sort_values(by=['Matrix Name', 'permutation seed Mixed'], inplace = True, ascending=False)
-
+    renamed_df.to_csv('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Raw/just_renamed.csv', index=False)
     return renamed_df
 
 '''DTYPE CONVERTER AND CHECKER'''
@@ -79,6 +88,7 @@ def to_float(df, columns):
             bad_cols.append(column)
     if len(bad_cols) > 0:
         print("Not Float: ", bad_cols)
+
     return df, bad_cols
 
 def is_effectively_int(value):
@@ -103,13 +113,11 @@ def check_datatype(df):
 
     # all columns which should be int
     # TODO: Add scip only int columns
-    int_cols = ['Matrix Equality Constraints', 'Matrix Quadratic Elements', 'Matrix NLP Formula',
-                'Presolve Columns Mixed', 'Presolve Columns Int', 'Presolve Global Entities Mixed',
-                'Presolve Global Entities Int']
+    int_cols = ['Matrix Quadratic Elements','Presolve Columns Mixed', 'Presolve Columns Int',
+                'Presolve Global Entities Mixed', 'Presolve Global Entities Int']
     # add all columns containing # but not 'Cmp', because the quantity of variables etc should be int and Cmp are percentages ergo floats
     other_int_cols = [col for col in df.columns if '#' in col and 'Cmp' not in col]
     int_cols += other_int_cols
-
     # object columns
     # TODO: Add scip only object columns
     object_cols = ['Matrix Name', 'Status Mixed', 'Status Int']
@@ -117,15 +125,16 @@ def check_datatype(df):
     # float cols are the remaining ones
     non_floats = int_cols + object_cols
     float_cols = [col for col in df.columns if col not in non_floats]
+
     # In bad_instances we store the Matrix Name for instances with one entry with wrong datatype
     bad_instances = []
     # First check if everything which should be an integer is an integer
     for int_col in int_cols:
         if int_col in df.columns:
             bad_rows = df[~df[int_col].apply(lambda x: is_effectively_int(x))]['Matrix Name']
-            if len(bad_rows) > 0:
-                print(f"INT: {int_col}: {len(bad_rows)}")
-                print(type(df[int_col].iloc[0]))
+            # if len(bad_rows) > 0:
+            #     print(f"INT: {int_col}: {len(bad_rows)}")
+            #     print(type(df[int_col].iloc[0]))
             if bad_rows.empty:
                 df[int_col] = df[int_col].astype(float)
             else:
@@ -136,9 +145,9 @@ def check_datatype(df):
     for float_col in float_cols:
         if float_col in df.columns:
             bad_rows = df[~df[float_col].apply(lambda x: is_effectively_float(x))]['Matrix Name']
-            if len(bad_rows) > 0:
-                print(f"FLOAT: {float_col}: {len(bad_rows)}")
-                print(type(df[float_col].iloc[0]))
+            # if len(bad_rows) > 0:
+            #     print(f"FLOAT: {float_col}: {len(bad_rows)}")
+            #     print(type(df[float_col].iloc[0]))
             if bad_rows.empty:
                 df[float_col] = df[float_col].astype(float)
             else:
@@ -155,9 +164,6 @@ def check_datatype(df):
         else:
             pass
 
-    if len(bad_instances) > 0:
-        print("Wrong Datatype: ", bad_instances)
-
     return df, bad_instances
 
 def datatype_converter(df):
@@ -170,13 +176,13 @@ def datatype_converter(df):
     perc_columns = df.filter(like='Cmp')
     # call to_float to convert columns to float columns
     df, bad_cols = to_float(df, perc_columns)
-    
+
     df, bad_inst = check_datatype(df)
     bad_instances += bad_inst
 
 
-    if len(bad_instances)>0:
-        print("Datatype converter: ", bad_instances)
+    # if len(bad_instances)>0:
+    #     print("Datatype converter: ", set(bad_instances))
     return df, bad_instances
 
 '''SINGLE COLUMN CHECKER'''
@@ -200,7 +206,6 @@ def check_col_consistency(df, requirement_df, scip=False, fico=False):
     # Function to check and convert column to integer
     def convert_column_to_integer(data_frame:pd.DataFrame, column_name:str):
         broken_inst = []
-
         for index, value in data_frame[column_name].items():
             try:
                 int(value)  # Try converting to integer
@@ -368,7 +373,11 @@ def check_col_consistency(df, requirement_df, scip=False, fico=False):
 
     broken_instances = []
     for col in df.columns:
-        helper = requirement_df[col]
+        if col in requirement_df.columns:
+            helper = requirement_df[col]
+            print(helper)
+        else:
+            continue
         requirements = [word.strip() for string in helper for word in string.split(', ')]
         for req in requirements:
             if req == '[Optimal,Timeout,Fail,Infeasible]':

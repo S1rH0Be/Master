@@ -687,17 +687,17 @@ def get_number_of_runs(path_to_runs):
     return len(folders)
 
 
-base_data_directory = '/Users/fritz/Downloads/ZIB/Master/JulyTry/Bases'
-number_of_runs = get_number_of_runs("/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs")
+base_data_directory = '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases'
+number_of_runs = get_number_of_runs("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs")
 # relative fico prescaled
-treffplustage_fico = f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/Iteration{number_of_runs+1}/FICO'
-treffplustage_fico_quantile = f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/Iteration{number_of_runs+1}/FICO/Quantile'
-treffplustage_fico_yeo = f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/Iteration{number_of_runs+1}/FICO/YeoJohnson'
-treffplustage_fico_robust = f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/Iteration{number_of_runs+1}/FICO/Robust'
-treffplustage_fico_minmax = f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/Iteration{number_of_runs+1}/FICO/MinMax'
-treffplustage_fico_none = f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/Iteration{number_of_runs+1}/FICO/NoScaling'
+treffplustage_fico = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Iteration{number_of_runs+1}/FICO'
+treffplustage_fico_quantile = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Iteration{number_of_runs+1}/FICO/Quantile'
+treffplustage_fico_yeo = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Iteration{number_of_runs+1}/FICO/YeoJohnson'
+treffplustage_fico_robust = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Iteration{number_of_runs+1}/FICO/Robust'
+treffplustage_fico_minmax = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Iteration{number_of_runs+1}/FICO/MinMax'
+treffplustage_fico_none = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Iteration{number_of_runs+1}/FICO/NoScaling'
 
-treffplustage_scip = f'/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/Iteration{number_of_runs+1}/SCIP'
+treffplustage_scip = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Iteration{number_of_runs+1}/SCIP'
 
 
 scaler_names = ['NoScaling', 'Standard', 'MinMax', 'Robust', 'Yeo', 'Quantile']
