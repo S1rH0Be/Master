@@ -82,12 +82,11 @@ def permutations(df, fico):
             # Prüfen, ob die Gruppe von drei Werten gleich ist
             if not (data_frame[column].iloc[i] == data_frame[column].iloc[i + 1] == data_frame[column].iloc[i + 2]):
                 bad_perm.append(data_frame['Matrix Name'].iloc[i])
-                return bad_perm
-        return []
+        return bad_perm
 
 
     for col in equal_col_entries_permutation:
-        x =  check_same_entries_for_permutations(df, col)
+        x = check_same_entries_for_permutations(df, col)
         bad_instances += x
 
     if fico:
@@ -250,44 +249,44 @@ def column_interplay(df:pd.DataFrame, fico:bool, DEBUG=True):
     cleaner_df = delete_instances(cleaner_df, del_instances, 'Optimal Value too different')
     deleted_instances += del_instances
     if DEBUG:
-        print('opt_opt', len(set(del_instances)), set(del_instances))
+        print('opt_opt', len(set(del_instances)))
     # check if solver didn't stop too early when status == timeout
     del_instances = timeout_time(cleaner_df)
     deleted_instances += timeout_time(cleaner_df)
     cleaner_df = delete_instances(cleaner_df, timeout_time(cleaner_df), 'Timeout too soon')
     if DEBUG:
-        print('too_early', len(set(del_instances)), set(del_instances))
+        print('too_early', len(set(del_instances)))
     # check if solver stopped in time when reaching timeout limit
     del_instances = too_long(cleaner_df)
     deleted_instances += too_long(cleaner_df)
     cleaner_df = delete_instances(cleaner_df, too_long(cleaner_df), 'Timeout too long')
 
     if DEBUG:
-        print('too_long', len(set(del_instances)), set(del_instances))
+        print('too_long', len(set(del_instances)))
     # check if values across permutations are equal where there should be
     del_instances = permutations(cleaner_df, fico=fico)
     cleaner_df = delete_instances(cleaner_df, del_instances, 'Permutations not consistent')
     deleted_instances += del_instances
     if DEBUG:
-        print('perms', len(set(del_instances)), set(del_instances))
+        print('perms', len(set(del_instances)))
     # check if values across permutations are equal where there should be
     cleaner_df, del_instances = perm_consistent(cleaner_df, fico=fico, DEBUG=DEBUG)
     deleted_instances += del_instances
     if DEBUG:
-        print('perms II', len(set(del_instances)), del_instances)
+        print('perms II', len(set(del_instances)))
 
     # TODO: Ask timo if work<=100, if yes rework. Right now this does nothing
     cleaner_df, del_instances = tickst_du_richtig(cleaner_df)
     cleaner_df = delete_instances(cleaner_df, del_instances, 'Ticks > 100')
     deleted_instances += del_instances
     if DEBUG:
-        print('too_many_works', len(set(del_instances)), set(del_instances))
+        print('too_many_works', len(set(del_instances)))
     # if feature has the exact same entries for both rules, replace feature with static feature
     cleaner_df = equal_cols_to_static(cleaner_df)
 
+
     deleted_instances = set(deleted_instances)
     if DEBUG:
-        print('Final Instances to be deleted:', deleted_instances)
         print('Number of instances to be deleted:', len(deleted_instances))
     return cleaner_df, deleted_instances
 

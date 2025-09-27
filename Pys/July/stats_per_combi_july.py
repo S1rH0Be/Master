@@ -25,7 +25,6 @@ def sgm(data_frame, title:str):
         return sgm_sgm_df
 
     def relative_to_mixed(value_df):
-
         values = value_df.iloc[0, :].tolist()
         mixed = value_df['Mixed'].iloc[0]
         values = [value/mixed for value in values]
@@ -192,10 +191,8 @@ def train_vs_test_sgm(data_frame_path, version: str, fico_or_scip, save_to):
         return sgm_sgm_df
 
     def relative_to_mixed(value_df):
-        print(value_df)
         values = value_df.iloc[0, :].tolist()
         mixed = value_df['Mixed'].iloc[0]
-        print([value / mixed for value in values])
         return [value / mixed for value in values]
 
     def relative_to_int(value_df):
@@ -205,7 +202,6 @@ def train_vs_test_sgm(data_frame_path, version: str, fico_or_scip, save_to):
 
 
     def visualize_sgm(dfs, fico_or_scip, version="", plot_title: str = 'SGMs', saving_directory=""):
-        values_relative = [0,0,0,0]
         if fico_or_scip == 'scip':
             labels = ['Int', 'Linear', 'Forest', 'VBS']
         else:
@@ -234,10 +230,7 @@ def train_vs_test_sgm(data_frame_path, version: str, fico_or_scip, save_to):
                 values_relative_for = relative_to_int(sgm_for_df)
                 values_relative = [values_relative_lin[2], values_relative_lin[0], values_relative_for[0],
                                    values_relative_for[3]]
-
-
-
-            print("SGM: ", values_relative)
+            # print("SGM: ", values_relative)
             bars = plt.bar(x + i * bar_width, values_relative, width=bar_width, label=f'{dfs[i].name}', color=colors[i%2])
             for bar in bars:
                 height = bar.get_height()
@@ -255,7 +248,7 @@ def train_vs_test_sgm(data_frame_path, version: str, fico_or_scip, save_to):
         else:
             plt.legend()
         plt.tight_layout()
-        filename = f"{saving_directory}/{fico_or_scip}_9{version}_train_vs_test_sgm.png"
+        filename = f"{saving_directory}/{fico_or_scip}_{version}_train_vs_test_sgm.png"
         plt.savefig(filename)
         plt.show()
         plt.close()
@@ -273,16 +266,19 @@ def train_vs_test_sgm(data_frame_path, version: str, fico_or_scip, save_to):
                       saving_directory=save_to)
 
     if fico_or_scip == "fico":
-        print(f'{data_frame_path}/SGM/fico_sgm_runtime.csv')
         fico_testset = pd.read_csv(
             f'{data_frame_path}/SGM/fico_sgm_runtime.csv',
             index_col=0)
+        chosen_seed = [ind for ind in fico_testset.index if "3094311947" in ind]
+        fico_testset = fico_testset.loc[chosen_seed]
         fico_testset.name = f'Testset'
 
         fico_trainset = pd.read_csv(
             f'{data_frame_path}/SGM/fico_sgm_trainset.csv',
             index_col=0)
+        fico_trainset = fico_trainset.loc[chosen_seed]
         fico_trainset.name = f'Trainingset'
+        print(len(fico_trainset))
         visualize_sgm([fico_testset, fico_trainset], fico_or_scip=fico_or_scip, plot_title="FICO Xpress",
                       saving_directory=save_to, version=version)
 # checked
@@ -360,7 +356,7 @@ def train_vs_test_acuracy(data_frame_path, version: str, fico_or_scip, save_to):
         plt.tight_layout()
         filename = f"{save_to}/{fico_or_scip}_{version}_train_vs_test_acc.png"
         plt.savefig(filename)
-        # plt.show()
+        plt.show()
         plt.close()
 
     if fico_or_scip == "scip":
@@ -385,9 +381,6 @@ def train_vs_test_acuracy(data_frame_path, version: str, fico_or_scip, save_to):
             index_col=0)
         fico_trainset.name = f'Accuracy on Trainingset'
         visualize_acc([fico_testset, fico_trainset], fico_or_scip=fico_or_scip, plot_title=f"FICO Xpress {version}", saving_directory=save_to)
-
-
-
 # checked
 def visualisiere_sgm(treffen:str, version:str, scaler_name:str, unscaled=True, scaled=True, scip=False, fico=False):
     if unscaled:
@@ -857,7 +850,6 @@ def sgm_by_combination(df, title, def_rule:str):
 
     pass
 
-
 def scip_train_test():
     scip_acc = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Treffen_13_8/SCIP/WithOutlier/ScaledLabel/Accuracy/scip_acc_df.csv',
                            index_col=0)
@@ -880,6 +872,145 @@ def scip_train_test():
     fico_acc_train.name = 'FICO ACC Trainset'
     fico_sgm.name = 'FICO SGM Testset'
     fico_sgm_train.name = 'FICO SGM Trainset'
+
+def plot_sumtime(file_name, move_by, title):
+    def get_sgm_column(pandas_series, shift):
+        value = shifted_geometric_mean(pandas_series, shift)
+        return value
+    def plot_values(values, labels,  plot_title):
+        # Determine bar colors based on conditions
+        bar_colors = (['turquoise', 'magenta'])
+
+        # Create the plot
+        plt.figure(figsize=(8, 5))
+        bars = plt.bar(labels, values, color=bar_colors)
+        plt.title(plot_title)
+        plt.ylim(min(values)*0.9, max(values) * 1.05)  # Set y-axis limits for visibility
+        plt.xticks(rotation=45, fontsize=6)
+        for bar in bars:
+            height = bar.get_height()
+            plt.text(bar.get_x() + bar.get_width() / 2., height,
+                     f'{height:.2f}',
+                     ha='center', va='bottom')
+        # Display the plot
+        plt.show()
+        plt.close()
+
+    sum_time_df = pd.read_csv(file_name, index_col=0)
+    values_sgm_lin = []
+    values_total_lin = []
+    values_sgm_for = []
+    values_total_for = []
+    lin_indices = [ind for ind in sum_time_df.index if 'Linear' in ind]
+    for_indices = [ind for ind in sum_time_df.index if 'Random' in ind]
+    lin_df = sum_time_df.loc[lin_indices]
+    for_df = sum_time_df.loc[for_indices]
+    for col in sum_time_df.columns[:4]:
+        values_sgm_lin.append(np.round(get_sgm_column(lin_df[col], shift=move_by), 2))
+        values_total_lin.append(np.round(lin_df[col].sum(), 2))
+        values_sgm_for.append(np.round(get_sgm_column(for_df[col], shift=move_by), 2))
+        values_total_for.append(np.round(for_df[col].sum(), 2))
+    # int, mixed, linear, forest, vbs
+    values_sgm = [values_sgm_lin[2], values_sgm_lin[1], values_sgm_lin[0], values_sgm_for[0], values_sgm_lin[3]]
+    values_total = [values_total_lin[2], values_total_lin[1], values_total_lin[0], values_total_for[0], values_total_lin[3]]
+    values_sgm_relative = [np.round(value/values_sgm[1], 2) for value in values_sgm]
+    values_total_relative = [np.round(value / values_total[1], 2) for value in values_total]
+
+    plot_values(values_sgm_relative, labels=['Int', 'Mixed', 'Linear', 'Forest', 'VBS'], plot_title=title+'SGM Runtime')
+    plot_values(values_total_relative, labels=['Int', 'Mixed', 'Linear', 'Forest', 'VBS'], plot_title=title+'Total Runtime')
+
+def sgm_base_set(dataframe, only_relevant, title, shift_name):
+    def get_sgm_of_sgm(df,  shift):
+        sgm_df = df.copy()
+        col_names = df.columns.tolist()
+        # Frage: SGM of relative SGMs oder von total SGMs?
+        # Ich mach erstmal total sgms
+        sgm_sgm_df = pd.DataFrame(columns=col_names, index=['SGM'])
+        for col in col_names:
+            sgm_sgm_df.loc[:, col] = shifted_geometric_mean(sgm_df[col], shift)
+        return sgm_sgm_df
+
+    def relative_to_mixed(value_df):
+        values = value_df.iloc[0, :].tolist()
+        mixed = value_df['Mixed'].iloc[0]
+        values = [value/mixed for value in values]
+        return values
+
+    rel_df = dataframe.copy()
+    if only_relevant:
+        rel_indices = [ind for ind in rel_df.index if rel_df['Cmp Final solution time (cumulative)'].loc[ind] != 0]
+        rel_df = rel_df.loc[rel_indices, :]
+    if isinstance(shift_name, int):
+        shifter = shift_name
+    elif shift_name == 'mean':
+        shifter = rel_df['Virtual Best'].mean()
+    elif shift_name == 'median':
+        shifter = rel_df['Virtual Best'].median()
+    time_df = rel_df[['Final solution time (cumulative) Int', 'Final solution time (cumulative)', 'Virtual Best']].copy()
+    time_df.columns = ['Int', 'Mixed', 'VBS']
+
+    values = get_sgm_of_sgm(time_df, shift=shifter)
+    values_relative = relative_to_mixed(values)
+
+    labels = ['Int', 'Mixed', 'VBS']
+    # Determine bar colors based on conditions
+    bar_colors = (['purple', 'pink'])
+
+    # Create the plot
+    plt.figure(figsize=(8, 5))
+    bars = plt.bar(labels, values_relative, color=bar_colors)
+    plt.title(title)
+    plt.ylim(0.5, max(values_relative) * 1.05)  # Set y-axis limits for visibility
+    plt.xticks(rotation=45, fontsize=6)
+    for bar in bars:
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width() / 2., height,
+                 f'{height:.2f}',
+                 ha='center', va='bottom')
+    # Display the plot
+    plt.show()
+    plt.close()
+    return values_relative
+
+
+
+fico_5 = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_5_ready_to_ml.csv")
+fico_6 = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_6_ready_to_ml.csv")
+
+
+# I WANT RandSeed: 3094311947 FICO 6
+# train_vs_test_sgm("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/FICO6/BestCombi/depth5outlier350/NoOutlier/Logged/ScaledLabel",
+#                   version="9.6 RandSeed:=", fico_or_scip='fico', save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/96/BestCombi/Overfitting")
+
+
+# print(fico_5['Virtual Best'].mean())
+# print(fico_5['Virtual Best'].median())
+# sgm_base_set(fico_5, only_relevant=False, title="FICO Xpress 9.5 shift=Mean", shift_name='mean')
+# sgm_base_set(fico_6, only_relevant=False, title="FICO Xpress 9.6 shift=Mean", shift_name='mean')
+# sgm_base_set(fico_5, only_relevant=False, title="FICO Xpress 9.5 shift=Median", shift_name='median')
+# sgm_base_set(fico_6, only_relevant=False, title="FICO Xpress 9.6 shift=Median", shift_name='median')
+# sgm_base_set(fico_5, only_relevant=True, title="FICO Xpress 9.5 Only Relevant shift=10", shift_name=10)
+# sgm_base_set(fico_5, only_relevant=False, title="FICO Xpress 9.5 shift=10", shift_name=10)
+# sgm_base_set(fico_6, only_relevant=True, title="FICO Xpress 9.6 shift=10", shift_name=10)
+# sgm_base_set(fico_6, only_relevant=False, title="FICO Xpress 9.6 shift=10", shift_name=10)
+
+# sgm_base_set(fico_5, only_relevant=True, title="FICO Xpress 9.5 only relevant, shift=mean", shift_name='mean')
+# sgm_base_set(fico_5, only_relevant=True, title="FICO Xpress 9.5 only relevant, shift=median", shift_name='median')
+# sgm_base_set(fico_5, only_relevant=True, title="FICO Xpress 9.5 only relevant, shift=50", shift_name=50)
+# sgm_base_set(fico_5, "FICO Xpress 9.5", 50)
+# print(fico_6['Virtual Best'].mean())
+# print(fico_6['Virtual Best'].median())
+
+# sgm_base_set(fico_6, only_relevant=False, title="FICO Xpress 9.6", shift=fico_6['Virtual Best'].mean())
+# sgm_base_set(fico_6, "FICO Xpress 9.6", fico_6['Virtual Best'].median())
+# sgm_base_set(fico_6, only_relevant=True, title="FICO Xpress 9.6 only relevant, shift=mean", shift_name='mean')
+# sgm_base_set(fico_6, only_relevant=True, title="FICO Xpress 9.6 only relevant, shift=median", shift_name='median')
+# sgm_base_set(fico_6, only_relevant=True, title="FICO Xpress 9.6 only relevant, shift=50", shift_name=50)
+# sgm_base_set(fico_6, "FICO Xpress 9.6", 50)
+
+
+
+
 
 
 

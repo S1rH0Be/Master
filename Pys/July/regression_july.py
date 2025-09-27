@@ -4,7 +4,7 @@ import numpy as np
 import os
 import sys
 
-from stats_per_combi_july import ranking_feature_importance, train_vs_test_acuracy
+from stats_per_combi_july import ranking_feature_importance, train_vs_test_acuracy, train_vs_test_sgm
 from visualize_july import plot_feature_reduction
 from matplotlib import pyplot as plt
 
@@ -16,7 +16,6 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler, QuantileTransformer, PowerTransformer
 
 import logging
-
 def setup_directory(new_directory):
     # Setup directory
     os.makedirs(os.path.join(f'{new_directory}'), exist_ok=True)
@@ -53,7 +52,10 @@ def shifted_geometric_mean(values, shift):
 
 def print_accuracy(acc_df):
     def get_sgm_series(pandas_series, shift):
-        return shifted_geometric_mean(pandas_series, shift)
+        if len(pandas_series)>0:
+            return shifted_geometric_mean(pandas_series, shift)
+        else:
+            return 0
     def get_sgm_acc(data_frame):
         data_frame['Accuracy'] = pd.to_numeric(data_frame['Accuracy'], errors='coerce')
         data_frame['Extreme Accuracy'] = pd.to_numeric(data_frame['Extreme Accuracy'], errors='coerce')
@@ -207,15 +209,16 @@ def get_accuracy(prediction, actual, mid_threshold, extreme_threshold):
 #     pred_df['Abs Time Diff'] = abs(pred_df['Prediction'] - pred_df['Actual'])
 #     return pred_df
 
-def get_predicted_run_time_sgm(y_pred, data, shift):
+def get_predicted_run_time_sgm(y_pred, data, threshold_for_pred):
     predicted_time = pd.Series(index=y_pred.index, name='Predicted Run Time')
     indices = y_pred.index
     for i in indices:
-        if y_pred.loc[i] > 0:
-            predicted_time.loc[i] = data.loc[i, 'Final solution time (cumulative)']
-        else:
+        if y_pred.loc[i] < threshold_for_pred:
             predicted_time.loc[i] = data.loc[i, 'Final solution time (cumulative) Int']
+        else:
+            predicted_time.loc[i] = data.loc[i, 'Final solution time (cumulative)']
     try:
+        shift=10
         sgm_predicted = shifted_geometric_mean(predicted_time, shift)
         sgm_mixed = shifted_geometric_mean(data['Final solution time (cumulative)'].loc[indices], shift)
         sgm_int = shifted_geometric_mean(data['Final solution time (cumulative) Int'].loc[indices], shift)
@@ -237,17 +240,20 @@ def get_predicted_sum_time(y_pred, data):
             predicted_time_sum += np.round(data.loc[i, 'Final solution time (cumulative)'], 2)
         else:
             predicted_time_sum += np.round(data.loc[i, 'Final solution time (cumulative) Int'], 2)
-    return np.round(predicted_time_sum, 2), mixed_time_sum, int_time_sum, vbs_sum
+    return predicted_time_sum, mixed_time_sum, int_time_sum, vbs_sum
 
 def get_importance_col(importances, feature_names, model_name, imputation, scaler):
     importance_df = pd.DataFrame({f'{model_name}_{imputation}_{scaler}': importances}, index=feature_names)
     return importance_df
 
-def get_prediction_df(dictionary):
+def get_prediction_df(dictionary, data):
+    indices = data.index
     max_len = max(len(lst) for lst in dictionary.values())
     # Pad each list with zeros
     for key in dictionary:
-        dictionary[key] += [0] * (max_len - len(dictionary[key]))
+        prediction_series = pd.Series([0.0]*len(data), index=indices)
+        prediction_series.loc[dictionary[key].index] = dictionary[key]
+        dictionary[key] = prediction_series
     return pd.DataFrame.from_dict(dictionary, orient='columns')
 
 def kick_outlier(feat_df, label_series, threshold : int):
@@ -257,7 +263,8 @@ def kick_outlier(feat_df, label_series, threshold : int):
     return feats_to_keep, labels_to_keep
 
 def feature_reduction(data_path, feature_path, data_set, model: str, treffmas, skalierer, remove_outlier=False,
-                      outlier_threshold=350, wie_tief=None, wieviele_feats=1.0):
+                      outlier_threshold=350, max_depp=200, estimatores=100, num_features_tree=None, max_blatt=None,
+                      instances_split=2):
     create_directory(f'{treffmas}/FeatureReduction')
     accuracy_lin = []
     sgm_lin = []
@@ -294,18 +301,21 @@ def feature_reduction(data_path, feature_path, data_set, model: str, treffmas, s
 
     def forest_reduction(data_path_for, feature_path_for,scip_default_for, fico_for, impo_df_for, number_features_for,
                          treffmas_for, scaling_for_features, outlier_removal=False, threshold_outlier=350,
-                         tiefe=None, num_feats=1.0):
+                         num_feats=None, depth=None, estis=100, leafs=None,
+                         instances=2):
         feature_list = impo_df_for['Feature'].tolist()
+        print(feature_list)
         for reduce_by in range(len(feature_list)):
             treff = f'{treffmas_for}/FeatureReduction/forest/{reduce_by}'
             feature_set = feature_list[:(number_features_for - reduce_by)]
-            # print("#Features in ForesReduction:", len(feature_set))
-            # treffmas = treffmas_for.replace('/FICO', '')
-            acc, sgm = main(data_path_for, feature_path_for, scip_default_for, fico_for, treffplusx=treff, feature_scaling=scaling_for_features,
+            acc, sgm = main(path_to_data=data_path_for, path_to_features=feature_path_for, scip_default=scip_default_for,
+                            fico=fico_for, treffplusx=treff, feature_scaling=scaling_for_features,
                  label_scalen=True, feature_subset=feature_set,
-                 models={'RandomForest': RandomForestRegressor(n_estimators=100, max_depth=tiefe,
-                                                               max_features=num_feats,  random_state=0, n_jobs=-1)},
-                            kick_outliers=outlier_removal)
+                 models={'RandomForest': RandomForestRegressor(n_estimators=estis, max_depth=depth,
+                                                               max_features=num_feats, max_leaf_nodes=leafs,
+                                                               min_samples_split=instances,
+                                                               random_state=0, n_jobs=-1)},
+                            kick_outliers=outlier_removal, outlier_value=threshold_outlier)
 
             accuracy_for.append(acc)
             sgm_for.append(sgm)
@@ -322,13 +332,12 @@ def feature_reduction(data_path, feature_path, data_set, model: str, treffmas, s
                 print("Neither scip nor fico")
                 sys.exit(1)
             treff = f'{treffmas_lin}/FeatureReduction/{add_on}/linear/{reduce_by}'
-            if reduce_by>0:
-                print(feature_list[(number_features_lin - reduce_by)])
             feature_set = feature_list[:(number_features_lin - reduce_by)]
 
-            acc, sgm = main(data_path_lin, feature_path_lin, scip_default_lin, fico_lin, treffplusx=treff,
-                            feature_scaling=scaling_for_features, label_scalen=True, feature_subset=feature_set,
-                            models={'LinearRegression': LinearRegression()}, kick_outliers=outlier_removal)
+            acc, sgm = main(path_to_data=data_path_lin, path_to_features=feature_path_lin, scip_default=scip_default_lin,
+                            fico=fico_lin, treffplusx=treff, label_scalen=True, feature_scaling=scaling_for_features,
+                            feature_subset=feature_set, models={'LinearRegression': LinearRegression()},
+                            kick_outliers=outlier_removal, outlier_value=threshold_outlier)
 
             accuracy_lin.append(acc)
             sgm_lin.append(sgm)
@@ -364,10 +373,12 @@ def feature_reduction(data_path, feature_path, data_set, model: str, treffmas, s
 
     elif model.lower() == 'forest':
         impo_df = impo_df.sort_values(by=['Forest Score'], ascending=True)
+        print(impo_df['Forest Score'].head())
         forest_reduction(data_path_for=data_path, feature_path_for=feature_path, scip_default_for=scip_default,
                          fico_for=fico, impo_df_for=impo_df, number_features_for=number_features, treffmas_for=treffmas,
                          scaling_for_features=skalierer, outlier_removal=remove_outlier,
-                         threshold_outlier=outlier_threshold, tiefe=wie_tief, num_feats=wieviele_feats)
+                         threshold_outlier=outlier_threshold, num_feats=num_features_tree, depth=max_depp, estis=estimatores, leafs=max_blatt,
+                         instances=instances_split)
         acc_sgm_to_csv(accuracy_drops_lin=[], sgm_drops_lin=[], data_set_name=data_set, accuracy_drops_for=accuracy_for,
                        sgm_drops_for=sgm_for, feature_ranking='forest', directory=treffmas)
 
@@ -382,7 +393,8 @@ def feature_reduction(data_path, feature_path, data_set, model: str, treffmas, s
         forest_reduction(data_path_for=data_path, feature_path_for=feature_path, scip_default_for=scip_default,
                          fico_for=fico, impo_df_for=impo_df, number_features_for=number_features, treffmas_for=treffmas,
                          outlier_removal=remove_outlier, threshold_outlier=outlier_threshold,
-                         scaling_for_features=skalierer, tiefe=wie_tief, num_feats=wieviele_feats)
+                         scaling_for_features=skalierer, num_feats=num_features_tree, depth=max_depp, estis=estimatores,
+                         leafs=max_blatt, instances=instances_split)
         acc_sgm_to_csv(accuracy_drops_lin=accuracy_lin, sgm_drops_lin=sgm_lin, data_set_name=data_set,
                        accuracy_drops_for=accuracy_for, sgm_drops_for=sgm_for,
                        feature_ranking='combined', directory=treffmas)
@@ -423,7 +435,7 @@ def predict(pipeline, X_test, y_test):
     return y_pred_relevant, y_test_relevant, end - start
 
 def regression(data, data_set_name, label, features, feature_names, models, scalers, imputer, random_seeds,
-               label_scale=False, mid_threshold=0.1, extreme_threshold=4.0):
+               label_scale=False, mid_threshold=0.1, extreme_threshold=4.0, when_int_for_mixed=0.0):
     """
     Gets a csv file as input
     trains a ml model
@@ -432,7 +444,7 @@ def regression(data, data_set_name, label, features, feature_names, models, scal
     start_time = time.time()
     training_time = 0
     prediction_time = 0
-
+    print('MidThresh:', mid_threshold)
     if label_scale:
         label = label_scaling(label)
         mid_threshold = np.log1p(mid_threshold)/np.log(10.0)
@@ -455,9 +467,10 @@ def regression(data, data_set_name, label, features, feature_names, models, scal
             logging.info(f'AHHHHHHHHHHHHHHHHHHHHHHHH. {model_name} is not a valid regressor!')
             continue
         if model_name == 'LinearRegression':
-            print("LINEAR")
+            print("LINEAR: #Feats", len(feature_names))
         elif model_name == 'RandomForest':
-            print("RANDOMFOREST")
+            print("RANDOMFOREST: #Feats", len(feature_names))
+
         for imputation in imputer:
             for scaler in scalers:
                 for seed in random_seeds:
@@ -466,23 +479,22 @@ def regression(data, data_set_name, label, features, feature_names, models, scal
                     # train the model
                     trained_model, tt = trainer(imputation, scaler, model, model_name, X_train, y_train, seed)
                     training_time += tt
-
                     # let the model make predictions
                     y_pred_relevant, y_test_relevant, pt = predict(trained_model, X_test, y_test)
-
                     prediction_time += pt
                     # get accuracy measure for the model
                     accuracy_dictionary[model_name+'_'+imputation+'_'+str(scaler)+'_'+str(seed)] = get_accuracy(y_pred_relevant, y_test_relevant, mid_threshold=mid_threshold, extreme_threshold=extreme_threshold)
                     # add sgm of run time for this setting to run_time_df
-                    run_time_dictionary[model_name+'_'+imputation+'_'+str(scaler)+'_'+str(seed)] = get_predicted_run_time_sgm(y_pred_relevant, data, shift=50)
+                    run_time_dictionary[model_name+'_'+imputation+'_'+str(scaler)+'_'+str(seed)] = get_predicted_run_time_sgm(y_pred_relevant, data, threshold_for_pred=when_int_for_mixed)
                     sum_time_dictionary[model_name+'_'+imputation+'_'+str(scaler)+'_'+str(seed)] = get_predicted_sum_time(y_pred_relevant, data)
                     # return actual prediction
-                    prediction_dictionary[model_name+'_'+imputation+'_'+str(scaler)+'_'+str(seed)] = y_pred_relevant.to_list()
+                    prediction_dictionary[model_name+'_'+imputation+'_'+str(scaler)+'_'+str(seed)] = y_pred_relevant
                     # feature importance
                     if model_name == 'LinearRegression':
                         importances = trained_model.named_steps['model'].coef_
                     else:
                         importances = trained_model.named_steps['model'].feature_importances_
+
                     importance_dictionary[model_name+'_'+imputation+'_'+str(scaler)+'_'+str(seed)] = importances.tolist()
 
                     # make predictions on train set for checking of over/underfitting
@@ -492,10 +504,9 @@ def regression(data, data_set_name, label, features, feature_names, models, scal
                         y_pred_train, y_test_train, mid_threshold, extreme_threshold)
                     # add sgm of run time for this setting to run_time_df
                     run_time_dictionary_train[model_name + '_' + imputation + '_' + str(scaler) + '_' + str(
-                        seed)] = get_predicted_run_time_sgm(y_pred_train, data, shift=data["Final solution time (cumulative)"].mean())
+                        seed)] = get_predicted_run_time_sgm(y_pred_train, data, threshold_for_pred=when_int_for_mixed)
                     prediction_dictionary_train[
-                        model_name + '_' + imputation + '_' + str(scaler) + '_' + str(seed)] = y_pred_train.to_list()
-
+                        model_name + '_' + imputation + '_' + str(scaler) + '_' + str(seed)] = y_pred_train
     if any(len(d) == 0 for d in [importance_dictionary,prediction_dictionary,accuracy_dictionary,run_time_dictionary]):
         # handle the empty case
         dictionaries = [importance_dictionary, accuracy_dictionary, run_time_dictionary, prediction_dictionary]
@@ -518,7 +529,7 @@ def regression(data, data_set_name, label, features, feature_names, models, scal
         accuracy_df.loc[:, ['Accuracy', 'Mid Accuracy','Extreme Accuracy']] = accuracy_df.loc[:, ['Accuracy', 'Mid Accuracy','Extreme Accuracy']].astype(float)
 
 
-        prediction_df = get_prediction_df(prediction_dictionary).astype(float)
+        prediction_df = get_prediction_df(prediction_dictionary, data).astype(float)
         run_time_df = pd.DataFrame.from_dict(run_time_dictionary, orient='index').astype(float)
         run_time_df.columns = ['Predicted', 'Mixed', 'Int', 'VBS']
         sum_time_df = pd.DataFrame.from_dict(sum_time_dictionary, orient='index').astype(float)
@@ -528,7 +539,7 @@ def regression(data, data_set_name, label, features, feature_names, models, scal
 
     run_time_df_trainset = pd.DataFrame.from_dict(run_time_dictionary_train, orient='index').astype(float)
     run_time_df_trainset.columns = ['Predicted', 'Mixed', 'Int', 'VBS']
-    prediction_dictionary_train_df = get_prediction_df(prediction_dictionary_train)
+    prediction_dictionary_train_df = get_prediction_df(prediction_dictionary_train, data)
 
     accuracy_df_trainset = pd.DataFrame.from_dict(accuracy_dictionary_train, orient='index')
     accuracy_df_trainset.columns = ['Accuracy', 'Mid Accuracy', 'Mid Instances', 'Extreme Accuracy', 'Extreme Instances']
@@ -544,7 +555,7 @@ def regression(data, data_set_name, label, features, feature_names, models, scal
 
 def run_regression_pipeline(data_name, data_path, feats_path, is_excel, prefix, treffplusx, models, imputer, scalers,
                             hundred_seeds:list, feature_subset:list, label_scale=False,
-                            remove_outlier=False, outlier_threshold=350):
+                            remove_outlier=False, outlier_threshold=350, mid_threshi=0.1, ex_thresh=4.0, when_follow_pred=0.0):
     # Load data
     if is_excel:
         data = pd.read_excel(data_path)
@@ -564,7 +575,6 @@ def run_regression_pipeline(data_name, data_path, feats_path, is_excel, prefix, 
     # if feature_subset is None, it means that we use all features
     if feature_subset is not None:
         features = features[feature_subset]
-    # print("In Regression Features:", len(features.columns))
     # Set scalers
     if scalers is not None:
         scaler_dict = { 'NoScaling':None,
@@ -583,7 +593,8 @@ def run_regression_pipeline(data_name, data_path, feats_path, is_excel, prefix, 
         sys.exit(1)
     # Run regression
     acc_df, runtime_df, sumtime_df, prediction_df, importance_df, impo_ranking, acc_train, sgm_train, pred_train = (
-        regression(data, data_name, label, features, features.columns, models, scalers, imputer, hundred_seeds, label_scale))
+        regression(data, data_name, label, features, features.columns, models, scalers, imputer, hundred_seeds,
+                   label_scale, mid_threshold=mid_threshi, extreme_threshold=ex_thresh, when_int_for_mixed=when_follow_pred))
 
     # Save results
     base_path = f'{treffplusx}'
@@ -605,7 +616,8 @@ def run_regression_pipeline(data_name, data_path, feats_path, is_excel, prefix, 
 
 def main(path_to_data:str, path_to_features:str, scip_default=False, fico=False, treffplusx='Wurm', label_scalen=True,
          feature_scaling=None, feature_subset=None, models=None, kick_outliers=False,
-         outlier_value = None, max_tiefe=200, estimatoren=100, number_features_tree=17):
+         outlier_value = None, max_tiefe=200, estimatoren=100, number_features_tree=None, max_blatter=None,
+         instances_per_split=2, mid_threshold=0.1, extreme_threshold=4.0, prediction_threshold=0.0):
     start_time = time.time()
 
     setup_directory(treffplusx)
@@ -622,7 +634,9 @@ def main(path_to_data:str, path_to_features:str, scip_default=False, fico=False,
         models = {
             'LinearRegression': LinearRegression(),
             'RandomForest': RandomForestRegressor(n_estimators=estimatoren, max_depth=max_tiefe,
-                                                  max_features=number_features_tree, random_state=0, n_jobs=-1)
+                                                  max_features=number_features_tree, max_leaf_nodes=max_blatter,
+                                                  min_samples_split=instances_per_split,
+                                                  random_state=0, n_jobs=-1)
         }
 
     imputer = ['median']
@@ -660,7 +674,9 @@ def main(path_to_data:str, path_to_features:str, scip_default=False, fico=False,
             label_scale=label_scalen,
             feature_subset=feature_subset,
             remove_outlier=kick_outliers,
-            outlier_threshold=outlier_value
+            outlier_threshold=outlier_value,
+            ex_thresh=extreme_threshold,
+            when_follow_pred=prediction_threshold
         )
 
     if fico:
@@ -679,7 +695,10 @@ def main(path_to_data:str, path_to_features:str, scip_default=False, fico=False,
             label_scale=label_scalen,
             feature_subset=feature_subset,
             remove_outlier=kick_outliers,
-            outlier_threshold=outlier_value
+            outlier_threshold=outlier_value,
+            mid_threshi= mid_threshold,
+            ex_thresh=extreme_threshold,
+            when_follow_pred=prediction_threshold
         )
 
         if not (fico|scip_default):
@@ -700,7 +719,8 @@ def get_number_of_runs(path_to_runs):
     return len(folders)
 
 
-def hyper_hyper_tuner_tuner_fico(main_regression=True, feat_reduction=False, out_thresh=350):
+def hyper_hyper_tuner_tuner_fico(main_regression=True, feat_reduction=False, plot_main=False, plot_reduction=False,
+                                 forest=True, linear=True, out_thresh=350):
     fico_data_5 = '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_5_ready_to_ml.csv'
     fico_feats_5 = '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_5_ready_to_ml_features.csv'
 
@@ -708,30 +728,65 @@ def hyper_hyper_tuner_tuner_fico(main_regression=True, feat_reduction=False, out
     fico_feats_6 = '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_6_ready_to_ml_features.csv'
 
     data_sets = [(fico_data_5, fico_feats_5, "5"), (fico_data_6, fico_feats_6, "6")]
-    combinations = [(5, 2), (5, 4), (5, 5), (5, 17), (10, 2), (10, 4), (10, 5), (10, 17)]
+    pred_thresh = [0.0]
+    instances_split = [2]
+    combinations = [(5, None), (10, None)]
+    ex_threshold = [4.0]
     for data_set in data_sets:
         for combination in combinations:
-            print(data_set)
-            print(combination)
-            if main_regression:
-                fico_final = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/FICO{data_set[2]}/depth{combination[0]}feats{combination[1]}/NoOutlier/Logged/'
-                print(fico_final)
-                main(path_to_data=data_set[0], path_to_features=data_set[1], scip_default=False, fico=True,
-                     treffplusx=fico_final, models=None, label_scalen=True, feature_scaling=['Quantile'], kick_outliers=True,
-                     outlier_value=out_thresh, max_tiefe=combination[0], number_features_tree=combination[1])
-                train_vs_test_acuracy(f"/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/FICO{data_set[2]}/depth{combination[0]}feats{combination[1]}/NoOutlier/Logged/ScaledLabel",
-                                      version=f"9.{data_set[2]}, max_depth={combination[0]}, max_feats={combination[1]}", fico_or_scip='fico',
-                                      save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/9{data_set[2]}/Overfitting")
+            print("SET:", data_set[2], "Combinations:", combination)
+            for threshi in pred_thresh:
+                for ex in ex_threshold:
+                    for instance in instances_split:
+                        if main_regression:
+                            fico_final = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/Polishing/FICO{data_set[2]}/BestCombi_depth{combination[0]}Testsize20/NoOutlier/Logged/'
 
-            if feat_reduction:
-                fico_feat_reduction = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/FICO{data_set[2]}'
+                            main(path_to_data=data_set[0], path_to_features=data_set[1], scip_default=False, fico=True,
+                                 treffplusx=fico_final, models=None, label_scalen=True, feature_scaling=['Quantile'],
+                                 kick_outliers=True, outlier_value=out_thresh, max_tiefe=combination[0],
+                                 number_features_tree=combination[1], max_blatter=None,
+                                 instances_per_split=instance, mid_threshold=0.1, extreme_threshold=ex, prediction_threshold=threshi)
 
-                feature_reduction(data_set[0], data_set[1], 'fico', model='linear',
-                                  treffmas=fico_feat_reduction, skalierer=['Quantile'], remove_outlier=True,
-                                  outlier_threshold=out_thresh)
-                feature_reduction(data_set[0], data_set[1], 'fico' , model='forest',
-                                  treffmas=fico_feat_reduction, skalierer=['Quantile'], remove_outlier=True,
-                                  outlier_threshold=out_thresh)
-                # plot_feature_reduction(f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/FICO{data_set[2]}/depth{combination[0]}feats{combination[1]}/NoOutlier/Logged/')
-                print("DOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOONE")
-hyper_hyper_tuner_tuner_fico(main_regression=False, feat_reduction=True)
+                        if plot_main:
+                            train_vs_test_acuracy(f"/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/Polishing/FICO{data_set[2]}/BestCombi_depth{combination[0]}Testsize20/NoOutlier/Logged/ScaledLabel",
+                                                  version=f"9.{data_set[2]}, max_depth={combination[0]}, ExThreshold={ex}", fico_or_scip='fico',
+                                                  save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/Polishing/9{data_set[2]}/BestCombi_depth{combination[0]}Testsize20/Overfitting")
+                            train_vs_test_sgm(f"/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/Polishing/FICO{data_set[2]}/BestCombi_depth{combination[0]}Testsize20/NoOutlier/Logged/ScaledLabel",
+                                              version=f"9.{data_set[2]}, max_depth={combination[0]}, shift=10, ExThresh={ex}", fico_or_scip='fico',
+                                              save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/Polishing/9{data_set[2]}/BestCombi_depth{combination[0]}Testsize20/Overfitting")
+
+                        if feat_reduction:
+                            # TODO add threshold to feat reduction
+                            fico_feat_reduction = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/Polishing/FICO{data_set[2]}/BestCombi_depth{combination[0]}'
+                            if linear:
+                                feature_reduction(data_path=data_set[0], feature_path=data_set[1], data_set='fico',
+                                                  model='linear', treffmas=fico_feat_reduction, skalierer=['Quantile'],
+                                                  remove_outlier=True, outlier_threshold=out_thresh, max_depp=combination[0],
+                                                  max_blatt=None, instances_split=instance)
+                            if forest:
+                                feature_reduction(data_path=data_set[0], feature_path=data_set[1], data_set='fico' , model='forest',
+                                                  treffmas=fico_feat_reduction, skalierer=['Quantile'], remove_outlier=True,
+                                                  outlier_threshold=out_thresh, num_features_tree=None, max_depp=combination[0],
+                                                  max_blatt=None, instances_split=instance)
+
+                        if plot_reduction:
+                            if linear:
+                                if data_set[2] == "5":
+                                    thresh_linear = 14
+                                else:
+                                    thresh_linear = 13
+                                plot_feature_reduction(directory=f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/Polishing/FICO{data_set[2]}/BestCombi_depth{combination[0]}/FeatureReduction/fico',
+                                                       fico_or_scip='fico', base_data="", feature_ranking= 'linear', title_add_on=f"FICO Xpress 9.{data_set[2]}: LinearModel, outlier>{out_thresh}",
+                                                       threshold=thresh_linear, save_to=f'/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/Polishing/9{data_set[2]}/BestCombi/FeatureReduction')
+                            if forest:
+                                thresh_forest = 14
+                                plot_feature_reduction(directory=f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/Polishing/FICO{data_set[2]}/BestCombi_depth{combination[0]}/FeatureReduction/fico',
+                                                       fico_or_scip='fico', base_data="", feature_ranking= 'forest', title_add_on=f"FICO Xpress 9.{data_set[2]}: RandomForestModel, max_depth={combination[0]}, outlier>{out_thresh}",
+                                                       threshold=thresh_forest, save_to=f'/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/Polishing/9{data_set[2]}/BestCombi/FeatureReduction')
+
+# Main Regression
+hyper_hyper_tuner_tuner_fico(main_regression=True, plot_main=True, feat_reduction=False, plot_reduction=False)
+# Feature Reduction
+# hyper_hyper_tuner_tuner_fico(main_regression=False, plot_main=False, feat_reduction=True, plot_reduction=True)
+
+

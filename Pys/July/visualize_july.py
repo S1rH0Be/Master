@@ -19,6 +19,19 @@ Ich inputte TreffenMasVeinte, dann sucht es sich alles von dort aus wie accuracy
 
 global_path = '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final'
 
+def setup_directory(new_directory):
+    # Setup directory
+    os.makedirs(os.path.join(f'{new_directory}'), exist_ok=True)
+
+def create_directory(parent_name):
+
+    base_path = f'{parent_name}'
+    subdirs = ['Prediction', 'Accuracy', 'Importance', 'SGM']
+    for subdir in subdirs:
+        os.makedirs(os.path.join(base_path, subdir), exist_ok=True)
+    return 0
+
+
 def get_files(directory_path:str, index_col=False):
     """
     Reads all CSV and Excel files in the given directory.
@@ -72,7 +85,7 @@ def shifted_geometric_mean(values, shift):
     return geo_mean
 
 # SGM RUNTIME BLOCK
-def sgm(scaled_label=True):
+def sgm(data_set, scaled_label=True):
 
     def get_sgm_of_sgm(data_frame, shift):
         col_names = data_frame.columns.tolist()
@@ -112,12 +125,13 @@ def sgm(scaled_label=True):
         vbs_values = shifted_geometric_mean(vbs, mean_mean)
         value_dictionary = {'Int': pref_int_values, 'Mixed': mixed_values, 'Predicted': predicted_values,
                             'VBS': vbs_values}
-        values_relative = relative_to_default(value_dictionary, data_set)
 
+        values_relative = relative_to_default(value_dictionary, data_set)
         return values_relative
 
-    def sgm_plot(dataframe, title:str, data_set:str):
-
+    def sgm_plot(dataframe, title:str, data_set:str, vers):
+        if 'fico' not in data_set.lower():
+            return None
         values = get_values_for_plot(dataframe, data_set)
         labels = ['PrefInt', 'Mixed', 'Predicted', 'VBS']
 
@@ -133,28 +147,32 @@ def sgm(scaled_label=True):
             plt.ylim(0.8, 1.06)  # Set y-axis limits for visibility
         plt.xticks(rotation=45, fontsize=6)
         # Display the plot
+        safe = title.replace(' ', '_')
+        filename = f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/9{vers}/BestCombi/Overfitting/SGM/{safe}_sgm_runtime.png"
+        plt.savefig(filename)
         plt.show()
         plt.close()
 
-    def call_sgm_visualization(scaledlabel, title=False):
+    def call_sgm_visualization(scaledlabel, version):
         if scaledlabel:
-            dataframes = get_files(global_path+'/ScaledLabel/SGM/', index_col=True)
+            dataframes = get_files(f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/FICO{version}/BestCombi/depth5outlier350/NoOutlier/Logged/ScaledLabel/SGM/', index_col=True)
         else:
             dataframes = get_files(global_path + '/UnscaledLabel/SGM/', index_col=True)
 
         for dataframe in dataframes.keys():
-
             df = dataframes[dataframe]
-            sgm_plot(df, dataframe+' combined', dataframe[:4].lower())
             linear_runs = [index for index in df.index if 'LinearRegression' in index]
             forest_runs = [index for index in df.index if 'RandomForest' in index]
             linear_df = df.loc[linear_runs, :]
             forest_df = df.loc[forest_runs, :]
-            sgm_plot(linear_df, dataframe+' LinearRgeression', dataframe[:4])
-            sgm_plot(forest_df, dataframe+' RandomForestRegression', dataframe[:4])
+            if "sumt" in dataframe[:4].lower():
+                pass
+            else:
+                dataframe = dataframe.replace('Runtime', 'Testset')
+                sgm_plot(linear_df, dataframe+f' 9.{version} LinearRegression', dataframe[:4], version)
+                sgm_plot(forest_df, dataframe+f' 9.{version} RandomForestRegression', dataframe[:4], version)
 
-    call_sgm_visualization(scaledlabel=scaled_label)
-
+    call_sgm_visualization(scaledlabel=scaled_label, version=data_set)
 
 hundred_seeds = [2207168494, 288314836, 1280346069, 1968903417, 1417846724, 2942245439, 2177268096, 571870743,
                      1396620602, 3691808733, 4033267948, 3898118442, 24464804, 882010483, 2324915710, 316013333,
@@ -169,8 +187,6 @@ hundred_seeds = [2207168494, 288314836, 1280346069, 1968903417, 1417846724, 2942
                      1584118652, 1023587314, 666405231, 2782652704, 744281271, 3094311947, 3882962880, 325283101,
                      923999093, 4013370079, 2033245880, 289901203, 3049281880, 1507732364, 698625891, 1203175353,
                      1784663289, 2270465462, 537517556, 2411126429]
-
-
 # WHAT RULES DID THE MODELS CHOOSE
 def show_shares(scip_default_original_data=None, fico_original_data=None, dataset_name="",  scaledlabel=True, complete_data=False,
            subdirectory=""):
@@ -307,7 +323,6 @@ def accuracy_visualize(scaled_label=True, title_add_on='', plot=True):
         call_acc_visualization(scaledlabel=scaled_label, title_add_on=title_add_on)
     else:
         call_acc_visualization(scaledlabel=scaled_label, plot=False)
-
 # Feature Importances, as sgm
 def importance(treffen):
     def feature_importance(data_frame, title: str = 'Feature Importance'):
@@ -460,17 +475,27 @@ def time_save(scip_default_original_data, fico_original_data):
         plt.show()
         plt.close()
 
+def remove_outlier_label(label_series, threshold):
+    indices_to_keep = label_series[label_series.abs() <= threshold].index
+    labels_to_keep = label_series.loc[indices_to_keep]
+    return labels_to_keep
 # label analysis
-def label(scip_default_original_data, fico_original_data, scaled=False):
+def plot_label(scip_default_original_data, fico_9_5, fico_9_6, kick_outlier=False,
+          outlier_thresh=350, scaling=False):
 
     labels = [(scip_default_original_data['Cmp Final solution time (cumulative)'], 'SCIP Default'),
-              (fico_original_data['Cmp Final solution time (cumulative)'], 'FICO Xpress')]
-
+              (fico_9_5['Cmp Final solution time (cumulative)'], 'FICO Xpress 9.5'),
+              (fico_9_6['Cmp Final solution time (cumulative)'], 'FICO Xpress 9.6')]
     for label in labels:
+        if scaling:
+            label = (label_scaling(label[0]), label[1])
+        if kick_outlier:
+            label = (remove_outlier_label(label[0], threshold=outlier_thresh), label[1])
         plt.figure(figsize=(8, 6))
-        plt.scatter([0] * len(label[0]), label[0], color='white', edgecolor='k', alpha=1)
-        plt.axhline(y=0, color='black', linestyle='-', alpha=0.2)  # Reference line at y=0
-        if scaled:
+        # plt.scatter([0] * len(label[0]), label[0], color='white', edgecolor='k', alpha=1)
+        # plt.axhline(y=0, color='black', linestyle='-', alpha=0.2)  # Reference line at y=0
+        plt.hist(label[0], color='red', alpha=1, bins=100)
+        if scaling:
             plt.title(f"Scaled Label {label[1]}")
         else:
             plt.title(f"Unscaled Label {label[1]}")
@@ -510,7 +535,7 @@ def create_scip_feature_name_df():
 def feature_reduction_graph(base_set:str, feature_ranking:str, data_set:str, saving_directory,
                             fico_or_scip, lin_accuracy=None, lin_sgm=None, for_accuracy=None,
                             for_sgm=None, title_add_on="", axvline_position=14):
-
+    setup_directory(saving_directory)
     if (lin_accuracy is None) or (lin_sgm is None) or (for_accuracy is None) or (for_sgm is None):
         print(f'None values inputed.')
         sys.exit(1)
@@ -561,7 +586,7 @@ def feature_reduction_graph(base_set:str, feature_ranking:str, data_set:str, sav
         plt.plot(lin_accuracy.iloc[:,2], color='blue')
         plt.plot(lin_sgm, color='red')
         plt.plot(lin_vbs, color='lightcoral')
-        plt.title(label=f'LinearModel {title_add_on}')
+        plt.title(label=f'{title_add_on}')
         plt.xlabel('Number of Features')
         if data_set == 'scip':
             plt.legend(['Accuracy', 'MidLabel Accuracy', 'Predicted Run Time', 'Virtual Best Run Time'])
@@ -572,8 +597,8 @@ def feature_reduction_graph(base_set:str, feature_ranking:str, data_set:str, sav
         plt.xticks(ticks=range(len(lin_accuracy)), labels=x_labels)
         plt.ylim(35, 115)
         safe = title_add_on.replace(' ', '_')
-        filename = f"{saving_directory}/{fico_or_scip}_{safe}_feat_reduction_linear.png"
-        plt.savefig(filename)
+        filename = f"{fico_or_scip}_{safe}_feat_reduction_linear.png"
+        plt.savefig(f"{saving_directory}/{filename}")
         plt.show()
 
     elif feature_ranking.lower() == 'forest':
@@ -584,7 +609,7 @@ def feature_reduction_graph(base_set:str, feature_ranking:str, data_set:str, sav
         plt.plot(for_accuracy.iloc[:, 2], color='blue')
         plt.plot(for_sgm, color='red')
         plt.plot(for_vbs, color='lightcoral')
-        plt.title(label=f'RandomForestModel {title_add_on}')
+        plt.title(label=f'{title_add_on}')
         plt.xlabel('Number of Features')
         if data_set == 'scip':
             plt.legend(['Accuracy', 'MidLabel Accuracy', 'Predicted Run Time', 'Virtual Best Run Time'])
@@ -661,12 +686,6 @@ def get_linear_importance_coeff(importance_df:pd.DataFrame, impo_rank:pd.DataFra
     top_5_df = lin_impo_coeffs_df[lin_impo_coeffs_df['Feature'].isin(top_5)]
     top_5_df.to_csv('/Users/fritz/Downloads/ZIB/Master/June/Iteration2/RelativeLoggedQuantileFico/ScaledLabel/Importance/fico_top_5_lin_coeffs_importance.csv')
 
-def plot_label(label:pd.Series):
-
-    plt.boxplot(label)
-    plt.title("Boxplot of Label")
-    plt.show()
-
 def plot_feats_distribution(features, directory, scaler_name): 
     fico_feats = features.replace(-1, np.nan)
     # Create the imputer (strategy can be 'mean', 'median', 'most_frequent', or 'constant')
@@ -694,12 +713,12 @@ def plot_feats_distribution(features, directory, scaler_name):
             else:
                 orig_counts, orig_bins, orig_patches = plt.hist(orig, bins=15, color='deeppink')
 
-                # # Annotate the counts over each bar, centered
-                # for count, left_edge, right_edge in zip(orig_counts, orig_bins[:-1], orig_bins[1:]):
-                #     center = 0.5 * (left_edge + right_edge)
-                #     if count > 0:
-                #         plt.annotate(f'{int(count)}', xy=(center, count), ha='center', va='bottom', fontsize=8,
-                #                      color='black')
+                # Annotate the counts over each bar, centered
+                for count, left_edge, right_edge in zip(orig_counts, orig_bins[:-1], orig_bins[1:]):
+                    center = 0.5 * (left_edge + right_edge)
+                    if count > 0:
+                        plt.annotate(f'{int(count)}', xy=(center, count), ha='center', va='bottom', fontsize=8,
+                                     color='black')
 
             plt.title(f'{feat_name}')
             plt.xlabel('Value')
@@ -720,11 +739,10 @@ def plot_feats_distribution(features, directory, scaler_name):
             orig_counts, orig_bins, orig_patches = plt.hist(fico_feats[feature], bins=15, color='deeppink')
 
 
-            # Annotate the counts over each bar, centered
-            # for count, left_edge, right_edge in zip(orig_counts, orig_bins[:-1], orig_bins[1:]):
-            #     center = 0.5 * (left_edge + right_edge)
-            #     if count > 0:
-            #         plt.annotate(f'{int(count)}', xy=(center, count), ha='center', va='bottom', fontsize=8, color='black')
+            for count, left_edge, right_edge in zip(orig_counts, orig_bins[:-1], orig_bins[1:]):
+                center = 0.5 * (left_edge + right_edge)
+                if count > 0:
+                    plt.annotate(f'{int(count)}', xy=(center, count), ha='center', va='bottom', fontsize=8, color='black')
 
             plt.title(f'{feat_name}')
             plt.xlabel('Value')
@@ -762,7 +780,7 @@ def plotten_motten(title_add_one, title_add_two, performance_drop_5on6_lin, perf
                                    save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/95auf96/FeatureReduction")
             plot_feature_reduction(f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/{sub_directory_two}/FeatureReduction/fico', 'fico', base_data="", feature_ranking='linear', title_add_on=title_add_two, threshold=performance_drop_6on5_lin,
                                    save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/96auf95/FeatureReduction")
-            plot_feature_reduction(f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/{sub_directory_two}/FeatureReduction/fico', 'fico',base_data="", feature_ranking= 'forest', title_add_on=title_add_two, threshold=performance_drop_6on5_for,
+            plot_feature_reduction(f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/{sub_directory_two}/FeatureReduction/fico', 'fico', base_data="", feature_ranking= 'forest', title_add_on=title_add_two, threshold=performance_drop_6on5_for,
                                    save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/96auf95/FeatureReduction")
         if shares:
             show_shares(fico_original_data=fico_5, dataset_name='FICO XPress 9.5', subdirectory="/FICO5/NoOutlier/logged")
@@ -787,3 +805,9 @@ def plotten_motten_plotten():
         drop_for_6on5 = combination[5]
         plotten_motten(title_add_one=f"Trainingset=9.6 Testset=9.5, Depth={depth}, #Feats={feats}", title_add_two=f"Trainingset=9.5, Testset=9.6, Depth={depth}, #Feats={feats}", sub_directory_one=f"FightOverfitting/5on6/depth{depth}feats{feats}", sub_directory_two=f"FightOverfitting/6on5/depth{depth}feats{feats}", distri=False, shares=False,
                        performance_drop_5on6_lin=drop_lin_5on6, performance_drop_5on6_for=drop_for_5on6, performance_drop_6on5_lin=drop_lin_6on5, performance_drop_6on5_for=drop_for_6on5)
+# plotten_motten_plotten()
+
+fico_5 = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_5_ready_to_ml.csv")
+fico_6 = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_6_ready_to_ml.csv")
+scip_normal = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/SCIP/Cleaned/scip_data_for_ml.csv")
+

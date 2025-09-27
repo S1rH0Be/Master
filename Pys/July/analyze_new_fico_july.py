@@ -2,8 +2,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
-from scipy.stats import gmean
+from scipy.stats import gmean, wilcoxon
 from sklearn.model_selection import train_test_split
+import sklearn as sk
 
 def shifted_geometric_mean(values, shift):
     values = np.array(values)
@@ -142,13 +143,8 @@ def create_time_df(dataset, version):
     print(time_df["Virtual Best"].min())
 
 
-fico_5 = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_5_ready_to_ml.csv")
-fico_6 = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_6_ready_to_ml.csv")
-# create_time_df(fico_5, "5")
-# create_time_df(fico_5, "6")
 
 sumtime_5 = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FICO5/NoOutlier/Logged/ScaledLabel/SGM/sumtime.csv")
-print(sumtime_5["Mixed-Int"].sum())
 pos = 0
 neg = 0
 for index, row in sumtime_5.iterrows():
@@ -159,5 +155,82 @@ for index, row in sumtime_5.iterrows():
     else:
         pass
 
-print(pos)
-print(neg)
+fico_5_int = 0
+fico_5_mixed = 0
+fico_5_vbs = 0
+fico_6_int = 0
+fico_6_mixed = 0
+fico_6_vbs = 0
+
+for i in fico_5['Final solution time (cumulative) Int']:
+    fico_5_int += i
+for i in fico_5['Final solution time (cumulative)']:
+    fico_5_mixed += i
+for i in fico_5['Virtual Best']:
+    fico_5_vbs += i
+
+for i in fico_6['Final solution time (cumulative) Int']:
+    fico_6_int += i
+for i in fico_6['Final solution time (cumulative)']:
+    fico_6_mixed += i
+for i in fico_6['Virtual Best']:
+    fico_6_vbs += i
+
+
+import pandas as pd
+import scipy.stats as stats
+from sklearn.metrics import mean_squared_error, root_mean_squared_error, r2_score, mean_absolute_percentage_error
+
+
+def label_scaling(label):
+    y_pos = label[label >= 0]
+    y_neg = label[label < 0]
+    y_pos_log = np.log(y_pos + 1)
+    y_neg_log = np.log(abs(y_neg) + 1) * -1
+    y_log = pd.concat([y_pos_log, y_neg_log]).sort_index()
+    return y_log
+
+
+prediction = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/FICO6/BestCombi/NEWPRED/NoOutlier/Logged/ScaledLabel/Prediction/fico_prediction_df.csv")
+data = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_6_ready_to_ml.csv")
+hundred_seeds = [2207168494, 288314836, 1280346069, 1968903417, 1417846724, 2942245439, 2177268096, 571870743,
+                     1396620602, 3691808733, 4033267948, 3898118442, 24464804, 882010483, 2324915710, 316013333,
+                     3516440788, 535561664, 1398432260, 572356937, 398674085, 4189070509, 429011752, 2112194978,
+                     3234121722, 2237947797, 738323230, 3626048517, 733189883, 4126737387, 2399898734, 1856620775,
+                     829894663, 3495225726, 1844165574, 1282240360, 2872252636, 1134263538, 1174739769, 2128738069,
+                     1900004914, 3146722243, 3308693507, 4218641677, 563163990, 568995048, 263097927, 1693665289,
+                     1341861657, 1387819803, 157390416, 2921975935, 1640670982, 4226248960, 698121968, 1750369715,
+                     3843330071, 2093310729, 1822225600, 958203997, 2478344316, 3925818254, 2912980295, 1684864875,
+                     362704412, 859117595, 2625349598, 3108382227, 1891799436, 1512739996, 1533327828, 1210988828,
+                     3504138071, 1665201999, 1023133507, 4024648401, 1024137296, 3118826909, 4052173232, 3143265894,
+                     1584118652, 1023587314, 666405231, 2782652704, 744281271, 3094311947, 3882962880, 325283101,
+                     923999093, 4013370079, 2033245880, 289901203, 3049281880, 1507732364, 698625891, 1203175353,
+                     1784663289, 2270465462, 537517556, 2411126429]
+wilcoxon_lin = []
+wilcoxon_for = []
+for i in range(len(hundred_seeds)):
+    pred = prediction.copy()
+    pred_lin = pred.iloc[:,i+1]
+    pred_lin = pred_lin[pred_lin!=0]
+    pred_for = pred.iloc[:,i+101]
+    pred_for=pred_for[pred_for!=0]
+
+    test_lin = label_scaling(data['Cmp Final solution time (cumulative)'].loc[pred_lin.index])
+    test_for = label_scaling(data['Cmp Final solution time (cumulative)'].loc[pred_for.index])
+    # if stats.wilcoxon(test_lin, pred_lin)[1] < 0.05:
+    #     print("Lin", i + 1, hundred_seeds[i])
+    #     print(stats.wilcoxon(test_lin, pred_lin))
+    # wilcoxon_lin.append(stats.wilcoxon(test_lin, pred_lin)[0])
+    # if stats.wilcoxon(test_for, pred_for)[1] < 0.05:
+    #     print("for", i + 101, hundred_seeds[i])
+    #     print(stats.wilcoxon(test_for, pred_for))
+    wilcoxon_for.append(stats.wilcoxon(test_for, pred_for)[0])
+    # print(sk.metrics.r2_score(test_lin, pred_lin))
+    # print(sk.metrics.r2_score(test_for, pred_for))
+    print("------------------------------------------------------------------------------------------")
+    print(mean_squared_error(test_for, pred_for))
+    print(root_mean_squared_error(test_for, pred_for))
+    print(r2_score(test_for, pred_for))
+    print(mean_absolute_percentage_error(test_for, pred_for))
+
+

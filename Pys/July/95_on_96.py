@@ -639,7 +639,7 @@ def run_regression_pipeline(data_name, trainset_data, testset_data, trainset_fea
 
 def main(path_to_trainset_data:str, path_to_testset_data:str, path_to_trainset_feat:str, path_to_testset_feat:str,
          scip_or_fico:str, treffplusx='Wurm', label_scalen=True, feature_subset=None, models=None,
-         outlier_value = None, kick_outliers=False, max_depth=200, estimatoren=100, max_feature_number=17):
+         outlier_value = None, kick_outliers=False, max_depth=200, estimatoren=100, max_feature_number=None):
     setup_directory(treffplusx)
 
 
@@ -778,9 +778,9 @@ def feat_reduction_hyperparameter_tuning():
 
 import stats_per_combi_july
 def plot_hyperparameter_tuning(regress=True, acc=True, sgm=False):
-    tiefen = [5, 10] # 5
+    tiefen = [5, 10, None] # 5
     number_estimators = [100]
-    maximum_features = [2, 17]#,4,6,8,10,12,14,16,17]
+    maximum_features = [None]#,4,6,8,10,12,14,16,17]
     print("------6on5------")
     for depth in tiefen:
         for estimator in number_estimators:
@@ -788,7 +788,7 @@ def plot_hyperparameter_tuning(regress=True, acc=True, sgm=False):
                 print(depth, estimator, feat_num)
                 maximum_depth = depth
 
-                sixonfive = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/6on5_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/'
+                sixonfive = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/6on5/BesteCombi/6on5_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/'
                 if regress:
                     main(path_to_trainset_data=fico_data_5, path_to_testset_data=fico_data_6,
                          path_to_trainset_feat=fico_feats_5, path_to_testset_feat=fico_feats_6,
@@ -797,13 +797,13 @@ def plot_hyperparameter_tuning(regress=True, acc=True, sgm=False):
 
                 print("PLOTTING")
                 if acc:
-                    stats_per_combi_july.train_vs_test_acuracy(f"/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/6on5_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/ScaledLabel",
+                    stats_per_combi_july.train_vs_test_acuracy(f"/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/6on5/BesteCombi/6on5_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/ScaledLabel",
                                           version=f"Trainingset: 9.5, Testset 9.6, Depth: {depth}, #Feats: {feat_num}", fico_or_scip='fico',
-                                          save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/96auf95_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/Overfitting")
+                                          save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/96auf95/96auf95_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/Overfitting")
                 if sgm:
-                    stats_per_combi_july.train_vs_test_sgm(f"/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/6on5_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/ScaledLabel",
+                    stats_per_combi_july.train_vs_test_sgm(f"/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/6on5/BesteCombi/6on5_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/ScaledLabel",
                                           version=f"Trainingset: 9.5, Testset 9.6, Depth: {depth}, #Feats: {feat_num}", fico_or_scip='fico',
-                                          save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/96auf95_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/Overfitting")
+                                          save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/96auf95/96auf95_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/Overfitting")
     print("------5on6------")
     for depth in tiefen:
         for estimator in number_estimators:
@@ -811,7 +811,7 @@ def plot_hyperparameter_tuning(regress=True, acc=True, sgm=False):
                 print(depth, estimator, feat_num)
                 maximum_depth = depth
 
-                fiveonsix = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/5on6_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/'
+                fiveonsix = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/5on6/BesteCombi/5on6_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/'
                 if regress:
                     main(path_to_trainset_data=fico_data_6, path_to_testset_data=fico_data_5,
                          path_to_trainset_feat=fico_feats_6, path_to_testset_feat=fico_feats_5,
@@ -820,13 +820,13 @@ def plot_hyperparameter_tuning(regress=True, acc=True, sgm=False):
                 print("PLOTTING")
                 if acc:
                     stats_per_combi_july.train_vs_test_acuracy(
-                        f"/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/5on6_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/ScaledLabel",
+                        f"/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/5on6/BesteCombi/5on6_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/ScaledLabel",
                         version=f"Trainingset: 9.6, Testset 9.5, Depth: {depth}, #Feats: {feat_num}", fico_or_scip='fico',
-                        save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/95auf96_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/Overfitting")
+                        save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/95auf96/95auf96_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/Overfitting")
                 if sgm:
                     stats_per_combi_july.train_vs_test_sgm(
-                        f"/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/5on6_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/ScaledLabel",
+                        f"/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/5on6/BesteCombi/5on6_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/ScaledLabel",
                         version=f"Trainingset: 9.6, Testset 9.5, Depth: {depth}, #Feats: {feat_num}", fico_or_scip='fico',
-                        save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/95auf96_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/Overfitting")
+                        save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/95auf96/95auf96_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/Overfitting")
 
-# plot_hyperparameter_tuning(regress=True, acc=True, sgm=False)
+plot_hyperparameter_tuning(regress=True, acc=True, sgm=True)
