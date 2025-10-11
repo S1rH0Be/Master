@@ -42,7 +42,7 @@ def bar_plot(df):
     plt.xticks(ticks=range(len(df)), labels=df['Intervall'], rotation=0)
     # Add labels and title
     plt.ylabel('Values')
-    plt.title('Bar Plot with Index as Custom x-tick Labels')
+    #plt.title('Bar Plot with Index as Custom x-tick Labels')
     plt.show()
     plt.close()
 

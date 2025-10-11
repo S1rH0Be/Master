@@ -164,5 +164,5 @@ def scale_cmp_df(cmp_feat_df):
 #     # print(outliers)
 #     # Boxplot
 #     plt.boxplot(data[col])
-#     plt.title(f"Boxplot of {col}")
+#     #plt.title(f"Boxplot of {col}")
 #     plt.show()

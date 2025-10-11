@@ -27,7 +27,7 @@ def importance_bar(df, title):
     # Add labels and title
     plt.xlabel('Features', fontsize=12)
     plt.ylabel('Importance', fontsize=12)
-    plt.title(title, fontsize=12)
+    #plt.title(title, fontsize=12)
 
     legend_elements = [
         Line2D([0], [0], marker='o', color='w', markerfacecolor='magenta', markersize=10, label='Mixed'),

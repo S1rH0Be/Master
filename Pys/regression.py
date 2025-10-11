@@ -24,8 +24,8 @@ def plot_lin_coefficients(model, feat_train, printer=True):
             model.coef_, columns=["Coefficients"], index=feat_train.columns
         )
         coefs.plot(kind="barh", figsize=(9, 7))
-        plt.title("Ridge model")
-        plt.axvline(x=0, color=".5")
+        #plt.title("Ridge model")
+        #plt.axvline(x=0, color=".5")
         plt.subplots_adjust(left=0.3)
        # plt.show()
 
@@ -45,9 +45,9 @@ def cross_validate_feature(model, feature, label, printer=True):
         )
         plt.figure(figsize=(9, 7))
         sns.boxplot(data=coefs, orient="h", color="cyan", saturation=0.5)
-        plt.axvline(x=0, color=".5")
+        #plt.axvline(x=0, color=".5")
         plt.xlabel("Coefficient importance")
-        plt.title("Coefficient importance and its variability")
+        #plt.title("Coefficient importance and its variability")
         plt.subplots_adjust(left=0.3)
         #plt.show()
 
@@ -63,7 +63,7 @@ def residual(prediction, actual, pred_v_act=True, resi=True):
         plt.figure(figsize=(8, 6))
         plt.scatter(pred, test, color='blue', edgecolor='k', alpha=0.7)
         plt.axhline(y=0, color='red', linestyle='--')  # Reference line at y=0
-        plt.title("Pred vs Actual")
+        #plt.title("Pred vs Actual")
         plt.xlabel("Pred values")
         plt.ylabel("Actual Values")
         #plt.show()
@@ -71,7 +71,7 @@ def residual(prediction, actual, pred_v_act=True, resi=True):
         plt.figure(figsize=(8, 6))
         plt.scatter(pred, residuals, color='blue', edgecolor='k', alpha=0.7)
         plt.axhline(y=0, color='red', linestyle='--')  # Reference line at y=0
-        plt.title("Residual Plot")
+        #plt.title("Residual Plot")
         plt.xlabel("Predicted values")
         plt.ylabel("Residuals")
         #plt.show()
@@ -198,7 +198,7 @@ def acc_on_cmp(pred, test, regressor, extreme_threshold=1.5, printer=True):
     plt.bar(number_of_inst_in_intervall, intervall_acc, color=colors)
     plt.suptitle(regressor)
     subtitle = "Intervals: [0,inf),[1,1.5),[1.5,inf)"
-    plt.title(subtitle, fontsize=10)
+    #plt.title(subtitle, fontsize=10)
     plt.ylim(0, 100)  # Set y-axis limits for visibility
     plt.xlabel("Number of Instances in Intervall")
     plt.ylabel("Accuracy in %")
@@ -438,7 +438,7 @@ def impute_scale_predict(test_label, train_label, relevant_labels, feat_set, med
             plt.bar(x_forrest, y_forrest, color=colors)
             plt.xlabel("Model")
             plt.ylabel("Accuracy")
-            plt.title("ForReg "+feat_set+" Accuracy")
+            #plt.title("ForReg "+feat_set+" Accuracy")
             plt.ylim(60, 100)
             plt.xticks(rotation=70)
             plt.tight_layout()  # Adjust layout to avoid label overlap
@@ -462,7 +462,7 @@ def impute_scale_predict(test_label, train_label, relevant_labels, feat_set, med
             plt.bar(x_lin, y_lin, color=colors)
             plt.xlabel("Model")
             plt.ylabel("Accuracy")
-            plt.title("LinReg "+feat_set+" Accuracy")
+            #plt.title("LinReg "+feat_set+" Accuracy")
             plt.ylim(50, 100)
             plt.xticks(rotation=70)
             plt.tight_layout()  # Adjust layout to avoid label overlap
