@@ -69,42 +69,41 @@ def map_raw_scip_to_feature(df, compper_df, operation_dict):
 
 def create_compatible_dataframe(df, fico_only=False):
 
-    name_mapping_fico_only = {'#integer violations at root': 'nintpseudocost',
-                    '#nodes in DAG': 'nnonlinearvars+nauxvars',#weiß nicht warum ich nur nauxvars bisher hatte #aber vielleicht sind auch nnonlinearexpr oder nnonconvexexpr interessant
-                    'Avg coefficient spread for convexification cuts Mixed': 'sumcoefspreadnonlinrows / nnonlinrows',#aber vielleicht ist auch sumcoefspreadactnonlinrows / nactnonlinrows interessant.
+    name_mapping_fico_only = {'#IntViols': 'nintpseudocost',
+                    'NodesInDAG': 'nnonlinearvars+nauxvars',#weiß nicht warum ich nur nauxvars bisher hatte #aber vielleicht sind auch nnonlinearexpr oder nnonconvexexpr interessant
+                    'AvgCoeffSpreadConvCuts': 'sumcoefspreadnonlinrows / nnonlinrows',#aber vielleicht ist auch sumcoefspreadactnonlinrows / nactnonlinrows interessant.
                     'Presolve Global Entities': 'nintegervars+nbinaryvars',
                     'Presolve Columns': 'ncontinuousvars + nbinaryvars + nintegervars',
-                    '#nonlinear violations at root': 'nviolconss', #'nnlviolcands waeren die anzahl der branching candidates fuers spatial branching, also die anzahl von variables in nichtkonvexen termen in verletzen nichtlinear constraints',
-                    'Matrix Equality Constraints': '(nlinearequconss + nnonlinearequconss)', # /(nlinearconss+nnonlinearconss)',
-                    'Matrix NLP Formula': 'nnonlinearconss', # /(nlinearconss+nnonlinearconss)',
+                    '#NonlinViols': 'nviolconss', #'nnlviolcands waeren die anzahl der branching candidates fuers spatial branching, also die anzahl von variables in nichtkonvexen termen in verletzen nichtlinear constraints',
+                    'EqCons': '(nlinearequconss + nnonlinearequconss)', # /(nlinearconss+nnonlinearconss)',
+                    'NonlinCons': 'nnonlinearconss', # /(nlinearconss+nnonlinearconss)',
                     '#Constraints': '(nlinearconss+nnonlinearconss)',
                     'Matrix non-zeros': 'nlinnz',
-                    '% vars in DAG (out of all vars)': '(nnonlinearvars + nauxvars) / (ncontinuousvars+nbinaryvars+nintegervars+nauxvars)',
-                    '% vars in DAG integer (out of vars in DAG)': '(nnonlinearbinvars + nnonlinearintvars + nintauxvars) / (nnonlinearvars+nauxvars)',
-                    '% vars in DAG unbounded (out of vars in DAG)': '(nnonlinearunboundedvars + nunboundedauxvars) / (nnonlinearvars+nauxvars)',
-                    '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)': 'nquadexpr / (nquadexpr + nsuperquadexpr)',
-                    'Matrix Quadratic Elements': 'nquadcons',
-                    'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed': 'sumintpseudocost / nintpseudocost',
+                    '%VarsDAG': '(nnonlinearvars + nauxvars) / (ncontinuousvars+nbinaryvars+nintegervars+nauxvars)',
+                    '%VarsDAGInt': '(nnonlinearbinvars + nnonlinearintvars + nintauxvars) / (nnonlinearvars+nauxvars)',
+                    '%VarsDAGUnbnd': '(nnonlinearunboundedvars + nunboundedauxvars) / (nnonlinearvars+nauxvars)',
+                    '%QuadrNodesDAG': 'nquadexpr / (nquadexpr + nsuperquadexpr)',
+                    'QuadrElements': 'nquadcons',
+                    'AvgRelBndChngSBLPInt': 'sumintpseudocost / nintpseudocost',
                     }
 
-    name_mapping_with_more_scip_features = {'#integer violations at root': 'nintpseudocost',
-                                            '#nodes in DAG': 'nnonlinearvars+nauxvars',
-                                            'Avg coefficient spread for convexification cuts Mixed': 'sumcoefspreadnonlinrows / nnonlinrows',
+    name_mapping_with_more_scip_features = {'#IntViols': 'nintpseudocost',
+                                            'NodesInDAG': 'nnonlinearvars+nauxvars',
+                                            'AvgCoeffSpreadConvCuts': 'sumcoefspreadnonlinrows / nnonlinrows',
                                             'Presolve Global Entities': 'nintegervars+nbinaryvars',
                                             'Presolve Columns': 'ncontinuousvars + nbinaryvars + nintegervars',
                                             'Matrix non-zeros': 'nlinnz',
-                                            '#nonlinear violations at root': 'nviolconss',
-                                            'Avg strong branching iterations in root': 'avgstrongbranchrootiter',
-                                            'Matrix Equality Constraints': '(nlinearequconss + nnonlinearequconss)',#/(nlinearconss+nnonlinearconss)',
-                                            'Matrix NLP Formula': 'nnonlinearconss', #/(nlinearconss+nnonlinearconss)',
+                                            '#NonlinViols': 'nviolconss',
+                                            'EqCons': '(nlinearequconss + nnonlinearequconss)',#/(nlinearconss+nnonlinearconss)',
+                                            'NonlinCons': 'nnonlinearconss', #/(nlinearconss+nnonlinearconss)',
                                             '#Constraints':'(nlinearconss+nnonlinearconss)',
-                                            'Avg relative bound change for solving strong branching LPs for integer branchings (not including infeasible ones) Mixed': 'sumintpseudocost / nintpseudocost',
-                                            '% vars in DAG (out of all vars)': '(nnonlinearvars + nauxvars) / (ncontinuousvars+nbinaryvars+nintegervars+nauxvars)',
-                                            '% vars in DAG integer (out of vars in DAG)': '(nnonlinearbinvars + nnonlinearintvars + nintauxvars) / (nnonlinearvars+nauxvars)',
-                                            '% vars in DAG unbounded (out of vars in DAG)': '(nnonlinearunboundedvars + nunboundedauxvars) / (nnonlinearvars+nauxvars)',
-                                            '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)': 'nquadexpr / (nquadexpr + nsuperquadexpr)',
-                                            'Matrix Quadratic Elements': 'nquadcons',
-                                            'Strong Branching Work': 'avgstrongbranchrootiter * nnz'
+                                            'AvgRelBndChngSBLPInt': 'sumintpseudocost / nintpseudocost',
+                                            '%VarsDAG': '(nnonlinearvars + nauxvars) / (ncontinuousvars+nbinaryvars+nintegervars+nauxvars)',
+                                            '%VarsDAGInt': '(nnonlinearbinvars + nnonlinearintvars + nintauxvars) / (nnonlinearvars+nauxvars)',
+                                            '%VarsDAGUnbnd': '(nnonlinearunboundedvars + nunboundedauxvars) / (nnonlinearvars+nauxvars)',
+                                            '%QuadrNodesDAG': 'nquadexpr / (nquadexpr + nsuperquadexpr)',
+                                            'QuadrElements': 'nquadcons',
+                                            'SBWork': 'avgstrongbranchrootiter * nnz'
                                             }
 
 
@@ -378,7 +377,7 @@ def process_directory_random_noise(directory:str):
 
 def read_in_and_call_process(data_set: str, random_noise_experiment=False, fico=True, to_csv=True):
     # directory_path = f"/Users/fritz/Downloads/ZIB/Master/GitCode/Master/NewEra/BaseCSVs/Stefan/Stefan_Werte/{data_set}/Outs"
-    directory_path = f"/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/SCIP/Outs/{data_set}"
+    directory_path = f"/Users/fritz/Downloads/ZIB/Master/October/Bases/SCIP/Outs/{data_set}"
 
     # if data_set == '345':
     #     directory_path = "/Users/fritz/Downloads/ZIB/Master/Treffen/CSVs/scip_bases/345/Outs"
@@ -397,46 +396,52 @@ def read_in_and_call_process(data_set: str, random_noise_experiment=False, fico=
         if data_set == 'Mix_Minlp' or data_set == 'Current':
             data_set = 'default'
         # save only df where all instances without features are deleted
-        stefans_data_merged_all_have_features.to_csv(f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/SCIP/Raw/scip_{data_set}_raw.csv',
+        stefans_data_merged_all_have_features.to_csv(f'/Users/fritz/Downloads/ZIB/Master/October/Bases/SCIP/Raw/scip_{data_set}_raw.csv',
                                index=False)
         stefan_data_reduced_cols_no_nan = create_compatible_dataframe(stefans_data_merged_all_have_features)
         stefan_data_reduced_cols_no_nan.to_csv(
-            f"/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/SCIP/NamedFeatures/Complete/scip_{data_set}_named_columns.csv",
+            f"/Users/fritz/Downloads/ZIB/Master/October/Bases/SCIP/NamedFeatures/Complete/scip_{data_set}_named_columns.csv",
             index=False)
 
         scip_features_df = stefan_data_reduced_cols_no_nan.drop(['Matrix Name', 'Random Seed Shift', 'Status Mixed',
                                                                  'Status Int', 'Final solution time (cumulative) Mixed',
                                                                  'Final solution time (cumulative) Int',
                                                                  'Cmp Final solution time (cumulative)',
-                                                                 'Virtual Best', 'Avg strong branching iterations in root'],# maybe add iterations again and delete work
+                                                                 'Virtual Best'],# maybe add iterations again and delete work
                                                                 axis=1)
         scip_features_df.to_csv(
-            f"/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/SCIP/NamedFeatures/Features/scip_{data_set}_features_logged.csv",
+            f"/Users/fritz/Downloads/ZIB/Master/October/Bases/SCIP/NamedFeatures/Features/scip_{data_set}_features_logged.csv",
+            index=False)
+        stefan_data_reduced_cols_no_nan[['Matrix Name', 'EqCons',
+                    'QuadrElements', 'NonlinCons']].to_csv(
+            "/Users/fritz/Downloads/ZIB/Master/October/Bases/SCIP/NamedFeatures/STATIC.csv",
             index=False)
 
     if fico:
         # all instances
         scip_to_fic_df = create_compatible_dataframe(stefans_data_merged_all_have_features, fico_only=True)
-        scip_to_fic_df.to_csv(f"/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/SCIP/NamedFeatures/SCICO/scip_{data_set}_fico_compatible.csv",
+        scip_to_fic_df.to_csv(f"/Users/fritz/Downloads/ZIB/Master/October/Bases/SCIP/NamedFeatures/SCICO/scip_{data_set}_fico_compatible.csv",
                                 index=False)
 
-        stefans_feats = scip_to_fic_df[['#integer violations at root',
-               '#nodes in DAG',
-               'Avg coefficient spread for convexification cuts Mixed',
+        stefans_feats = scip_to_fic_df[['#IntViols',
+               'NodesInDAG',
+               'AvgCoeffSpreadConvCuts',
                'Presolve Global Entities', 'Presolve Columns',
-               '#nonlinear violations at root', 'Matrix Equality Constraints',
-               'Matrix NLP Formula', '% vars in DAG (out of all vars)',
-               '% vars in DAG integer (out of vars in DAG)',
-               'Matrix Quadratic Elements',
-               '% quadratic nodes in DAG (out of all non-plus/sum/scalar-mult operator nodes in DAG)',
-               '% vars in DAG unbounded (out of vars in DAG)']].copy()
+               '#NonlinViols', 'EqCons',
+               'NonlinCons', '%VarsDAG',
+               '%VarsDAGInt',
+               'QuadrElements',
+               '%QuadrNodesDAG',
+               '%VarsDAGUnbnd']].copy()
 
-        stefans_feats.to_csv(f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/SCIP/NamedFeatures/SCICO/scip_{data_set}_fico_features.csv',
+        stefans_feats.to_csv(f'/Users/fritz/Downloads/ZIB/Master/October/Bases/SCIP/NamedFeatures/SCICO/scip_{data_set}_fico_features.csv',
                                    index=False)
+
+
 
 
 # read_in_and_call_process(data_set='012345', random_noise_experiment=True)
 # read_in_and_call_process(data_set='Mix_Minlp', random_noise_experiment=False)
-# read_in_and_call_process(data_set='CurrentOuts', random_noise_experiment=False)
+read_in_and_call_process(data_set='CurrentOuts', random_noise_experiment=False)
 
 # TODO: When reading in data for random noise experiment: i need to treat seeds 3,4,5 as Int rule and 0,1,2 as mixed

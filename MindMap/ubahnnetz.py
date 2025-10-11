@@ -58,7 +58,7 @@ class UBahnNetwork:
         # Draw labels
         nx.draw_networkx_labels(self.graph, self.positions, font_size=10, font_weight="bold")
 
-        plt.title("Berlin U-Bahn Network (BVG Layout)")
+        #plt.title("Berlin U-Bahn Network (BVG Layout)")
         plt.axis("off")
         plt.show()
 

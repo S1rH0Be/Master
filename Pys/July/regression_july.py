@@ -34,7 +34,7 @@ def shifted_geometric_mean(values, shift):
     if values.dtype == 'object':
         # Attempt to convert to float
         values = values.astype(float)
-
+    shift=10
     # Shift the values by the constant
     # Check if shift is large enough
     if shift <= -values.min():
@@ -86,7 +86,7 @@ def print_accuracy(acc_df):
             if len(forest_df)>0:
                 for_acc = get_sgm_acc(forest_df)
                 return np.round(for_acc, 2)
-
+    print("print_accuracy: ", visualize_acc(acc_df, title='Accuracy'))
     return visualize_acc(acc_df, title='Accuracy')
 
 def print_sgm(sgm_df, data_set, number_features):
@@ -105,7 +105,7 @@ def print_sgm(sgm_df, data_set, number_features):
         return values
 
     def get_values_for_plot(dataframe:pd.DataFrame, data_set_name):
-
+        # TODO change here mean to 10?
         mixed = dataframe['Mixed']
         pref_int = dataframe['Int']
         prediction = dataframe['Predicted']
@@ -136,7 +136,7 @@ def print_sgm(sgm_df, data_set, number_features):
             # Create the plot
             plt.figure(figsize=(8, 5))
             plt.bar(labels, values, color=bar_colors)
-            plt.title(title)
+            #plt.title(title)
             if data_set_name.lower() == 'fico':
                 plt.ylim(0.5, 1.35)  # Set y-axis limits for visibility
             else:
@@ -150,6 +150,7 @@ def print_sgm(sgm_df, data_set, number_features):
     def call_sgm_visualization(df, num_features, data_set_name, plot=True):
         return sgm_plot(df, f'SGM {num_features}', data_set_name, plot)
 
+    print("print_sgm: ", call_sgm_visualization(sgm_df, number_features, data_set, plot=False))
     return call_sgm_visualization(sgm_df, number_features, data_set, plot=False)
 
 def get_features_label(data_frame, feature_df, chosen_features):
@@ -168,17 +169,23 @@ def label_scaling(label):
     return y_log
 
 def get_accuracy(prediction, actual, mid_threshold, extreme_threshold):
-
+    # TODO:revert back to y_test_nonzero
     # Filter for nonzero labels
     nonzero_indices = actual != 0
     y_test_nonzero = actual[nonzero_indices]
-
+    # print('LEEEEEEEEEEEEEEN')
+    # print(len(actual), len(y_test_nonzero))
+    # nonzero_indices = actual != 0
+    # y_test_nonzero = actual[nonzero_indices]
+    # zero_indices = actual == 0
     def overall_accuracy():
         y_pred_nonzero = prediction[nonzero_indices]
 
         # Calculate percentage of correctly predicted signs
         correct_signs = np.sum(np.sign(y_test_nonzero) == np.sign(y_pred_nonzero))
-        percent_correct_signs = correct_signs / len(y_test_nonzero) * 100 if len(y_test_nonzero) > 0 else np.nan
+        # correct_signs += sum(zero_indices) # delete
+        percent_correct_signs = correct_signs / len(y_test_nonzero) * 100 if len(y_test_nonzero) > 0 else np.nan #revert
+        # percent_correct_signs = correct_signs / len(actual) * 100 if len(y_test_nonzero) > 0 else np.nan
         return percent_correct_signs
 
     def threshold_accuracy(relevant_threshold):
@@ -198,7 +205,6 @@ def get_accuracy(prediction, actual, mid_threshold, extreme_threshold):
     overall_acc = overall_accuracy()
     mid_acc, number_mid_instances = threshold_accuracy(mid_threshold)
     extreme_acc, number_extreme_instances = threshold_accuracy(extreme_threshold)
-
     return overall_acc, mid_acc, number_mid_instances, extreme_acc, number_extreme_instances
 # TODO Delete get_sgm_comparison if it runs without it
 # def get_sgm_comparison(y_pred, y_test):
@@ -210,6 +216,7 @@ def get_accuracy(prediction, actual, mid_threshold, extreme_threshold):
 #     return pred_df
 
 def get_predicted_run_time_sgm(y_pred, data, threshold_for_pred):
+    print("YPRED", len(y_pred))
     predicted_time = pd.Series(index=y_pred.index, name='Predicted Run Time')
     indices = y_pred.index
     for i in indices:
@@ -304,7 +311,6 @@ def feature_reduction(data_path, feature_path, data_set, model: str, treffmas, s
                          num_feats=None, depth=None, estis=100, leafs=None,
                          instances=2):
         feature_list = impo_df_for['Feature'].tolist()
-        print(feature_list)
         for reduce_by in range(len(feature_list)):
             treff = f'{treffmas_for}/FeatureReduction/forest/{reduce_by}'
             feature_set = feature_list[:(number_features_for - reduce_by)]
@@ -334,18 +340,45 @@ def feature_reduction(data_path, feature_path, data_set, model: str, treffmas, s
             treff = f'{treffmas_lin}/FeatureReduction/{add_on}/linear/{reduce_by}'
             feature_set = feature_list[:(number_features_lin - reduce_by)]
 
-            acc, sgm = main(path_to_data=data_path_lin, path_to_features=feature_path_lin, scip_default=scip_default_lin,
-                            fico=fico_lin, treffplusx=treff, label_scalen=True, feature_scaling=scaling_for_features,
-                            feature_subset=feature_set, models={'LinearRegression': LinearRegression()},
-                            kick_outliers=outlier_removal, outlier_value=threshold_outlier)
+            acc, sgm = main(path_to_data=data_path_lin,
+                            path_to_features=feature_path_lin,
+                            scip_default=scip_default_lin,
+                            fico=fico_lin,
+                            treffplusx=treff,
+                            label_scalen=True,
+                            feature_scaling=scaling_for_features,
+                            feature_subset=feature_set,
+                            models={'LinearRegression': LinearRegression()},
+                            kick_outliers=outlier_removal,
+                            outlier_value=threshold_outlier)
+
+            # data_name = 'fico',
+            # data_path = f'{path_to_data}',
+            # feats_path = f'{path_to_features}',
+            # is_excel = False,
+            # prefix = 'fico',
+            # treffplusx = treffplusx,
+            # models = models,
+            # imputer = imputer,
+            # scalers = feature_scaling,
+            # hundred_seeds = hundred_seeds,
+            # label_scale = label_scalen,
+            # feature_subset = feature_subset,
+            # remove_outlier = kick_outliers,
+            # outlier_threshold = outlier_value,
+            # mid_threshi = mid_threshold,
+            # ex_thresh = extreme_threshold,
+            # when_follow_pred = prediction_threshold
 
             accuracy_lin.append(acc)
             sgm_lin.append(sgm)
 
     if data_set.lower() == 'fico':
         # TODO: change path to be interactive
+        print("Feature path FICO")
+        print(f'{treffmas}/Importance/fico_importance_ranking.csv')
         impo_df = pd.read_csv(
-            f'{treffmas}/NoOutlier/Logged/ScaledLabel/Importance/fico_importance_ranking.csv')
+            f'{treffmas}/Importance/fico_importance_ranking.csv')
         scip_default = False
         fico = True
         treffmas = f'{treffmas}'
@@ -353,7 +386,7 @@ def feature_reduction(data_path, feature_path, data_set, model: str, treffmas, s
 
     elif data_set.lower() == 'scip':
         impo_df = pd.read_csv(
-            f'{treffmas}/NoOutlier/Logged/ScaledLabel/Importance/scip_default_importance_ranking.csv')
+            f'{treffmas}/Importance/scip_default_importance_ranking.csv')
         scip_default = True
         fico = False
         treffmas = f'{treffmas}'
@@ -365,6 +398,8 @@ def feature_reduction(data_path, feature_path, data_set, model: str, treffmas, s
 
     if model.lower() == 'linear':
         impo_df = impo_df.sort_values(by=['Linear Score'], ascending=True)
+        print(f"Linear Impo Ranking: {skalierer}")
+        print(impo_df.head())
         linear_reduction(data_path_lin=data_path, feature_path_lin=feature_path, scip_default_lin=scip_default,
                          fico_lin=fico, impo_df_lin=impo_df, number_features_lin=number_features, treffmas_lin=treffmas,
                          scaling_for_features=skalierer, outlier_removal=remove_outlier, threshold_outlier=outlier_threshold)
@@ -373,7 +408,6 @@ def feature_reduction(data_path, feature_path, data_set, model: str, treffmas, s
 
     elif model.lower() == 'forest':
         impo_df = impo_df.sort_values(by=['Forest Score'], ascending=True)
-        print(impo_df['Forest Score'].head())
         forest_reduction(data_path_for=data_path, feature_path_for=feature_path, scip_default_for=scip_default,
                          fico_for=fico, impo_df_for=impo_df, number_features_for=number_features, treffmas_for=treffmas,
                          scaling_for_features=skalierer, outlier_removal=remove_outlier,
@@ -424,6 +458,8 @@ def trainer(imputation, scaler, model, model_name, X_train, y_train, seed):
     end = time.time()
     return pipeline, end-start
 
+
+#TODO: When uploading revert back to y_pred_relevant
 def predict(pipeline, X_test, y_test):
     start = time.time()
     # Evaluate on the test set
@@ -433,6 +469,16 @@ def predict(pipeline, X_test, y_test):
     y_pred_relevant = pd.Series(y_pred_relevant, index=relevant_indices, name='Prediction')
     end = time.time()
     return y_pred_relevant, y_test_relevant, end - start
+
+# def predict(pipeline, X_test, y_test):
+#     start = time.time()
+#     # Evaluate on the test set
+#     y_pred = pipeline.predict(X_test)
+#     y_pred = pd.Series(y_pred, index=y_test.index, name='Prediction')
+#     end = time.time()
+#     return y_pred, y_test, end - start
+
+
 
 def regression(data, data_set_name, label, features, feature_names, models, scalers, imputer, random_seeds,
                label_scale=False, mid_threshold=0.1, extreme_threshold=4.0, when_int_for_mixed=0.0):
@@ -498,15 +544,16 @@ def regression(data, data_set_name, label, features, feature_names, models, scal
                     importance_dictionary[model_name+'_'+imputation+'_'+str(scaler)+'_'+str(seed)] = importances.tolist()
 
                     # make predictions on train set for checking of over/underfitting
+
                     y_pred_train, y_test_train, pt_train = predict(trained_model, X_train, y_train)
                     accuracy_dictionary_train[
                         model_name + '_' + imputation + '_' + str(scaler) + '_' + str(seed)] = get_accuracy(
                         y_pred_train, y_test_train, mid_threshold, extreme_threshold)
                     # add sgm of run time for this setting to run_time_df
                     run_time_dictionary_train[model_name + '_' + imputation + '_' + str(scaler) + '_' + str(
-                        seed)] = get_predicted_run_time_sgm(y_pred_train, data, threshold_for_pred=when_int_for_mixed)
+                    seed)] = get_predicted_run_time_sgm(y_pred_train, data, threshold_for_pred=when_int_for_mixed)
                     prediction_dictionary_train[
-                        model_name + '_' + imputation + '_' + str(scaler) + '_' + str(seed)] = y_pred_train
+                    model_name + '_' + imputation + '_' + str(scaler) + '_' + str(seed)] = y_pred_train
     if any(len(d) == 0 for d in [importance_dictionary,prediction_dictionary,accuracy_dictionary,run_time_dictionary]):
         # handle the empty case
         dictionaries = [importance_dictionary, accuracy_dictionary, run_time_dictionary, prediction_dictionary]
@@ -527,7 +574,6 @@ def regression(data, data_set_name, label, features, feature_names, models, scal
         accuracy_df = pd.DataFrame.from_dict(accuracy_dictionary, orient='index')
         accuracy_df.columns = ['Accuracy', 'Mid Accuracy', 'Mid Instances', 'Extreme Accuracy', 'Extreme Instances']
         accuracy_df.loc[:, ['Accuracy', 'Mid Accuracy','Extreme Accuracy']] = accuracy_df.loc[:, ['Accuracy', 'Mid Accuracy','Extreme Accuracy']].astype(float)
-
 
         prediction_df = get_prediction_df(prediction_dictionary, data).astype(float)
         run_time_df = pd.DataFrame.from_dict(run_time_dictionary, orient='index').astype(float)
@@ -563,7 +609,7 @@ def run_regression_pipeline(data_name, data_path, feats_path, is_excel, prefix, 
     else:
         data = pd.read_csv(data_path)
         features = pd.read_csv(feats_path)
-
+    print("FEATURE LEN", len(features))
     # treat -1 as missing value
     # TODO check which features have this property
     data = data.replace([-1, -1.0], np.nan)
@@ -625,7 +671,7 @@ def main(path_to_data:str, path_to_features:str, scip_default=False, fico=False,
     akk, ess_geh_ehm = None, None
 
     if label_scalen:
-        treffplusx = treffplusx+'/ScaledLabel'
+        treffplusx = treffplusx+'/'
     else:
         treffplusx = treffplusx + '/UnscaledLabel'
 
@@ -639,7 +685,7 @@ def main(path_to_data:str, path_to_features:str, scip_default=False, fico=False,
                                                   random_state=0, n_jobs=-1)
         }
 
-    imputer = ['median']
+    imputer = ['median', 'mean']
 
     hundred_seeds = [2207168494, 288314836, 1280346069, 1968903417, 1417846724, 2942245439, 2177268096, 571870743,
                      1396620602, 3691808733, 4033267948, 3898118442, 24464804, 882010483, 2324915710, 316013333,
@@ -698,7 +744,7 @@ def main(path_to_data:str, path_to_features:str, scip_default=False, fico=False,
             outlier_threshold=outlier_value,
             mid_threshi= mid_threshold,
             ex_thresh=extreme_threshold,
-            when_follow_pred=prediction_threshold
+            when_follow_pred=prediction_threshold,
         )
 
         if not (fico|scip_default):
@@ -719,18 +765,36 @@ def get_number_of_runs(path_to_runs):
     return len(folders)
 
 
-def hyper_hyper_tuner_tuner_fico(main_regression=True, feat_reduction=False, plot_main=False, plot_reduction=False,
-                                 forest=True, linear=True, out_thresh=350):
-    fico_data_5 = '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_5_ready_to_ml.csv'
-    fico_feats_5 = '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_5_ready_to_ml_features.csv'
+def hyper_hyper_tuner_tuner_fico(main_regression=False, feat_reduction=False, plot_main=False, plot_reduction=False,
+                                 forest=True, linear=True, out_thresh=350, directory='/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO',
+                                 fico=True, scip=False, feat_subset=None, scalerz=None, picture_save='', title=None,
+                                 skalieren_des_labels=True, fivesix=False, sixfive=False):
+    # fico_data_5 = '/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Cleaned/9_5_ready_to_ml.csv'
+    # fico_feats_5 = '/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Cleaned/9_5_ready_to_ml_features.csv'
+    #
+    # fico_data_6 = '/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Cleaned/9_6_ready_to_ml.csv'
+    # fico_feats_6 = '/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Cleaned/9_6_ready_to_ml_features.csv'
 
-    fico_data_6 = '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_6_ready_to_ml.csv'
-    fico_feats_6 = '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_6_ready_to_ml_features.csv'
+    fico_data_5 = '/Users/fritz/Downloads/ZIB/Master/Testy/Bases/FICO/Cleaned/9_5_ready_to_ml.csv'
+    fico_feats_5 = '/Users/fritz/Downloads/ZIB/Master/Testy/Bases/FICO/Cleaned/9_5_ready_to_ml_features.csv'
 
-    data_sets = [(fico_data_5, fico_feats_5, "5"), (fico_data_6, fico_feats_6, "6")]
+    fico_data_6 = '/Users/fritz/Downloads/ZIB/Master/Testy/Bases/FICO/Cleaned/9_6_ready_to_ml.csv'
+    fico_feats_6 = '/Users/fritz/Downloads/ZIB/Master/Testy/Bases/FICO/Cleaned/9_6_ready_to_ml_features.csv'
+
+    scip_data_10 = '/Users/fritz/Downloads/ZIB/Master/Octesty/Bases/SCIP/Cleaned/scip_data_for_ml.csv'
+    scip_feats_10 = '/Users/fritz/Downloads/ZIB/Master/Octesty/Bases/SCIP/Cleaned/scip_featurs_for_ml.csv'
+
+    if scalerz is None:
+        scalerz = ['Quantile', 'NoScaling', 'Standard', 'MinMax', 'Robust', 'Yeo']
+
+
+    if fico:
+        data_sets = [(fico_data_5, fico_feats_5, "5"), (fico_data_6, fico_feats_6, "6")]
+    else:
+        data_sets = [(scip_data_10, scip_feats_10, "10")]
     pred_thresh = [0.0]
     instances_split = [2]
-    combinations = [(5, None), (10, None)]
+    combinations = [(None, None), (5, None), (10, None)]
     ex_threshold = [4.0]
     for data_set in data_sets:
         for combination in combinations:
@@ -739,54 +803,260 @@ def hyper_hyper_tuner_tuner_fico(main_regression=True, feat_reduction=False, plo
                 for ex in ex_threshold:
                     for instance in instances_split:
                         if main_regression:
-                            fico_final = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/Polishing/FICO{data_set[2]}/BestCombi_depth{combination[0]}Testsize20/NoOutlier/Logged/'
+                            if fico:
+                                print(f'{directory}{data_set[2]}/{picture_save}/depth{combination[0]}/')
+                                fico_final = f'{directory}{data_set[2]}/{picture_save}/depth{combination[0]}/'
 
-                            main(path_to_data=data_set[0], path_to_features=data_set[1], scip_default=False, fico=True,
-                                 treffplusx=fico_final, models=None, label_scalen=True, feature_scaling=['Quantile'],
-                                 kick_outliers=True, outlier_value=out_thresh, max_tiefe=combination[0],
-                                 number_features_tree=combination[1], max_blatter=None,
-                                 instances_per_split=instance, mid_threshold=0.1, extreme_threshold=ex, prediction_threshold=threshi)
+                                main(path_to_data=data_set[0], path_to_features=data_set[1], scip_default=False, fico=True,
+                                     treffplusx=fico_final, feature_subset=feat_subset, models=None,
+                                     label_scalen=skalieren_des_labels, feature_scaling=scalerz,
+                                     kick_outliers=True, outlier_value=out_thresh, max_tiefe=combination[0],
+                                     number_features_tree=combination[1], max_blatter=None,
+                                     instances_per_split=instance, mid_threshold=0.1, extreme_threshold=ex,
+                                     prediction_threshold=threshi)
+                            if scip:
+                                scip_final = f'{directory}/{picture_save}/depth{combination[0]}/'
+                                main(path_to_data=data_set[0], path_to_features=data_set[1], scip_default=True,
+                                     fico=False,
+                                     treffplusx=scip_final, feature_subset=feat_subset, models=None,
+                                     label_scalen=skalieren_des_labels, feature_scaling=scalerz,
+                                     kick_outliers=True, outlier_value=out_thresh, max_tiefe=combination[0],
+                                     number_features_tree=combination[1], max_blatter=None,
+                                     instances_per_split=instance, mid_threshold=0.1, extreme_threshold=ex,
+                                     prediction_threshold=threshi)
 
                         if plot_main:
-                            train_vs_test_acuracy(f"/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/Polishing/FICO{data_set[2]}/BestCombi_depth{combination[0]}Testsize20/NoOutlier/Logged/ScaledLabel",
-                                                  version=f"9.{data_set[2]}, max_depth={combination[0]}, ExThreshold={ex}", fico_or_scip='fico',
-                                                  save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/Polishing/9{data_set[2]}/BestCombi_depth{combination[0]}Testsize20/Overfitting")
-                            train_vs_test_sgm(f"/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/Polishing/FICO{data_set[2]}/BestCombi_depth{combination[0]}Testsize20/NoOutlier/Logged/ScaledLabel",
-                                              version=f"9.{data_set[2]}, max_depth={combination[0]}, shift=10, ExThresh={ex}", fico_or_scip='fico',
-                                              save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/Polishing/9{data_set[2]}/BestCombi_depth{combination[0]}Testsize20/Overfitting")
+                            if fico:
+                                if title is None:
+                                    wurm = f"9.{data_set[2]}, max_depth={combination[0]}, TestSize={0.2}"
+                                else:
+                                    wurm = title+f' on FICO9.{data_set[2]}, max_depth={combination[0]}'
+                                if skalieren_des_labels:
+                                    path = f"{directory}{data_set[2]}/{picture_save}/depth{combination[0]}"
+                                else:
+                                    path = f"{directory}{data_set[2]}/{picture_save}/depth{combination[0]}/UnscaledLabel"
+                                train_vs_test_acuracy(
+                                    path,
+                                    version= wurm,
+                                    fico_or_scip='fico',
+                                    save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/9{data_set[2]}/{picture_save}/depth{combination[0]}")
+                                train_vs_test_sgm(
+                                    path,
+                                    version=wurm,
+                                    fico_or_scip='fico',
+                                    save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/9{data_set[2]}/{picture_save}/depth{combination[0]}")
+                            if scip:
+                                if title is None:
+                                    wurm = f"SCIP10, max_depth={combination[0]}, TestSize={0.2}"
+                                else:
+                                    print("Check SCIP")
+                                    wurm = title+f' on FICO9.{data_set[2]}, max_depth={combination[0]}'
+                                train_vs_test_acuracy(
+                                    f"{directory}/{picture_save}/depth{combination[0]}/",
+                                    version=wurm,
+                                    fico_or_scip='scip',
+                                    save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/{data_set[2]}/{picture_save}/depth{combination[0]}")
+                                train_vs_test_sgm(
+                                    f"{directory}/{picture_save}/depth{combination[0]}/",
+                                    version=wurm,
+                                    fico_or_scip='scip',
+                                    save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/{data_set[2]}/{picture_save}/depth{combination[0]}")
 
                         if feat_reduction:
+                            if fico:
                             # TODO add threshold to feat reduction
-                            fico_feat_reduction = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/Polishing/FICO{data_set[2]}/BestCombi_depth{combination[0]}'
-                            if linear:
-                                feature_reduction(data_path=data_set[0], feature_path=data_set[1], data_set='fico',
-                                                  model='linear', treffmas=fico_feat_reduction, skalierer=['Quantile'],
-                                                  remove_outlier=True, outlier_threshold=out_thresh, max_depp=combination[0],
-                                                  max_blatt=None, instances_split=instance)
-                            if forest:
-                                feature_reduction(data_path=data_set[0], feature_path=data_set[1], data_set='fico' , model='forest',
-                                                  treffmas=fico_feat_reduction, skalierer=['Quantile'], remove_outlier=True,
-                                                  outlier_threshold=out_thresh, num_features_tree=None, max_depp=combination[0],
-                                                  max_blatt=None, instances_split=instance)
+                                fico_feat_reduction = f'{directory}{data_set[2]}/{picture_save}/depth{combination[0]}/'
+                                if linear:
+                                    feature_reduction(data_path=data_set[0], feature_path=data_set[1], data_set='fico',
+                                                      model='linear', treffmas=fico_feat_reduction, skalierer=scalerz,
+                                                      remove_outlier=True, outlier_threshold=out_thresh, max_depp=combination[0],
+                                                      max_blatt=None, instances_split=instance)
+                                if forest:
+                                    feature_reduction(data_path=data_set[0], feature_path=data_set[1], data_set='fico' , model='forest',
+                                                      treffmas=fico_feat_reduction, skalierer=scalerz, remove_outlier=True,
+                                                      outlier_threshold=out_thresh, num_features_tree=None, max_depp=combination[0],
+                                                      max_blatt=None, instances_split=instance)
+                            if scip:
+                                scip_reduction = f'{directory}/{picture_save}/depth{combination[0]}'
+                                if linear:
+                                    feature_reduction(data_path=data_set[0], feature_path=data_set[1], data_set='scip',
+                                                      model='linear', treffmas=scip_reduction,
+                                                      skalierer=scalerz,
+                                                      remove_outlier=True, outlier_threshold=out_thresh,
+                                                      max_depp=combination[0],
+                                                      max_blatt=None, instances_split=instance)
+                                    if forest:
+                                        feature_reduction(data_path=data_set[0], feature_path=data_set[1],
+                                                          data_set='scip', model='forest',
+                                                          treffmas=scip_reduction, skalierer=scalerz,
+                                                          remove_outlier=True,
+                                                          outlier_threshold=out_thresh, num_features_tree=None,
+                                                          max_depp=combination[0],
+                                                          max_blatt=None, instances_split=instance)
 
                         if plot_reduction:
-                            if linear:
-                                if data_set[2] == "5":
-                                    thresh_linear = 14
-                                else:
-                                    thresh_linear = 13
-                                plot_feature_reduction(directory=f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/Polishing/FICO{data_set[2]}/BestCombi_depth{combination[0]}/FeatureReduction/fico',
-                                                       fico_or_scip='fico', base_data="", feature_ranking= 'linear', title_add_on=f"FICO Xpress 9.{data_set[2]}: LinearModel, outlier>{out_thresh}",
-                                                       threshold=thresh_linear, save_to=f'/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/Polishing/9{data_set[2]}/BestCombi/FeatureReduction')
-                            if forest:
-                                thresh_forest = 14
-                                plot_feature_reduction(directory=f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/Polishing/FICO{data_set[2]}/BestCombi_depth{combination[0]}/FeatureReduction/fico',
-                                                       fico_or_scip='fico', base_data="", feature_ranking= 'forest', title_add_on=f"FICO Xpress 9.{data_set[2]}: RandomForestModel, max_depth={combination[0]}, outlier>{out_thresh}",
-                                                       threshold=thresh_forest, save_to=f'/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/Polishing/9{data_set[2]}/BestCombi/FeatureReduction')
+                            if fico:
+                                if linear:
+                                    if data_set[2] == "5":
+                                        thresh_linear = 14
+                                    else:
+                                        thresh_linear = 13
+                                    plot_feature_reduction(
+                                        directory=f'{directory}{data_set[2]}/{picture_save}/depth{combination[0]}/FeatureReduction/fico',
+                                        fico_or_scip='fico', base_data="", feature_ranking='linear',
+                                        title_add_on=f"FICO Xpress 9.{data_set[2]}: LinearModel, outlier>{out_thresh}",
+                                        threshold=thresh_linear,
+                                        save_to=f'/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/9{data_set[2]}/{picture_save}/FeatureReduction')
+                                if forest:
+                                    thresh_forest = 14
+                                    plot_feature_reduction(
+                                        directory=f'{directory}{data_set[2]}/{picture_save}/depth{combination[0]}/FeatureReduction/fico',
+                                        fico_or_scip='fico', base_data="", feature_ranking='forest',
+                                        title_add_on=f"FICO Xpress 9.{data_set[2]}: RandomForestModel, max_depth={combination[0]}, outlier>{out_thresh}",
+                                        threshold=thresh_forest,
+                                        save_to=f'/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/9{data_set[2]}/{picture_save}/FeatureReduction')
+                            if scip:
+                                if linear:
+                                    thresh_linear = 12
+                                    plot_feature_reduction(
+                                        directory=f'{directory}/{picture_save}/depth{combination[0]}/FeatureReduction/scip',
+                                        fico_or_scip='scip', base_data="", feature_ranking='linear',
+                                        title_add_on=f"SCIP {data_set[2]}: LinearModel, outlier>{out_thresh}",
+                                        threshold=thresh_linear,
+                                        save_to=f'/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/{data_set[2]}/{picture_save}/FeatureReduction')
+                                if forest:
+                                    thresh_forest = 10
+                                    plot_feature_reduction(
+                                        directory=f'{directory}/{picture_save}/depth{combination[0]}/FeatureReduction/scip',
+                                        fico_or_scip='scip', base_data="", feature_ranking='forest',
+                                        title_add_on=f"SCIP {data_set[2]}: RandomForestModel, max_depth={combination[0]}, outlier>{out_thresh}",
+                                        threshold=thresh_forest,
+                                        save_to=f'/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/{data_set[2]}/{picture_save}/FeatureReduction')
 
 # Main Regression
-hyper_hyper_tuner_tuner_fico(main_regression=True, plot_main=True, feat_reduction=False, plot_reduction=False)
-# Feature Reduction
-# hyper_hyper_tuner_tuner_fico(main_regression=False, plot_main=False, feat_reduction=True, plot_reduction=True)
+fico_subset_NoNodesDAG_noeqcons = ['QuadrElements', 'NonlinCons', 'IntVarsPostPre',
+       '#IntViols', '#NonlinViols', '%VarsDAG', '%VarsDAGUnbnd', '%VarsDAGInt',
+       '%QuadrNodesDAG', 'AvgWorkSBLPSpat', 'AvgWorkSBLPInt',
+       'AvgRelBndChngSBLPSpat', 'AvgRelBndChngSBLPInt', 'SpatBranchEntFixed',
+       'AvgCoeffSpreadConvCuts']#'EqCons',  'NodesInDAG']
+# # AvgCoeffSpreadConvCuts
+fico_subset_no_IntVarsPostPre_coeffspread_NoVarsDAG = ['QuadrElements', 'NonlinCons',
+       '#IntViols', '#NonlinViols', '%VarsDAGUnbnd', '%VarsDAGInt',
+       '%QuadrNodesDAG', 'AvgWorkSBLPSpat', 'AvgWorkSBLPInt',
+       'AvgRelBndChngSBLPSpat', 'AvgRelBndChngSBLPInt', 'SpatBranchEntFixed',
+       'EqCons',  'NodesInDAG']#, 'AvgCoeffSpreadConvCuts']
+
+fico_96_linear_subset = ['AvgRelBndChngSBLPInt', 'IntVarsPostPre', '%VarsDAGInt', 'NonlinCons']
+hyper_hyper_tuner_tuner_fico(main_regression=False, plot_main=True, feat_reduction=False, plot_reduction=False,
+                             fico=True, scip=False, scalerz=['Quantile'],
+                             feat_subset=fico_96_linear_subset,
+                             directory='/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO/Top4Linear96',
+                             picture_save='Top4Linear96', title='9.6 Top4Linear')
+
+# FICO Just Quantile
+hyper_hyper_tuner_tuner_fico(main_regression=False, plot_main=True, feat_reduction=False, plot_reduction=True,
+                             fico=True, scip=False, scalerz=['Quantile'],
+                             feat_subset=None, skalieren_des_labels=True,
+                             directory='/Users/fritz/Downloads/ZIB/Master/Octesty/RunsFixedLogging/FICO',
+                             picture_save='JustQuantile')
+
+hyper_hyper_tuner_tuner_fico(main_regression=False, plot_main=True, feat_reduction=False, plot_reduction=True,
+                             fico=False, scip=True, scalerz=['Yeo'],
+                             feat_subset=None, skalieren_des_labels=True,
+                             directory='/Users/fritz/Downloads/ZIB/Master/Octesty/RunsFixedLogging/SCIP',
+                             picture_save='JustYeo')
+# FICO Just Quantile Feature Reduction
+hyper_hyper_tuner_tuner_fico(main_regression=False, plot_main=False, feat_reduction=False, plot_reduction=True,
+                             fico=True, scip=False, forest=True, linear=False, scalerz=['Quantile'],
+                             feat_subset=None, skalieren_des_labels=True,
+                             directory='/Users/fritz/Downloads/ZIB/Master/Octesty/RunsFixedLogging/FICO',
+                             picture_save='JustQuantile')
 
 
+fico_subset_NoBoundsSpatial = ['QuadrElements', 'NonlinCons', 'IntVarsPostPre',
+       '#IntViols', '#NonlinViols', '%VarsDAG', '%VarsDAGUnbnd', '%VarsDAGInt',
+       '%QuadrNodesDAG', 'AvgWorkSBLPSpat', 'AvgWorkSBLPInt',
+       'AvgRelBndChngSBLPSpat',  'SpatBranchEntFixed',
+       'AvgCoeffSpreadConvCuts', 'EqCons',  'NodesInDAG']#'AvgRelBndChngSBLPInt',
+# FICO No DAGS
+hyper_hyper_tuner_tuner_fico(main_regression=False, plot_main=True, feat_reduction=False, plot_reduction=False,
+                             fico=True, scip=False, scalerz=['Quantile'],
+                             feat_subset=None, skalieren_des_labels=True,
+                             directory='/Users/fritz/Downloads/ZIB/Master/Octesty/TESTTESTTEST/FICO',
+                             picture_save='TESTTESTTESTEST')
+
+# fico5_top3_forest = ['SpatBranchEntFixed', 'AvgCoeffSpreadConvCuts', '%VarsDAG']
+fico5_top2_lin = ['IntVarsPostPre', 'AvgWorkSBLPSpat']
+hyper_hyper_tuner_tuner_fico(main_regression=False, plot_main=True, feat_reduction=False, plot_reduction=False,
+                             fico=True, scip=False, scalerz=['Quantile'],
+                             feat_subset=fico5_top2_lin, skalieren_des_labels=True,
+                             directory='/Users/fritz/Downloads/ZIB/Master/Octesty/RunsFixedLogging/FICO',
+                             picture_save='Top2Lin')
+
+fico_5_linear = ['IntVarsPostPre', 'AvgWorkSBLPSpat','AvgRelBndChngSBLPSpat']
+fico_5_forest = ['SpatBranchEntFixed', 'AvgCoeffSpreadConvCuts', '%VarsDAG']
+
+
+fico_6_linear = ["AvgRelBndChngSBLPSpat", 'IntVarsPostPre', 'NonlinCons', '%VarsDAGInt']
+fico_6_forest = ['AvgCoeffSpreadConvCuts', 'AvgRelBndChngSBLPSpat', '#NonlinViols', 'EqCons']
+
+scip_linear = ['EqCons', '#IntViols']
+scip_forest = ['AvgCoeffSpreadConvCuts', 'AvgRelBndChngSBLPInt', 'NonlinCons','%QuadrNodesDAG']
+# fico 5 and 6 best combi
+hyper_hyper_tuner_tuner_fico(main_regression=False, plot_main=True, feat_reduction=False, plot_reduction=False,
+                             fico=True, scip=False, scalerz=None,
+                             feat_subset=None, skalieren_des_labels=True,
+                             directory='/Users/fritz/Downloads/ZIB/Master/Octesty/BestCombiSearch/FICO',
+                             picture_save='FindingBestCombi')
+# # SCIP best combi
+hyper_hyper_tuner_tuner_fico(main_regression=False, plot_main=True, feat_reduction=False, plot_reduction=False,
+                             fico=False, scip=True, scalerz=None,
+                             feat_subset=None, skalieren_des_labels=True,
+                             directory='/Users/fritz/Downloads/ZIB/Master/Octesty/BestCombiSearch/SCIP',
+                             picture_save='FindingBestCombi')
+
+
+
+
+
+
+
+
+# #fico5 linear
+hyper_hyper_tuner_tuner_fico(main_regression=False, plot_main=True, feat_reduction=False, plot_reduction=False,
+                             fico=True, scip=False, scalerz=['Quantile'],
+                             feat_subset=fico_5_linear, skalieren_des_labels=True,
+                             directory='/Users/fritz/Downloads/ZIB/Master/Octesty/Runs/ALLINSTANCES/FICO',
+                             picture_save='ALLINSTANCES/FinalResult95Top3Linear')
+# # #fico5 forest
+hyper_hyper_tuner_tuner_fico(main_regression=False, plot_main=True, feat_reduction=False, plot_reduction=False,
+                             fico=True, scip=False, scalerz=['Quantile'],
+                             feat_subset=fico_5_forest, skalieren_des_labels=True,
+                             directory='/Users/fritz/Downloads/ZIB/Master/Octesty/Runs/ALLINSTANCES/FICO',
+                             picture_save='ALLINSTANCES/FinalResult95Top3Forest')
+# # # #fico6 linear
+hyper_hyper_tuner_tuner_fico(main_regression=False, plot_main=True, feat_reduction=False, plot_reduction=False,
+                             fico=True, scip=False, scalerz=['Quantile'],
+                             feat_subset=fico_6_linear, skalieren_des_labels=True,
+                             directory='/Users/fritz/Downloads/ZIB/Master/Octesty/Runs/ALLINSTANCES/FICO',
+                             picture_save='ALLINSTANCES/FinalResults96Top4Linear')
+# #fico6 forest
+hyper_hyper_tuner_tuner_fico(main_regression=False, plot_main=True, feat_reduction=False, plot_reduction=False,
+                             fico=True, scip=False, scalerz=['Quantile'],
+                             feat_subset=fico_6_forest, skalieren_des_labels=True,
+                             directory='/Users/fritz/Downloads/ZIB/Master/Octesty/Runs/ALLINSTANCES/FICO',
+                             picture_save='ALLINSTANCES/FinalResult96Top4Forest')
+
+#
+# #scip linear
+hyper_hyper_tuner_tuner_fico(main_regression=False, plot_main=True, feat_reduction=False, plot_reduction=False,
+                             fico=False, scip=True, scalerz=['Yeo'],
+                             feat_subset=scip_linear, skalieren_des_labels=True,
+                             directory='/Users/fritz/Downloads/ZIB/Master/Octesty/Runs/ALLINSTANCES/SCIP',
+                             picture_save='ALLINSTANCES/FinalResultsSCIPLinear')
+# #scip forest
+hyper_hyper_tuner_tuner_fico(main_regression=False, plot_main=True, feat_reduction=False, plot_reduction=False,
+                             fico=False, scip=True, scalerz=['Yeo'],
+                             feat_subset=scip_forest, skalieren_des_labels=True,
+                             directory='/Users/fritz/Downloads/ZIB/Master/Octesty/Runs/ALLINSTANCES/SCIP',
+                             picture_save='ALLINSTANCES/FinalResultsSCIPForest')

@@ -51,7 +51,7 @@ def bar_plot(df, title : str):
     plt.xticks(ticks=range(len(df)), labels=df['Intervall'], rotation=0)
     # Add labels and title
     plt.ylabel('Accuracy')
-    plt.title(title)
+    #plt.title(title)
     plt.show()
     plt.close()
 
@@ -315,7 +315,7 @@ def linear_regression(features:DataFrame, label:DataFrame, seed, title_idea:str,
 
 def bar(values, bar_names, title):
     plt.bar(bar_names, values, align='center')
-    plt.title(title)
+    #plt.title(title)
     plt.xticks(range(len(bar_names)), bar_names)
     plt.show()
     plt.close()

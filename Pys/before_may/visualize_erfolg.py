@@ -39,7 +39,7 @@ def bar_plot_time(tuples:List[tuple], title: str) -> None:
 
     #bars = plt.bar(sorted_labels, sorted_values, colors)
     bars = plt.bar(sorted_labels, sorted_values, color=['blue', 'green', 'turquoise', 'red'])
-    plt.title(title)
+    #plt.title(title)
     plt.ylim(min(0, min(values))*1.1, max(values)*1.1)  # Set y-axis limits for visibility
     plt.xticks(rotation=45, fontsize=6)
     # Create custom legend entries with value annotations

@@ -55,7 +55,7 @@ for schnitt in schnitte:
     # Create the plot
     plt.figure(figsize=(8, 5))
     plt.bar(['Mixed', 'Prefer Int'], values, color=bar_colors)
-    plt.title(schnitt[1])
+    #plt.title(schnitt[1])
     plt.ylim(20, 80)  # Set y-axis limits for visibility
     plt.xticks(rotation=45, fontsize=6)
     # Create custom legend entries with value annotations

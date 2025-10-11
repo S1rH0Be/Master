@@ -19,7 +19,7 @@ def plot_sgms(df, labels, title: str) -> None:
     # Create the plot
     plt.figure(figsize=(8, 5))
     plt.bar(labels, values, color=bar_colors)
-    plt.title(title)
+    #plt.title(title)
     plt.ylim(min(0.5, min(values)*0.9), max(values)*1.01)  # Set y-axis limits for visibility
     plt.xticks(rotation=45, fontsize=6)
     # Create custom legend entries with value annotations
@@ -66,7 +66,7 @@ def plot_column_gmeans(df, model_name:str):
     # Add labels and title
     plt.xlabel('Runs')
     plt.ylabel('Variance')
-    plt.title(f'GeoMean of Feature Importance for each {model_name} run')
+    #plt.title(f'GeoMean of Feature Importance for each {model_name} run')
     plt.tight_layout()
     # Remove x-axis ticks
     plt.xticks([])
@@ -105,7 +105,7 @@ def plot_time_save(data):
         plt.text(bar.get_x() + bar.get_width() / 2, bar.get_height(), str(num_instances),
                  ha='center', va='bottom', fontsize=12, color='black')
     plt.xticks(names, rotation=45, ha='right')
-    plt.title('Potential Time Save per Intervall')
+    #plt.title('Potential Time Save per Intervall')
     plt.show()
 
 def plot_sgm_feature_importance(df, title):
@@ -123,7 +123,7 @@ def plot_sgm_feature_importance(df, title):
 
     # Add labels and title
     plt.ylabel('SGM Feature Importance')
-    plt.title(title)
+    #plt.title(title)
     plt.xticks([])
     # plt.ylim([0.8, 1.06])
     # Show the plot
@@ -149,7 +149,7 @@ def plot_sgm_accuracy(accuracy_df, title, shift_value=50):
     plt.ylim([values_seperated.min()*0.9,  105])
     # Add labels and title
     plt.ylabel('SGM Accuracy')
-    plt.title(title)
+    #plt.title(title)
     plt.tight_layout()
     # Remove x-axis ticks
     plt.xticks(values_seperated_names)
@@ -162,7 +162,7 @@ def plot_sgm_accuracy(accuracy_df, title, shift_value=50):
 
 def box_plot(values:Series, title:str):
     plt.boxplot(values, vert=True, patch_artist=True)
-    plt.title(title)
+    #plt.title(title)
     plt.ylabel("Values")
     plt.show()
     plt.close()
@@ -170,7 +170,7 @@ def box_plot(values:Series, title:str):
 def comp_box_plot(values, title):
     for value in values:
         plt.boxplot(values, vert=True, patch_artist=True)
-    plt.title(title)
+    #plt.title(title)
     plt.ylabel("Values")
     plt.show()
     plt.close()
@@ -194,7 +194,7 @@ def plot_sgm_relative_to_mixed(df, title:str, shift=0.0):
     # Add labels and title
     plt.ylabel('Shifted Geometric Mean', fontsize=12)
     plt.ylim(0.55, 1.05)
-    plt.title(title, fontsize=14)
+    #plt.title(title, fontsize=14)
     plt.xticks(bar_names)
     plt.tight_layout()
     # Add values on top of bars
@@ -240,7 +240,7 @@ def feature_histo(df, columns: list, number_bins=10):
 def label_histo(label_series, number_bins=10):
 
     plt.hist(label_series, bins=number_bins, color='magenta')
-    plt.title('Cmp Final solution time (cumulative)')
+    #plt.title('Cmp Final solution time (cumulative)')
 
     # Adjust layout
     plt.tight_layout()

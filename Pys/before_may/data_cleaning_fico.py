@@ -129,14 +129,14 @@ def data_cleaning(data:str, requirement_data_frame:pd.DataFrame, scip=False, deb
     return clean_df, deleted_instances_df, deleted_columns
 
 def main(scip=False, fico=True):
-    requirement_df = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/requirements.csv', delimiter=';')
-    cleaned_df, deleted_df, columns_deleted = data_cleaning('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Raw/fico_data_18-07-25.csv',
+    requirement_df = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/October/Bases/requirements.csv', delimiter=';')
+    cleaned_df, deleted_df, columns_deleted = data_cleaning('/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Raw/fico_data_18-07-25.csv',
                                                             requirement_df, scip=scip, debuggen=False)
 
-    cleaned_df.to_csv('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/fico_clean_data_753.csv',
+    cleaned_df.to_csv('/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Cleaned/fico_clean_data_753.csv',
                       index=False)
     # TODO What happend with deleted_df??
-    deleted_df.to_csv('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/fico_deletion.csv',
+    deleted_df.to_csv('/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Cleaned/fico_deletion.csv',
                       index=False)
 
     if fico:
@@ -155,7 +155,7 @@ def main(scip=False, fico=True):
        'Avg coefficient spread for convexification cuts Mixed']
 
         feature_df = cleaned_df[fico_feats]
-        feature_df.to_csv('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/fico_features_753.csv', index=False)
+        feature_df.to_csv('/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Cleaned/fico_features_753.csv', index=False)
 
 
 

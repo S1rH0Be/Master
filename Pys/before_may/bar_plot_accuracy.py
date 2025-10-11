@@ -40,7 +40,7 @@ def by_intervall(accuracy_df):
         plt.bar(x_positions, data, color=colors)
 
         # Add labels and title
-        plt.title(titles[idx]+": All, Top 8 global, Top 8 Lin, Top 8 For")
+        #plt.title(titles[idx]+": All, Top 8 global, Top 8 Lin, Top 8 For")
         plt.xlabel("Columns")
         plt.ylabel("Values")
         plt.ylim(40, 100)
@@ -131,7 +131,7 @@ def compare_by_method(data : pd.DataFrame, title=False):
     # ax.set_xticks(group_positions)  # Set x-tick positions at group positions
     # ax.set_xticklabels(group_labels, rotation=45, ha="right")  # Set group labels as x-tick labels
     if title:
-        ax.set_title(title)
+        #ax.set_title(title)
     ax.legend(title="Values by Group")
     #plt.xticks([])
     plt.tight_layout()

@@ -36,7 +36,7 @@ def rename_cols(df, int_cols, dbl_cols):
     named_df.columns = [rename_column(col).strip() for col in named_df.columns]
 
     #change all Integer x and Double x column names to what they actually are
-    for i in range(len(max(int_cols, dbl_cols))):#take len of longer list
+    for i in range(max(len(int_cols), len(dbl_cols))):#take len of longer list
         #try because the shorter list will give a out of bounds error
         try:
             #(?!\d) makes sure that no number follows i+1 directly
@@ -48,14 +48,18 @@ def rename_cols(df, int_cols, dbl_cols):
             else:
                 print("Somethings wrong at rename Integer")
         try:
-            named_df.columns =named_df.columns.str.replace(r"Double "+str(i+1)+r"(?!\d)", dbl_cols[i], regex=True)
-
-            
+            named_df.columns = named_df.columns.str.replace(r"Double "+str(i+1)+r"(?!\d)", dbl_cols[i], regex=True)
         except:
             if i >=len(int_cols):
                   pass
             else:
                 print("Somethings wrong at rename Double")
+    try:
+        named_df.columns = named_df.columns.str.replace("Matrix Equality Constraints", "EqCons")
+        named_df.columns = named_df.columns.str.replace("Matrix Quadratic Elements", "QuadrElements")
+        named_df.columns = named_df.columns.str.replace("Matrix NLP Formula", "NonlinCons")
+    except:
+        print("Somethings wrong at rename String")
     return named_df
 
 def read_and_rename(path_to_file:str, int_cols:list, dbl_cols:list):
@@ -72,7 +76,7 @@ def read_and_rename(path_to_file:str, int_cols:list, dbl_cols:list):
 
     renamed_df[perm_cols] = renamed_df[perm_cols].fillna(0.0)
     renamed_df.sort_values(by=['Matrix Name', 'permutation seed Mixed'], inplace = True, ascending=False)
-    renamed_df.to_csv('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Raw/just_renamed.csv', index=False)
+    renamed_df.to_csv('/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Raw/just_renamed.csv', index=False)
     return renamed_df
 
 '''DTYPE CONVERTER AND CHECKER'''
@@ -341,7 +345,7 @@ def check_col_consistency(df, requirement_df, scip=False, fico=False):
                 broken_inst.append((matrix_name, 'Not 3 times'))
         return broken_inst
 
-    # if #nodes in DAG is 0 we don't have nonlinearities => delete instances
+    # if NodesInDAG is 0 we don't have nonlinearities => delete instances
     def linear_problems(data_frame:pd.DataFrame, column_name:str):
         broken_inst = []
 
@@ -385,7 +389,6 @@ def check_col_consistency(df, requirement_df, scip=False, fico=False):
             else:
                 broken_instances += req_dict[req](df, col)
     return df, broken_instances
-
 
 
 

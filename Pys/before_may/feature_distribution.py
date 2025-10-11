@@ -194,5 +194,5 @@ feature_histo(quantile, ['% vars in DAG (out of all vars)',
 #     # print(outliers)
 #     # Boxplot
 #     plt.boxplot(data[col])
-#     plt.title(f"Boxplot of {col}")
+#     #plt.title(f"Boxplot of {col}")
 #     plt.show()

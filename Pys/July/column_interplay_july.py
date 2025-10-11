@@ -65,7 +65,7 @@ def permutations(df, fico):
     bad_instances = []
     equal_cols = [('Presolve Columns Mixed', 'Presolve Columns Int'), ('Presolve Global Entities Mixed', 'Presolve Global Entities Int'),
                   ('permutation seed Mixed', 'permutation seed Int')]
-    equal_col_entries_permutation = ['Matrix Equality Constraints', 'Matrix Quadratic Elements', 'Matrix NLP Formula']
+    equal_col_entries_permutation = ['EqCons', 'QuadrElements', 'NonlinCons']
 
     def check_equality(data_frame, col_tupel_lst):
         unequal_cols = []
@@ -98,8 +98,8 @@ def permutations(df, fico):
     return bad_instances
 
 def perm_consistent(df, fico:bool, DEBUG=False):
-    eq_cols = df[['Matrix Name', 'Matrix Equality Constraints',
-                  'Matrix Quadratic Elements', 'Matrix NLP Formula']]
+    eq_cols = df[['Matrix Name', 'EqCons',
+                  'QuadrElements', 'NonlinCons']]
     not_eq = []
     eq_cols = eq_cols.sort_values(by='Matrix Name')
     drop_instances = []
@@ -111,7 +111,7 @@ def perm_consistent(df, fico:bool, DEBUG=False):
             not_eq.append(instance)
             drop_instances.append(instance)
     if DEBUG:
-        print(f"PERM CONSISTENT Dropping instances: {drop_instances}")
+        print(f"PERM CONSISTENT STATIC FEATS: {len(set(drop_instances))}")
     # Drop inconsistent permutations
     df = df[~df['Matrix Name'].isin(not_eq)]
 
@@ -145,7 +145,9 @@ def perm_consistent(df, fico:bool, DEBUG=False):
             count_of_index_appearances = count_of_index_appearances_int+count_of_index_appearances_mixed
             if count_of_index_appearances.count(0)>=5:
                 unique_combined_opt.append(matrix)
-
+                drop_instances.append(matrix)
+        if DEBUG:
+            print("SolvedOnlyOnce", len(set(unique_combined_opt)))
         # Drop unique optimals
         for i in unique_combined_opt:
             eq_opt.drop(eq_opt[eq_opt['Matrix Name'] == i].index, inplace=True)
@@ -219,12 +221,16 @@ def perm_consistent(df, fico:bool, DEBUG=False):
             if min_max_diff > 0.001:
                 if i not in not_same_opt_mixed:
                     not_same_opt.append(i)
-
+        if DEBUG:
+            print("NotSameOpt:", len(set(not_same_opt)))
         # Drop inconsistent optimal values across permutations
         for instance_name in not_same_opt:
             df.drop(df[df['Matrix Name'] == instance_name].index, inplace=True)
             drop_instances.append(instance_name)
-    return df, drop_instances
+    if fico:
+        return df, drop_instances, not_same_opt, unique_combined_opt
+    else:
+        return df, drop_instances, [], []
 
 def equal_cols_to_static(dataframe):
     eq_col_names = {}
@@ -247,47 +253,51 @@ def column_interplay(df:pd.DataFrame, fico:bool, DEBUG=True):
     cleaner_df, del_instances = opt_opt(df)
 
     cleaner_df = delete_instances(cleaner_df, del_instances, 'Optimal Value too different')
+    pre_append = deleted_instances.copy()
     deleted_instances += del_instances
     if DEBUG:
-        print('opt_opt', len(set(del_instances)))
+        print('opt_opt', len(set(del_instances)), len(set(del_instances)-set(pre_append)))
     # check if solver didn't stop too early when status == timeout
     del_instances = timeout_time(cleaner_df)
+    pre_append = deleted_instances.copy()
     deleted_instances += timeout_time(cleaner_df)
     cleaner_df = delete_instances(cleaner_df, timeout_time(cleaner_df), 'Timeout too soon')
     if DEBUG:
-        print('too_early', len(set(del_instances)))
+        print('too_early', len(set(del_instances)), len(set(del_instances)-set(pre_append)))
     # check if solver stopped in time when reaching timeout limit
     del_instances = too_long(cleaner_df)
+    pre_append = deleted_instances.copy()
     deleted_instances += too_long(cleaner_df)
     cleaner_df = delete_instances(cleaner_df, too_long(cleaner_df), 'Timeout too long')
-
     if DEBUG:
-        print('too_long', len(set(del_instances)))
+        print('too_long', len(set(del_instances)), len(set(del_instances)-set(pre_append)))
     # check if values across permutations are equal where there should be
     del_instances = permutations(cleaner_df, fico=fico)
     cleaner_df = delete_instances(cleaner_df, del_instances, 'Permutations not consistent')
+    pre_append = deleted_instances.copy()
     deleted_instances += del_instances
     if DEBUG:
-        print('perms', len(set(del_instances)))
+        print('perms', len(set(del_instances)), len(set(del_instances)-set(pre_append)))
     # check if values across permutations are equal where there should be
-    cleaner_df, del_instances = perm_consistent(cleaner_df, fico=fico, DEBUG=DEBUG)
+    cleaner_df, del_instances, diff_opt_perm, solved_once = perm_consistent(cleaner_df, fico=fico, DEBUG=DEBUG)
+    pre_append = deleted_instances.copy()
     deleted_instances += del_instances
     if DEBUG:
-        print('perms II', len(set(del_instances)))
+        print('DiffOptPerms', len(set(diff_opt_perm)), len(set(diff_opt_perm)-set(pre_append)))
+        print('SolvedOnce', len(set(solved_once)), len(set(solved_once)-set(pre_append)))
 
     # TODO: Ask timo if work<=100, if yes rework. Right now this does nothing
     cleaner_df, del_instances = tickst_du_richtig(cleaner_df)
     cleaner_df = delete_instances(cleaner_df, del_instances, 'Ticks > 100')
+    pre_append = deleted_instances.copy()
     deleted_instances += del_instances
     if DEBUG:
-        print('too_many_works', len(set(del_instances)))
+        print('too_many_works', len(set(del_instances)), len(set(del_instances)-set(pre_append)))
     # if feature has the exact same entries for both rules, replace feature with static feature
     cleaner_df = equal_cols_to_static(cleaner_df)
-
-
     deleted_instances = set(deleted_instances)
     if DEBUG:
-        print('Number of instances to be deleted:', len(deleted_instances))
+        print('Number of instances to be deleted:', len(deleted_instances), len(set(deleted_instances)))
     return cleaner_df, deleted_instances
 
 

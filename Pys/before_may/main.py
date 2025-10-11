@@ -71,7 +71,7 @@ def visualizer(data : pd.DataFrame, title : str, y_lims : List[float], x_ticks :
         plt.bar(names, values)
     else:
         plt.bar(names, values, color=colors)
-    plt.title(title, fontsize=title_size)
+    #plt.title(title, fontsize=title_size)
     plt.ylim(y_lims[0], y_lims[1])  # Set y-axis limits for visibility
     plt.xticks(ticks=names, labels=x_tick)
 

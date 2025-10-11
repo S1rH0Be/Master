@@ -28,7 +28,7 @@ def importance_bar(df, title):
         # Add labels and title
         plt.xlabel('Features', fontsize=12)
         plt.ylabel('Importance', fontsize=12)
-        plt.title(title, fontsize=12)
+        #plt.title(title, fontsize=12)
 
         legend_elements = [
             Line2D([0], [0], marker='o', color='w', markerfacecolor='magenta', markersize=10, label='Mixed'),
@@ -52,7 +52,7 @@ def feature_importance_forrest(features, model, scaling, imputation):
 
 def bar(values, bar_names, title):
     plt.bar(bar_names, values, align='center')
-    plt.title(title)
+    #plt.title(title)
     plt.xticks(range(len(bar_names)), bar_names)
     plt.show()
     plt.close()
@@ -104,7 +104,7 @@ def plot_sgm_feature_importance(df, title):
 
     # Add labels and title
     plt.ylabel('SGM Feature Importance')
-    plt.title(title)
+    #plt.title(title)
     plt.xticks([])
     # plt.ylim([0.8, 1.06])
     # Show the plot

@@ -48,7 +48,7 @@ def accuracy_lin_for(data_frame, title:str, run=''):
         bar_colors = ['green' if val >= 75 else 'red' if val < 50 else 'orange' for val in values]
         plt.figure(figsize=(8, 5))
         plt.bar(['LinAcc', 'LinExAcc', 'ForAcc', 'ForExAcc'], values, color=bar_colors)
-        plt.title(title)
+        #plt.title(title)
         plt.ylim(min(0, min(values)*0.9), max(100, max(values)*1.1))  # Set y-axis limits for visibility
         plt.xticks(rotation=45, fontsize=6)
         # Create custom legend entries with value annotations
@@ -93,7 +93,7 @@ def sgm(data_frame, title:str, complete=False):
         # Create the plot
         plt.figure(figsize=(8, 5))
         plt.bar(labels, values_relative, color=bar_colors)
-        plt.title(title)
+        #plt.title(title)
         plt.ylim(min(values_relative)*0.9, max(values_relative)*1.01)  # Set y-axis limits for visibility
         plt.xticks(rotation=45, fontsize=6)
         # Create custom legend entries with value annotations
@@ -221,16 +221,16 @@ def get_splitup_dfs(stat_version:str, stats_be_filtered:str):
         no_pseudo.to_csv(f'{stat_version}/{stats_be_filtered}/SplitUp/{stats_be_filtered}_no_pseudocosts_per_split.csv')
 
 # UNSCALED
-# get_splitup_dfs('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/TreffenMasDiez/UnscaledLabel', 'Accuracy')
-# get_splitup_dfs('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/TreffenMasDiez/UnscaledLabel', 'Importance')
-# get_splitup_dfs('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/TreffenMasDiez/UnscaledLabel', 'Prediction')
-# get_splitup_dfs('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/TreffenMasDiez/UnscaledLabel', 'RunTime')
+# get_splitup_dfs('/Users/fritz/Downloads/ZIB/Master/October/Runs/TreffenMasDiez/UnscaledLabel', 'Accuracy')
+# get_splitup_dfs('/Users/fritz/Downloads/ZIB/Master/October/Runs/TreffenMasDiez/UnscaledLabel', 'Importance')
+# get_splitup_dfs('/Users/fritz/Downloads/ZIB/Master/October/Runs/TreffenMasDiez/UnscaledLabel', 'Prediction')
+# get_splitup_dfs('/Users/fritz/Downloads/ZIB/Master/October/Runs/TreffenMasDiez/UnscaledLabel', 'RunTime')
 
 # SCALED
-# get_splitup_dfs('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/TreffenMasVeinteUno/ScaledLabel', 'Accuracy')
-# get_splitup_dfs('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/TreffenMasDiez/ScaledLabel', 'Importance')
-# get_splitup_dfs('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/TreffenMasDiez/ScaledLabel', 'Prediction')
-# get_splitup_dfs('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/TreffenMasDiez/ScaledLabel', 'RunTime')
+# get_splitup_dfs('/Users/fritz/Downloads/ZIB/Master/October/Runs/TreffenMasVeinteUno/ScaledLabel', 'Accuracy')
+# get_splitup_dfs('/Users/fritz/Downloads/ZIB/Master/October/Runs/TreffenMasDiez/ScaledLabel', 'Importance')
+# get_splitup_dfs('/Users/fritz/Downloads/ZIB/Master/October/Runs/TreffenMasDiez/ScaledLabel', 'Prediction')
+# get_splitup_dfs('/Users/fritz/Downloads/ZIB/Master/October/Runs/TreffenMasDiez/ScaledLabel', 'RunTime')
 
 def multiple_sgm_plot(data_frames, title: str, complete=False):
     if not isinstance(data_frames, list):
@@ -265,7 +265,7 @@ def multiple_sgm_plot(data_frames, title: str, complete=False):
             plt.bar(x + i * bar_width, values_relative, width=bar_width, label=f'{data_frames[i].name}', color=colors[i])
 
         plt.xticks(x + bar_width * (n_dfs - 1) / 2, labels)
-        plt.title(title)
+        #plt.title(title)
         plt.ylim(0, max(values_relative)*1.1)  # Ensure scale visibility
         plt.ylabel('Relative SGM (to Mixed)')
         if 'SCIP' in title:
@@ -330,7 +330,7 @@ def multiple_accuracy_plot(data_frames, title: str, run=''):
             plt.bar(x + i * bar_width, values, width=bar_width, label=f'{data_frames[i].name}', color=colors[i])
 
         plt.xticks(x + bar_width * (n_dfs - 1) / 2, categories)
-        plt.title(title)
+        #plt.title(title)
         plt.ylim(0, 105)
         plt.ylabel('Accuracy')
         plt.legend()
@@ -344,13 +344,13 @@ def visualisiere_sgm(treffen:str, scaler:str, unscaled=True, scaled=True, scip=F
     if unscaled:
         darter = []
         if scip:
-            scip_default = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/{scaler}/UnscaledLabel/SGM/scip_sgm_runtime.csv',
+            scip_default = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/{scaler}/UnscaledLabel/SGM/scip_sgm_runtime.csv',
                                        index_col=0)
             scip_default.name = f'SCIP Default SGM Only {scaler} Unscaled Label'
             darter.append(scip_default)
 
         if fico:
-            fico_default = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/{scaler}/UnscaledLabel/SGM/fico_sgm_runtime.csv',
+            fico_default = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/{scaler}/UnscaledLabel/SGM/fico_sgm_runtime.csv',
                                        index_col=0)
             fico_default.name = f'FICO Xpress SGM Only {scaler} Unscaled Label'
             darter.append(fico_default)
@@ -361,13 +361,13 @@ def visualisiere_sgm(treffen:str, scaler:str, unscaled=True, scaled=True, scip=F
     if scaled:
         darter = []
         if scip:
-            scip_default = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/{scaler}/ScaledLabel/SGM/scip_sgm_runtime.csv',
+            scip_default = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/{scaler}/ScaledLabel/SGM/scip_sgm_runtime.csv',
                                        index_col=0)
             scip_default.name = f'SCIP Default SGM Only {scaler} Scaled Label'
             darter.append(scip_default)
 
         if fico:
-            fico_default = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/{scaler}/ScaledLabel/SGM/fico_sgm_runtime.csv',
+            fico_default = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/{scaler}/ScaledLabel/SGM/fico_sgm_runtime.csv',
                                        index_col=0)
             fico_default.name = f'FICO Xpress SGM Only {scaler} Scaled Label'
             darter.append(fico_default)
@@ -381,14 +381,14 @@ def visualisiere_accuracy(treffen: str, scaler: str, unscaled=True, scaled=True,
         dfs = []
         if scip:
             scip_default = pd.read_csv(
-                f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/{scaler}/UnscaledLabel/Accuracy/scip_acc_df.csv',
+                f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/{scaler}/UnscaledLabel/Accuracy/scip_acc_df.csv',
                 index_col=0)
             scip_default.name = f'SCIP Default Accuracy Only {scaler} Unscaled Label'
             dfs.append(scip_default)
 
         if fico:
             fico_default = pd.read_csv(
-                f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/{scaler}/UnscaledLabel/Accuracy/fico_acc_df.csv',
+                f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/{scaler}/UnscaledLabel/Accuracy/fico_acc_df.csv',
                 index_col=0)
             fico_default.name = f'FICO Xpress Accuracy Only {scaler} Unscaled Label'
             dfs.append(fico_default)
@@ -399,14 +399,14 @@ def visualisiere_accuracy(treffen: str, scaler: str, unscaled=True, scaled=True,
         dfs = []
         if scip:
             scip_default = pd.read_csv(
-                f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/{scaler}/ScaledLabel/Accuracy/scip_acc_df.csv',
+                f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/{scaler}/ScaledLabel/Accuracy/scip_acc_df.csv',
                 index_col=0)
             scip_default.name = f'SCIP Default Accuracy Only {scaler} Scaled Label'
             dfs.append(scip_default)
 
         if fico:
             fico_default = pd.read_csv(
-                f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/{scaler}/ScaledLabel/Accuracy/fico_acc_df.csv',
+                f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/{scaler}/ScaledLabel/Accuracy/fico_acc_df.csv',
                 index_col=0)
             fico_default.name = f'FICO Xpress Accuracy Only {scaler} Scaled Label'
             dfs.append(fico_default)
@@ -416,22 +416,22 @@ def visualisiere_accuracy(treffen: str, scaler: str, unscaled=True, scaled=True,
 def compare_scalers_accuracy(scaled_or_unscaled:str, treffen, scip=True, fico=True):
     if scip:
         scip_quantile = pd.read_csv(
-                    f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/Scip/Quantile/{scaled_or_unscaled}Label/Accuracy/scip_acc_df.csv',
+                    f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/Scip/Quantile/{scaled_or_unscaled}Label/Accuracy/scip_acc_df.csv',
                     index_col=0)
         scip_quantile.name = f'SCIP Default Accuracy Only Quantile {scaled_or_unscaled} Label'
 
         scip_yeo = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/Scip/YeoJohnson/{scaled_or_unscaled}Label/Accuracy/scip_acc_df.csv',
+            f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/Scip/YeoJohnson/{scaled_or_unscaled}Label/Accuracy/scip_acc_df.csv',
             index_col=0)
         scip_yeo.name = f'SCIP Default Accuracy Only YeoJohnson {scaled_or_unscaled} Label'
 
         scip_robust = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/Scip/Robust/{scaled_or_unscaled}Label/Accuracy/scip_acc_df.csv',
+            f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/Scip/Robust/{scaled_or_unscaled}Label/Accuracy/scip_acc_df.csv',
             index_col=0)
         scip_robust.name = f'SCIP Default Accuracy Only Robust {scaled_or_unscaled} Label'
 
         scip_none = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/Scip/NoScaling/{scaled_or_unscaled}Label/Accuracy/scip_acc_df.csv',
+            f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/Scip/NoScaling/{scaled_or_unscaled}Label/Accuracy/scip_acc_df.csv',
             index_col=0)
         scip_none.name = f'SCIP Default Accuracy NoScaling {scaled_or_unscaled} Label'
 
@@ -441,27 +441,27 @@ def compare_scalers_accuracy(scaled_or_unscaled:str, treffen, scip=True, fico=Tr
 
     if fico:
         fico_quantile = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/Fico/Quantile/{scaled_or_unscaled}Label/Accuracy/fico_acc_df.csv',
+            f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/Fico/Quantile/{scaled_or_unscaled}Label/Accuracy/fico_acc_df.csv',
             index_col=0)
         fico_quantile.name = f'FICO Xpress Accuracy Only Quantile {scaled_or_unscaled} Label'
 
         fico_yeo = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/Fico/YeoJohnson/{scaled_or_unscaled}Label/Accuracy/fico_acc_df.csv',
+            f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/Fico/YeoJohnson/{scaled_or_unscaled}Label/Accuracy/fico_acc_df.csv',
             index_col=0)
         fico_yeo.name = f'FICO Xpress Accuracy Only Yeo-Johnson {scaled_or_unscaled} Label'
 
         fico_robust = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/Fico/Robust/{scaled_or_unscaled}Label/Accuracy/fico_acc_df.csv',
+            f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/Fico/Robust/{scaled_or_unscaled}Label/Accuracy/fico_acc_df.csv',
             index_col=0)
         fico_robust.name = f'FICO Xpress Accuracy Only Robust {scaled_or_unscaled} Label'
 
         # fico_minmax = pd.read_csv(
-        #     f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/Fico/MinMax/{scaled_or_unscaled}Label/Accuracy/fico_acc_df.csv',
+        #     f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/Fico/MinMax/{scaled_or_unscaled}Label/Accuracy/fico_acc_df.csv',
         #     index_col=0)
         # fico_minmax.name = f'FICO Xpress Accuracy Only MinMax {scaled_or_unscaled} Label'
 
         fico_none = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/Fico/NoScaling/{scaled_or_unscaled}Label/Accuracy/fico_acc_df.csv',
+            f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/Fico/NoScaling/{scaled_or_unscaled}Label/Accuracy/fico_acc_df.csv',
             index_col=0)
         fico_none.name = f'FICO Xpress Accuracy NoScaling {scaled_or_unscaled} Label'
 
@@ -471,17 +471,17 @@ def compare_scalers_accuracy(scaled_or_unscaled:str, treffen, scip=True, fico=Tr
 # def compare_scalers_sgm(scaled_or_unscaled:str, treffen='TreffenMasOnce', scip=True, fico=True):
 #     if scip:
 #         scip_quantile = pd.read_csv(
-#                     f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/Quantile/{scaled_or_unscaled}Label/SGM/scip_sgm_runtime.csv',
+#                     f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/Quantile/{scaled_or_unscaled}Label/SGM/scip_sgm_runtime.csv',
 #                     index_col=0)
 #         scip_quantile.name = f'SCIP Default SGM Only Quantile {scaled_or_unscaled} Label'
 #
 #         scip_yeo = pd.read_csv(
-#             f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/YeoJohnson/{scaled_or_unscaled}Label/SGM/scip_sgm_runtime.csv',
+#             f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/YeoJohnson/{scaled_or_unscaled}Label/SGM/scip_sgm_runtime.csv',
 #             index_col=0)
 #         scip_yeo.name = f'SCIP Default SGM Only YeoJohnson {scaled_or_unscaled} Label'
 #
 #         scip_robust = pd.read_csv(
-#             f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/Robust/{scaled_or_unscaled}Label/SGM/scip_sgm_runtime.csv',
+#             f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/Robust/{scaled_or_unscaled}Label/SGM/scip_sgm_runtime.csv',
 #             index_col=0)
 #         scip_robust.name = f'SCIP Default SGM Only Robust {scaled_or_unscaled} Label'
 #
@@ -492,17 +492,17 @@ def compare_scalers_accuracy(scaled_or_unscaled:str, treffen, scip=True, fico=Tr
 #
 #     if fico:
 #         fico_quantile = pd.read_csv(
-#             f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/Quantile/{scaled_or_unscaled}Label/SGM/fico_sgm_runtime.csv',
+#             f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/Quantile/{scaled_or_unscaled}Label/SGM/fico_sgm_runtime.csv',
 #             index_col=0)
 #         fico_quantile.name = f'FICO Xpress SGM Only Quantile {scaled_or_unscaled} Label'
 #
 #         fico_yeo = pd.read_csv(
-#             f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/YeoJohnson/{scaled_or_unscaled}Label/SGM/fico_sgm_runtime.csv',
+#             f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/YeoJohnson/{scaled_or_unscaled}Label/SGM/fico_sgm_runtime.csv',
 #             index_col=0)
 #         fico_yeo.name = f'FICO Xpress SGM Only Yeo-Johnson {scaled_or_unscaled} Label'
 #
 #         fico_robust = pd.read_csv(
-#             f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/Robust/{scaled_or_unscaled}Label/SGM/fico_sgm_runtime.csv',
+#             f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/Robust/{scaled_or_unscaled}Label/SGM/fico_sgm_runtime.csv',
 #             index_col=0)
 #         fico_robust.name = f'FICO Xpress SGM Only Robust {scaled_or_unscaled} Label'
 #
@@ -540,12 +540,12 @@ def compare_train_vs_test(scaled_or_unscaled:str, scaler, treffen, scip=True, fi
     # Accuracy
     if scip:
         scip_test = pd.read_csv(
-                    f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/SCIP/{scaler}/{scaled_or_unscaled}Label/Accuracy/scip_acc_df.csv',
+                    f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/SCIP/{scaler}/{scaled_or_unscaled}Label/Accuracy/scip_acc_df.csv',
                     index_col=0)
         scip_test.name = f'SCIP Default Accuracy Testset {scaler} {scaled_or_unscaled} Label'
 
         scip_train = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/SCIP/{scaler}/{scaled_or_unscaled}Label/Accuracy/scip_acc_trainset.csv',
+            f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/SCIP/{scaler}/{scaled_or_unscaled}Label/Accuracy/scip_acc_trainset.csv',
             index_col=0)
         scip_train.name = f'SCIP Default Accuracy Trainingset {scaler} {scaled_or_unscaled} Label'
 
@@ -554,12 +554,12 @@ def compare_train_vs_test(scaled_or_unscaled:str, scaler, treffen, scip=True, fi
 
     if fico:
         fico_test = pd.read_csv(
-                    f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/FICO/{scaler}/{scaled_or_unscaled}Label/Accuracy/fico_acc_df.csv',
+                    f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/FICO/{scaler}/{scaled_or_unscaled}Label/Accuracy/fico_acc_df.csv',
                     index_col=0)
         fico_test.name = f'FICO Xpress Accuracy Testset {scaler} {scaled_or_unscaled} Label'
 
         fico_train = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/FICO/{scaler}/{scaled_or_unscaled}Label/Accuracy/fico_acc_trainset.csv',
+            f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/FICO/{scaler}/{scaled_or_unscaled}Label/Accuracy/fico_acc_trainset.csv',
             index_col=0)
         fico_train.name = f'FICO Xpress Accuracy Trainingset {scaler} {scaled_or_unscaled} Label'
 
@@ -570,12 +570,12 @@ def compare_train_vs_test(scaled_or_unscaled:str, scaler, treffen, scip=True, fi
     # RunTime
     if scip:
         scip_test = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/SCIP/{scaler}/{scaled_or_unscaled}Label/SGM/scip_sgm_runtime.csv',
+            f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/SCIP/{scaler}/{scaled_or_unscaled}Label/SGM/scip_sgm_runtime.csv',
             index_col=0)
         scip_test.name = f'FICO Xpress SGM Testset {scaler} {scaled_or_unscaled} Label'
 
         scip_train = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/SCIP/{scaler}/{scaled_or_unscaled}Label/SGM/scip_sgm_trainset.csv',
+            f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/SCIP/{scaler}/{scaled_or_unscaled}Label/SGM/scip_sgm_trainset.csv',
             index_col=0)
         scip_train.name = f'FICO Xpress SGM Trainset {scaler} {scaled_or_unscaled} Label'
 
@@ -584,12 +584,12 @@ def compare_train_vs_test(scaled_or_unscaled:str, scaler, treffen, scip=True, fi
 
     if fico:
         fico_test = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/FICO/{scaler}/{scaled_or_unscaled}Label/SGM/fico_sgm_runtime.csv',
+            f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/FICO/{scaler}/{scaled_or_unscaled}Label/SGM/fico_sgm_runtime.csv',
             index_col=0)
         fico_test.name = f'FICO Xpress SGM Testset {scaler} {scaled_or_unscaled} Label'
 
         fico_train = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/FICO/{scaler}/{scaled_or_unscaled}Label/SGM/fico_sgm_trainset.csv',
+            f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/FICO/{scaler}/{scaled_or_unscaled}Label/SGM/fico_sgm_trainset.csv',
             index_col=0)
         fico_train.name = f'FICO Xpress SGM Trainset {scaler} {scaled_or_unscaled} Label'
 
@@ -599,12 +599,12 @@ def compare_train_vs_test(scaled_or_unscaled:str, scaler, treffen, scip=True, fi
 def visualize_fico_on_scip(scaled_or_unscaled:str, scaler, treffen):
     # Accuracy
     scip_acc = pd.read_csv(
-        f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/TreffenMasDoce/{scaler}/{scaled_or_unscaled}Label/Accuracy/scip_acc_df.csv',
+        f'/Users/fritz/Downloads/ZIB/Master/October/Runs/TreffenMasDoce/{scaler}/{scaled_or_unscaled}Label/Accuracy/scip_acc_df.csv',
         index_col=0)
     scip_acc.name = f'SCIP Default Accuracy {scaler} {scaled_or_unscaled} Label'
 
     fico_on_scip_acc = pd.read_csv(
-        f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/FICOonSCIP/{scaler}/{scaled_or_unscaled}Label/Accuracy/fico_on_scip_acc_df.csv',
+        f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/FICOonSCIP/{scaler}/{scaled_or_unscaled}Label/Accuracy/fico_on_scip_acc_df.csv',
         index_col=0)
     fico_on_scip_acc.name = f'FICO XPRESS On SCIP Accuracy {scaler} {scaled_or_unscaled} Label'
 
@@ -613,12 +613,12 @@ def visualize_fico_on_scip(scaled_or_unscaled:str, scaler, treffen):
 
     # RunTime
     scip_sgm = pd.read_csv(
-        f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/TreffenMasDoce/{scaler}/{scaled_or_unscaled}Label/SGM/scip_sgm_runtime.csv',
+        f'/Users/fritz/Downloads/ZIB/Master/October/Runs/TreffenMasDoce/{scaler}/{scaled_or_unscaled}Label/SGM/scip_sgm_runtime.csv',
         index_col=0)
     scip_sgm.name = f'SCIP SGM {scaler} {scaled_or_unscaled} Label'
 
     fico_on_scip_sgm = pd.read_csv(
-        f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/FICOonSCIP/{scaler}/{scaled_or_unscaled}Label/SGM/fico_on_scip_sgm_runtime.csv',
+        f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/FICOonSCIP/{scaler}/{scaled_or_unscaled}Label/SGM/fico_on_scip_sgm_runtime.csv',
         index_col=0)
     fico_on_scip_sgm.name = f'FICO Xpress on SCIP SGM {scaler} {scaled_or_unscaled} Label'
 
@@ -680,7 +680,7 @@ def importance(treffen, scaler, scaled_or_unscaled:str, scip=False, fico=False):
         bar_colors = (['turquoise', 'magenta'])
         plt.figure(figsize=(8, 5))
         plt.bar([i for i in range(len(values))], values, color=bar_colors)
-        plt.title(title)
+        #plt.title(title)
         # plt.ylim(min(0.5, min(values) * 0.9), max(values) * 1.1)  # Set y-axis limits for visibility
         # plt.ylim(0, 100)
         plt.xticks(rotation=45, fontsize=6)
@@ -735,7 +735,7 @@ def importance(treffen, scaler, scaled_or_unscaled:str, scip=False, fico=False):
     def plot_importance_score(data_frame, title):
         importance_df = get_importance_score_df(data_frame)
         importance_df.plot(kind='bar', figsize=(10, 6), color=['turquoise', 'magenta'])
-        plt.title(title)
+        #plt.title(title)
         plt.ylabel('Importance Score')
         plt.xlabel('Feature')
         plt.xticks(rotation=270, fontsize=6)
@@ -743,23 +743,23 @@ def importance(treffen, scaler, scaled_or_unscaled:str, scip=False, fico=False):
         plt.close()
 
     if fico:
-        fico_impo = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/Fico/{scaler}/{scaled_or_unscaled}Label/Importance/fico_importance_df.csv',
+        fico_impo = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/Fico/{scaler}/{scaled_or_unscaled}Label/Importance/fico_importance_df.csv',
                                 index_col=0)
         plot_importance_score(fico_impo, f'FICO Importance {scaler} Scaled Label')
         plot_importances_by_regressor(fico_impo, f'FICO Importance {scaler} Scaled Label')
 
     if scip:
         scip_impo = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/Scip/{scaler}/{scaled_or_unscaled}Label/Importance/scip_importance_df.csv',
+            f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/Scip/{scaler}/{scaled_or_unscaled}Label/Importance/scip_importance_df.csv',
             index_col=0)
 
         plot_importance_score(scip_impo, f'SCIP Importance {scaler} Scaled Label')
         plot_importances_by_regressor(scip_impo, f'SCIP Importance {scaler} Scaled Label')
 
     # scip_impo_all_runs_scaled = pd.read_csv(
-    #     '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/TreffenMasDiez/ScaledLabel/Importance/scip_importance_df.csv')
+    #     '/Users/fritz/Downloads/ZIB/Master/October/Runs/TreffenMasDiez/ScaledLabel/Importance/scip_importance_df.csv')
     # scip_impo_all_runs_unscaled = pd.read_csv(
-    #     '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/TreffenMasDiez/UnscaledLabel/Importance/scip_importance_df.csv')
+    #     '/Users/fritz/Downloads/ZIB/Master/October/Runs/TreffenMasDiez/UnscaledLabel/Importance/scip_importance_df.csv')
 
     # plot_importances_by_regressor(scip_impo_all_runs_unscaled, 'Feature Importance Unscaled Label')
     # plot_importances_by_regressor(scip_impo_all_runs_scaled, 'Feature Importance Scaled Label')
@@ -797,7 +797,7 @@ def time_loss_per_prediction(scip_data, prediction_df):
     linear_prediction = prediction_df.iloc[:, 5]
     time_df.loc[:, 'Prediction'] = linear_prediction
     linear_time_df = get_time_loss_per_prediction(time_df)
-    linear_time_df.to_csv('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/BilderTreffen/ScaledLabel/linear_time_loss.csv', index=False)
+    linear_time_df.to_csv('/Users/fritz/Downloads/ZIB/Master/October/Runs/BilderTreffen/ScaledLabel/linear_time_loss.csv', index=False)
 
     forest_prediction = prediction_df.iloc[:, 100:]
 
@@ -816,7 +816,7 @@ for scaler in scaler_names:
 
 
 def plot_fico_sgm():
-    sgm_fico = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Iteration1/FICO/ScaledLabel/SGM/fico_sgm_runtime.csv',
+    sgm_fico = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/October/Runs/Iteration1/FICO/ScaledLabel/SGM/fico_sgm_runtime.csv',
                            index_col=0)
     sgm_fico.name = 'Fico SGM Runtime'
     multiple_sgm_plot(sgm_fico, 'FICO')

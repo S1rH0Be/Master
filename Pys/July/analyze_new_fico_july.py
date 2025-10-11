@@ -38,11 +38,11 @@ def get_avas_of_dict(mean_dict, kind_of_mean):
     # print(min(dict["int"]), max(dict["int"]))
     # print(min(dict["vbs"]), max(dict["vbs"]))
 
-fico_5 = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_5_ready_to_ml.csv')
-fico_6 = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_6_ready_to_ml.csv')
+fico_5 = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Cleaned/9_5_ready_to_ml.csv')
+fico_6 = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Cleaned/9_6_ready_to_ml.csv')
 
-raw_5 = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Raw/9.5_new_fritz_anon.csv')
-raw_6 = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Raw/9.6_new_fritz_anon.csv')
+raw_5 = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Raw/9.5_new_fritz_anon.csv')
+raw_6 = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Raw/9.6_new_fritz_anon.csv')
 
 mixed_time = fico_5['Final solution time (cumulative)'].sum()
 int_time = fico_5['Final solution time (cumulative) Int'].sum()
@@ -124,7 +124,7 @@ def raw_stats(dataset, version):
 def plot(series, color):
     plt.figure(figsize=(8, 5))
     plt.hist(series.dropna(), bins=30, color=color, alpha=0.7, density=False)
-    plt.title('Histogram of values')
+    #plt.title('Histogram of values')
     plt.xlabel('value')
     plt.ylabel('count')
     plt.grid(True, linestyle='--', alpha=0.4)
@@ -139,12 +139,12 @@ def create_time_df(dataset, version):
                  "Cmp Final solution time (cumulative)"]
 
     time_df = new_df[time_cols]
-    time_df.to_csv(f"/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/time_{version}.csv", index=False)
+    time_df.to_csv(f"/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Cleaned/time_{version}.csv", index=False)
     print(time_df["Virtual Best"].min())
 
 
 
-sumtime_5 = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FICO5/NoOutlier/Logged/ScaledLabel/SGM/sumtime.csv")
+sumtime_5 = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FICO5/NoOutlier/Logged/ScaledLabel/SGM/sumtime.csv")
 pos = 0
 neg = 0
 for index, row in sumtime_5.iterrows():
@@ -191,8 +191,8 @@ def label_scaling(label):
     return y_log
 
 
-prediction = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/FICO6/BestCombi/NEWPRED/NoOutlier/Logged/ScaledLabel/Prediction/fico_prediction_df.csv")
-data = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_6_ready_to_ml.csv")
+prediction = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/FICO6/BestCombi/NEWPRED/NoOutlier/Logged/ScaledLabel/Prediction/fico_prediction_df.csv")
+data = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Cleaned/9_6_ready_to_ml.csv")
 hundred_seeds = [2207168494, 288314836, 1280346069, 1968903417, 1417846724, 2942245439, 2177268096, 571870743,
                      1396620602, 3691808733, 4033267948, 3898118442, 24464804, 882010483, 2324915710, 316013333,
                      3516440788, 535561664, 1398432260, 572356937, 398674085, 4189070509, 429011752, 2112194978,

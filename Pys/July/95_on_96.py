@@ -15,7 +15,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import QuantileTransformer, PowerTransformer
 
 import logging
-
+from stats_per_combi_july import ranking_feature_importance, train_vs_test_acuracy, train_vs_test_sgm
 def setup_directory(new_directory):
     # Setup directory
     os.makedirs(os.path.join(f'{new_directory}'), exist_ok=True)
@@ -37,7 +37,7 @@ def shifted_geometric_mean(values, shift):
     if values.dtype == 'object':
         # Attempt to convert to float
         values = values.astype(float)
-
+    shift=10
     # Shift the values by the constant
     # Check if shift is large enough
     if shift <= -values.min():
@@ -140,7 +140,7 @@ def print_sgm(sgm_df, data_set, number_features):
             # Create the plot
             plt.figure(figsize=(8, 5))
             plt.bar(labels, values, color=bar_colors)
-            plt.title(title)
+            #plt.title(title)
             if data_set_name.lower() == 'fico':
                 plt.ylim(0.5, 1.35)  # Set y-axis limits for visibility
             else:
@@ -182,6 +182,7 @@ def get_accuracy(prediction, actual, mid_threshold, extreme_threshold):
 
         # Calculate percentage of correctly predicted signs
         correct_signs = np.sum(np.sign(y_test_nonzero) == np.sign(y_pred_nonzero))
+        print(correct_signs)
         percent_correct_signs = correct_signs / len(y_test_nonzero) * 100 if len(y_test_nonzero) > 0 else np.nan
         return percent_correct_signs
 
@@ -202,7 +203,7 @@ def get_accuracy(prediction, actual, mid_threshold, extreme_threshold):
     overall_acc = overall_accuracy()
     mid_acc, number_mid_instances = threshold_accuracy(mid_threshold)
     extreme_acc, number_extreme_instances = threshold_accuracy(extreme_threshold)
-
+    print('Accuracy:',  overall_acc, mid_acc, number_mid_instances, extreme_acc, number_extreme_instances)
     return overall_acc, mid_acc, number_mid_instances, extreme_acc, number_extreme_instances
 # TODO Delete get_sgm_comparison if it runs without it
 # def get_sgm_comparison(y_pred, y_test):
@@ -222,10 +223,10 @@ def get_predicted_run_time_sgm(y_pred, data, shift):
         else:
             predicted_time.loc[i] = data.loc[i, 'Final solution time (cumulative) Int']
     try:
-        sgm_predicted = shifted_geometric_mean(predicted_time, shift)
-        sgm_mixed = shifted_geometric_mean(data['Final solution time (cumulative)'].loc[indices], shift)
-        sgm_int = shifted_geometric_mean(data['Final solution time (cumulative) Int'].loc[indices], shift)
-        sgm_vbs = shifted_geometric_mean(data['Virtual Best'].loc[indices], shift)
+        sgm_predicted = shifted_geometric_mean(predicted_time, 10)
+        sgm_mixed = shifted_geometric_mean(data['Final solution time (cumulative)'].loc[indices], 10)
+        sgm_int = shifted_geometric_mean(data['Final solution time (cumulative) Int'].loc[indices], 10)
+        sgm_vbs = shifted_geometric_mean(data['Virtual Best'].loc[indices], 10)
 
     except ValueError as e:
         logging.error(f"SGM failed due to shift: {e}")
@@ -481,7 +482,7 @@ def regression(data_train, data_test, data_set_name, label_train, label_test, fe
                     # get accuracy measure for the model
                     accuracy_dictionary[model_name+'_'+imputation+'_'+str(scaler)+'_'+str(seed)] = get_accuracy(y_pred_relevant, y_test_relevant, mid_threshold=mid_threshold, extreme_threshold=extreme_threshold)
                     # add sgm of run time for this setting to run_time_df
-                    run_time_dictionary[model_name+'_'+imputation+'_'+str(scaler)+'_'+str(seed)] = get_predicted_run_time_sgm(y_pred_relevant, data_test, shift=50)
+                    run_time_dictionary[model_name+'_'+imputation+'_'+str(scaler)+'_'+str(seed)] = get_predicted_run_time_sgm(y_pred_relevant, data_test, shift=10)
                     sum_time_dictionary[model_name+'_'+imputation+'_'+str(scaler)+'_'+str(seed)] = get_predicted_sum_time(y_pred_relevant, data_test)
                     # return actual prediction
                     prediction_dictionary[model_name+'_'+imputation+'_'+str(scaler)+'_'+str(seed)] = y_pred_relevant.to_list()
@@ -499,7 +500,7 @@ def regression(data_train, data_test, data_set_name, label_train, label_test, fe
                         y_pred_train, y_test_train, mid_threshold, extreme_threshold)
                     # add sgm of run time for this setting to run_time_df
                     run_time_dictionary_train[model_name + '_' + imputation + '_' + str(scaler) + '_' + str(
-                        seed)] = get_predicted_run_time_sgm(y_pred_train, data_train, shift=data_train["Final solution time (cumulative)"].mean())
+                        seed)] = get_predicted_run_time_sgm(y_pred_train, data_train, shift=10)
                     prediction_dictionary_train[
                         model_name + '_' + imputation + '_' + str(scaler) + '_' + str(seed)] = y_pred_train.to_list()
 
@@ -553,6 +554,8 @@ def run_regression_pipeline(data_name, trainset_data, testset_data, trainset_fea
                             hundred_seeds:list, feature_subset:list, label_scale=False, outlier_threshold=None,remove_outlier=False):
     train_data = pd.read_csv(trainset_data)
     test_data = pd.read_csv(testset_data)
+    print("Train Features", trainset_feat)
+    print("Test Features", testset_feat)
     train_features = pd.read_csv(trainset_feat)
     test_features = pd.read_csv(testset_feat)
 
@@ -621,7 +624,7 @@ def run_regression_pipeline(data_name, trainset_data, testset_data, trainset_fea
 
     # Save results
     base_path = f'{treffplusx}'
-
+    print('BASE PATH', base_path)
     create_directory(f'{treffplusx}')
     # TestSet
     acc_df.to_csv(f'{base_path}/Accuracy/{prefix}_acc_df.csv', index=True)
@@ -652,7 +655,7 @@ def main(path_to_trainset_data:str, path_to_testset_data:str, path_to_trainset_f
     if models is None:
         models = {
             'LinearRegression': LinearRegression(),
-            'RandomForest': RandomForestRegressor(n_estimators=estimatoren, max_depth=max_depth,
+            'RandomForest': RandomForestRegressor(n_estimators=estimatoren, max_depth=5,
                                                   max_features=max_feature_number, random_state=0, n_jobs=-1)
         }
 
@@ -700,33 +703,120 @@ def get_number_of_runs(path_to_runs):
     folders = [f for f in os.listdir(path_to_runs) if os.path.isdir(os.path.join(path_to_runs, f))]
     return len(folders)
 
-base_data_directory = '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases'
+base_data_directory = '/Users/fritz/Downloads/ZIB/Master/October/Bases'
 
-fico_data_5 = '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_5_ready_to_ml.csv'
-fico_feats_5 = '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_5_ready_to_ml_features.csv'
+fico_data_5 = '/Users/fritz/Downloads/ZIB/Master/Testy/Bases/FICO/Cleaned/9_5_ready_to_ml.csv'
+fico_feats_5 = '/Users/fritz/Downloads/ZIB/Master/Testy/Bases/FICO/Cleaned/9_5_ready_to_ml_features.csv'
 
-fico_data_6 = '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_6_ready_to_ml.csv'
-fico_feats_6 = '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_6_ready_to_ml_features.csv'
+fico_data_6 = '/Users/fritz/Downloads/ZIB/Master/Testy/Bases/FICO/Cleaned/9_6_ready_to_ml.csv'
+fico_feats_6 = '/Users/fritz/Downloads/ZIB/Master/Testy/Bases/FICO/Cleaned/9_6_ready_to_ml_features.csv'
 
-fiveonsix_5_17 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/5on6/depth5feats17/NoOutlier/Logged'
-sixonfive_5_17 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/6on5/depth5feats17/NoOutlier/Logged'
-fiveonsix_feat_reduction_5_17 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/5on6/depth5feats17'
-sixonfive_feat_reduction_5_17 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/6on5/depth5feats17'
+scip_data_10 = '/Users/fritz/Downloads/ZIB/Master/Octesty/Bases/SCIP/Cleaned/scip_data_for_ml.csv'
+scip_feats_10 = '/Users/fritz/Downloads/ZIB/Master/Octesty/Bases/SCIP/Cleaned/scip_featurs_for_ml.csv'
+scip_linear = ['EqCons', '#IntViols']
+scip_forest = ['AvgCoeffSpreadConvCuts', 'AvgRelBndChngSBLPInt', 'NonlinCons','%QuadrNodesDAG']
 
-fiveonsix_5_2 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/5on6/depth5feats2/NoOutlier/Logged'
-sixonfive_5_2 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/6on5/depth5feats2/NoOutlier/Logged'
-fiveonsix_feat_reduction_5_2 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/5on6/depth5feats2'
-sixonfive_feat_reduction_5_2 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/6on5/depth5feats2'
+# scip train 6 test linear
+# main(path_to_trainset_data=scip_data_10, path_to_testset_data=fico_data_6, path_to_trainset_feat=scip_feats_10,
+#      path_to_testset_feat=fico_feats_6, scip_or_fico='fico', treffplusx='/Users/fritz/Downloads/ZIB/Master/Octesty/TrainSCIPTest96/Top2LinSCIP',
+#      feature_subset=scip_linear)
+# train_vs_test_acuracy('/Users/fritz/Downloads/ZIB/Master/Octesty/TrainSCIPTest96/Top2LinSCIP/ScaledLabel',version='TrainSCIPTest6Linear',fico_or_scip='fico',
+#                       save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/TrainSCIPTest96/")
+# train_vs_test_sgm('/Users/fritz/Downloads/ZIB/Master/Octesty/TrainSCIPTest96/Top2LinSCIP/ScaledLabel',version='TrainSCIPTest6Linear',fico_or_scip='fico',
+#                     save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/TrainSCIPTest96/")
+# # scip train 96 test forest
+# main(path_to_trainset_data=scip_data_10, path_to_testset_data=fico_data_6, path_to_trainset_feat=scip_feats_10,
+#      path_to_testset_feat=fico_feats_6, scip_or_fico='fico', treffplusx='/Users/fritz/Downloads/ZIB/Master/Octesty/TrainSCIPTest96/Top4ForSCIP',
+#      feature_subset=scip_forest)
+# train_vs_test_acuracy('/Users/fritz/Downloads/ZIB/Master/Octesty/TrainSCIPTest96/Top4ForSCIP/ScaledLabel',version='TrainSCIPTest6Forest',fico_or_scip='fico',
+#                       save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/TrainSCIPTest96/")
+# train_vs_test_sgm('/Users/fritz/Downloads/ZIB/Master/Octesty/TrainSCIPTest96/Top4ForSCIP/ScaledLabel',version='TrainSCIPTest6Forest',fico_or_scip='fico',
+#                     save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/TrainSCIPTest96/")
 
-fiveonsix_10_2 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/5on6/depth10feats2/NoOutlier/Logged'
-sixonfive_10_2 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/6on5/depth10feats2/NoOutlier/Logged'
-fiveonsix_feat_reduction_10_2 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/5on6/depth10feats2'
-sixonfive_feat_reduction_10_2 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/6on5/depth10feats2'
+# 96 trained scip tested linear
+# main(path_to_trainset_data=scip_data_10, path_to_testset_data=fico_data_6, path_to_trainset_feat=scip_feats_10,
+#      path_to_testset_feat=fico_feats_6, scip_or_fico='fico', treffplusx='/Users/fritz/Downloads/ZIB/Master/Octesty/Train96TestSCIP/Top4Lin96',
+#      feature_subset=["SpatBranchEntFixed", 'IntVarsPostPre', 'NonlinCons', '%VarsDAGInt'])
+# train_vs_test_acuracy('/Users/fritz/Downloads/ZIB/Master/Octesty/Train96TestSCIP/Top4Lin96/ScaledLabel',version='Train96TestSCIPLinear',fico_or_scip='fico',
+#                       save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train96TestSCIP/")
+# train_vs_test_sgm('/Users/fritz/Downloads/ZIB/Master/Octesty/Train96TestSCIP/Top4Lin96/ScaledLabel',version='Train96TestSCIPLinear',fico_or_scip='fico',
+#                     save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train96TestSCIP/")
+#
+# # 96 trained scip tested forest
+# main(path_to_trainset_data=scip_data_10, path_to_testset_data=fico_data_6, path_to_trainset_feat=scip_feats_10,
+#      path_to_testset_feat=fico_feats_6, scip_or_fico='fico', treffplusx='/Users/fritz/Downloads/ZIB/Master/Octesty/Train96TestSCIP/Top4For96',
+#      feature_subset=['AvgCoeffSpreadConvCuts', 'SpatBranchEntFixed', '#NonlinViols', 'EqCons'])
+# train_vs_test_acuracy('/Users/fritz/Downloads/ZIB/Master/Octesty/Train96TestSCIP/Top4For96/ScaledLabel',version='Train96TestSCIPForest',fico_or_scip='fico',
+#                       save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train96TestSCIP/")
+# train_vs_test_sgm('/Users/fritz/Downloads/ZIB/Master/Octesty/Train96TestSCIP/Top4For96/ScaledLabel',version='Train96TestSCIPForest',fico_or_scip='fico',
+#                     save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train96TestSCIP/")
 
-fiveonsix_10_17 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/5on6/depth10feats17/NoOutlier/Logged'
-sixonfive_10_17 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/6on5/depth10feats17/NoOutlier/Logged'
-fiveonsix_feat_reduction_10_17 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/5on6/depth10feats17'
-sixonfive_feat_reduction_10_17 = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/6on5/depth10feats17'
+
+# #train 5 test 6 Linear
+# main(path_to_trainset_data=fico_data_5, path_to_testset_data=fico_data_6, path_to_trainset_feat=fico_feats_5,
+#      path_to_testset_feat=fico_feats_6, scip_or_fico='fico', treffplusx='/Users/fritz/Downloads/ZIB/Master/Octesty/Train5Test6/Top3LinFICO5',
+#      feature_subset=['IntVarsPostPre', 'AvgWorkSBLPSpat','AvgRelBndChngSBLPSpat'])
+train_vs_test_acuracy('/Users/fritz/Downloads/ZIB/Master/Octesty/Train5Test6/Top3LinFICO5/ScaledLabel',version='Train5Test6Linear',fico_or_scip='fico',
+                      save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train5Test6/")
+train_vs_test_sgm('/Users/fritz/Downloads/ZIB/Master/Octesty/Train5Test6/Top3LinFICO5/ScaledLabel',version='Train5Test6Linear',fico_or_scip='fico',
+                    save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train5Test6/")
+# #train 5 test 6 Forest
+# main(path_to_trainset_data=fico_data_5, path_to_testset_data=fico_data_6, path_to_trainset_feat=fico_feats_5,
+#      path_to_testset_feat=fico_feats_6, scip_or_fico='fico', treffplusx='/Users/fritz/Downloads/ZIB/Master/Octesty/Train5Test6/Top3ForFICO5',
+#      feature_subset=['SpatBranchEntFixed', 'AvgCoeffSpreadConvCuts', '%VarsDAG'])
+#
+train_vs_test_acuracy('/Users/fritz/Downloads/ZIB/Master/Octesty/Train5Test6/Top3ForFICO5/ScaledLabel',version='Train5Test6Forest',fico_or_scip='fico',
+                      save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train5Test6/")
+train_vs_test_sgm('/Users/fritz/Downloads/ZIB/Master/Octesty/Train5Test6/Top3ForFICO5/ScaledLabel',version='Train5Test6Forest',fico_or_scip='fico',
+                    save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train5Test6/")
+# #train 6 test 5 Linear
+# main(path_to_trainset_data=fico_data_6, path_to_testset_data=fico_data_5, path_to_trainset_feat=fico_feats_6,
+#      path_to_testset_feat=fico_feats_5, scip_or_fico='fico', treffplusx='/Users/fritz/Downloads/ZIB/Master/Octesty/Train6Test5/Top4LinFICO6',
+#      feature_subset=["AvgRelBndChngSBLPSpat", 'IntVarsPostPre', 'NonlinCons', '%VarsDAGInt'])
+train_vs_test_acuracy('/Users/fritz/Downloads/ZIB/Master/Octesty/Train6Test5/Top4LinFICO6/ScaledLabel',version='Train6Test5Linear',fico_or_scip='fico',
+                      save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train6Test5/")
+train_vs_test_sgm('/Users/fritz/Downloads/ZIB/Master/Octesty/Train6Test5/Top4LinFICO6/ScaledLabel',version='Train6Test5Linear',fico_or_scip='fico',
+                    save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train6Test5/")
+# # train 6 test 5
+# main(path_to_trainset_data=fico_data_6, path_to_testset_data=fico_data_5, path_to_trainset_feat=fico_feats_6,
+#      path_to_testset_feat=fico_feats_5, scip_or_fico='fico', treffplusx='/Users/fritz/Downloads/ZIB/Master/Octesty/Train6Test5/Top4ForFICO6',
+#      feature_subset=['AvgCoeffSpreadConvCuts', 'AvgRelBndChngSBLPSpat', '#NonlinViols', 'EqCons'])
+#
+train_vs_test_acuracy('/Users/fritz/Downloads/ZIB/Master/Octesty/Train6Test5/Top4ForFICO6/ScaledLabel',version='Train6Test5Forest',fico_or_scip='fico',
+                      save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train6Test5/")
+train_vs_test_sgm('/Users/fritz/Downloads/ZIB/Master/Octesty/Train6Test5/Top4ForFICO6/ScaledLabel',version='Train6Test5Forest',fico_or_scip='fico',
+                    save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train6Test5/")
+
+
+#
+
+
+
+
+
+
+
+
+
+fiveonsix_5_17 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/5on6/depth5feats17/NoOutlier/Logged'
+sixonfive_5_17 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/6on5/depth5feats17/NoOutlier/Logged'
+fiveonsix_feat_reduction_5_17 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/5on6/depth5feats17'
+sixonfive_feat_reduction_5_17 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/6on5/depth5feats17'
+
+fiveonsix_5_2 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/5on6/depth5feats2/NoOutlier/Logged'
+sixonfive_5_2 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/6on5/depth5feats2/NoOutlier/Logged'
+fiveonsix_feat_reduction_5_2 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/5on6/depth5feats2'
+sixonfive_feat_reduction_5_2 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/6on5/depth5feats2'
+
+fiveonsix_10_2 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/5on6/depth10feats2/NoOutlier/Logged'
+sixonfive_10_2 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/6on5/depth10feats2/NoOutlier/Logged'
+fiveonsix_feat_reduction_10_2 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/5on6/depth10feats2'
+sixonfive_feat_reduction_10_2 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/6on5/depth10feats2'
+
+fiveonsix_10_17 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/5on6/depth10feats17/NoOutlier/Logged'
+sixonfive_10_17 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/6on5/depth10feats17/NoOutlier/Logged'
+fiveonsix_feat_reduction_10_17 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/5on6/depth10feats17'
+sixonfive_feat_reduction_10_17 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/6on5/depth10feats17'
 
 
 def feat_reduction_hyperparameter_tuning():
@@ -788,7 +878,7 @@ def plot_hyperparameter_tuning(regress=True, acc=True, sgm=False):
                 print(depth, estimator, feat_num)
                 maximum_depth = depth
 
-                sixonfive = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/6on5/BesteCombi/6on5_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/'
+                sixonfive = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/6on5/BesteCombi/6on5_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/'
                 if regress:
                     main(path_to_trainset_data=fico_data_5, path_to_testset_data=fico_data_6,
                          path_to_trainset_feat=fico_feats_5, path_to_testset_feat=fico_feats_6,
@@ -797,11 +887,11 @@ def plot_hyperparameter_tuning(regress=True, acc=True, sgm=False):
 
                 print("PLOTTING")
                 if acc:
-                    stats_per_combi_july.train_vs_test_acuracy(f"/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/6on5/BesteCombi/6on5_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/ScaledLabel",
+                    stats_per_combi_july.train_vs_test_acuracy(f"/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/6on5/BesteCombi/6on5_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/ScaledLabel",
                                           version=f"Trainingset: 9.5, Testset 9.6, Depth: {depth}, #Feats: {feat_num}", fico_or_scip='fico',
                                           save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/96auf95/96auf95_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/Overfitting")
                 if sgm:
-                    stats_per_combi_july.train_vs_test_sgm(f"/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/6on5/BesteCombi/6on5_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/ScaledLabel",
+                    stats_per_combi_july.train_vs_test_sgm(f"/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/6on5/BesteCombi/6on5_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/ScaledLabel",
                                           version=f"Trainingset: 9.5, Testset 9.6, Depth: {depth}, #Feats: {feat_num}", fico_or_scip='fico',
                                           save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/96auf95/96auf95_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/Overfitting")
     print("------5on6------")
@@ -811,7 +901,7 @@ def plot_hyperparameter_tuning(regress=True, acc=True, sgm=False):
                 print(depth, estimator, feat_num)
                 maximum_depth = depth
 
-                fiveonsix = f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/5on6/BesteCombi/5on6_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/'
+                fiveonsix = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/5on6/BesteCombi/5on6_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/'
                 if regress:
                     main(path_to_trainset_data=fico_data_6, path_to_testset_data=fico_data_5,
                          path_to_trainset_feat=fico_feats_6, path_to_testset_feat=fico_feats_5,
@@ -820,13 +910,13 @@ def plot_hyperparameter_tuning(regress=True, acc=True, sgm=False):
                 print("PLOTTING")
                 if acc:
                     stats_per_combi_july.train_vs_test_acuracy(
-                        f"/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/5on6/BesteCombi/5on6_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/ScaledLabel",
+                        f"/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/5on6/BesteCombi/5on6_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/ScaledLabel",
                         version=f"Trainingset: 9.6, Testset 9.5, Depth: {depth}, #Feats: {feat_num}", fico_or_scip='fico',
                         save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/95auf96/95auf96_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/Overfitting")
                 if sgm:
                     stats_per_combi_july.train_vs_test_sgm(
-                        f"/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/5on6/BesteCombi/5on6_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/ScaledLabel",
+                        f"/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/5on6/BesteCombi/5on6_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/ScaledLabel",
                         version=f"Trainingset: 9.6, Testset 9.5, Depth: {depth}, #Feats: {feat_num}", fico_or_scip='fico',
                         save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/95auf96/95auf96_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/Overfitting")
 
-plot_hyperparameter_tuning(regress=True, acc=True, sgm=True)
+# plot_hyperparameter_tuning(regress=True, acc=True, sgm=True)

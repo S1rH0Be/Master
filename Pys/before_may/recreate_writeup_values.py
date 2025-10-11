@@ -89,7 +89,7 @@ def visualizer(data: pd.DataFrame, title: str, y_lims: List[float], x_ticks: Lis
         plt.bar(names, values)
     else:
         plt.bar(names, values, color=colors)
-    plt.title(title, fontsize=title_size)
+    #plt.title(title, fontsize=title_size)
     plt.ylim(y_lims[0], y_lims[1])  # Set y-axis limits for visibility
     plt.xticks(ticks=names, labels=x_tick)
 
@@ -349,7 +349,7 @@ def main():
         # # Add labels and title
         # plt.xticks(ticks=range(len(values)), labels=acc_df.index, rotation=45)
         # plt.ylabel(column)
-        # plt.title(f"Bar Plot for {column}")
+        # #plt.title(f"Bar Plot for {column}")
         #
         # # Display the plot
         # plt.tight_layout()
@@ -368,7 +368,7 @@ def main():
         plt.bar(columns, values, color=colors)  # Bar plot with conditional coloring
 
         # Add plot labels and title
-        plt.title(f"Median Yeo-John")  # Title with row index
+        #plt.title(f"Median Yeo-John")  # Title with row index
         plt.ylabel('Value')  # Label for y-axis
         # plt.xlabel('Columns')  # Label for x-axis
         # plt.xticks(rotation=45)  # Rotate x-axis labels for better readability

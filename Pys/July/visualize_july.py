@@ -17,7 +17,7 @@ Ich inputte TreffenMasVeinte, dann sucht es sich alles von dort aus wie accuracy
 1. Add functions to find best imputer/scaling kombi
 '''
 
-global_path = '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final'
+global_path = '/Users/fritz/Downloads/ZIB/Master/October/Runs/Final'
 
 def setup_directory(new_directory):
     # Setup directory
@@ -69,12 +69,12 @@ def shifted_geometric_mean(values, shift):
     if values.dtype == 'object':
         # Attempt to convert to float
         values = values.astype(float)
-
+    shift = 10 #TODO WATCH OUZT FOR IT SGM IS NOW ALWAYS 10??
     # Shift the values by the constant
     # Check if shift is large enough
+
     if shift <= -values.min():
         raise ValueError(f"Shift too small. Minimum value is {values.min()}, so shift must be > {-values.min()}")
-
     shifted_values = values + shift
 
     shifted_values_log = np.log(shifted_values)  # Step 1: Log of each element in shifted_values
@@ -140,7 +140,7 @@ def sgm(data_set, scaled_label=True):
         # Create the plot
         plt.figure(figsize=(8, 5))
         plt.bar(labels, values, color=bar_colors)
-        plt.title(title)
+        #plt.title(title)
         if data_set.lower() == 'fico':
             plt.ylim(0.5, 1.35)  # Set y-axis limits for visibility
         else:
@@ -155,7 +155,7 @@ def sgm(data_set, scaled_label=True):
 
     def call_sgm_visualization(scaledlabel, version):
         if scaledlabel:
-            dataframes = get_files(f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/FICO{version}/BestCombi/depth5outlier350/NoOutlier/Logged/ScaledLabel/SGM/', index_col=True)
+            dataframes = get_files(f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/FICO{version}/BestCombi/depth5outlier350/NoOutlier/Logged/ScaledLabel/SGM/', index_col=True)
         else:
             dataframes = get_files(global_path + '/UnscaledLabel/SGM/', index_col=True)
 
@@ -225,7 +225,7 @@ def show_shares(scip_default_original_data=None, fico_original_data=None, datase
             plt.text(bar.get_x() + bar.get_width() / 2., height,
                      f'{height:.2f}',
                      ha='center', va='bottom')
-        plt.title(title)
+        #plt.title(title)
         plt.ylim(0, 105)  # Set y-axis limits for visibility
         plt.xticks(rotation=45, fontsize=6)
         # Create custom legend entries with value annotations
@@ -302,7 +302,7 @@ def accuracy_visualize(scaled_label=True, title_add_on='', plot=True):
             bar_colors = (['turquoise', 'turquoise', 'magenta', 'magenta'])
             plt.figure(figsize=(8, 5))
             plt.bar(['LinAcc', 'LinExAcc', 'ForAcc', 'ForExAcc'], values, color=bar_colors)
-            plt.title(title)
+            #plt.title(title)
             plt.ylim(0, 105)  # Set y-axis limits for visibility
             plt.xticks(rotation=45, fontsize=6)
             # Create custom legend entries with value annotations
@@ -348,7 +348,7 @@ def importance(treffen):
         bar_colors = (['turquoise', 'magenta'])
         plt.figure(figsize=(8, 5))
         plt.bar([i for i in range(len(values))], values, color=bar_colors)
-        plt.title(title)
+        #plt.title(title)
         # plt.ylim(min(0.5, min(values) * 0.9), max(values) * 1.1)  # Set y-axis limits for visibility
         # plt.ylim(0, 100)
         plt.xticks(rotation=45, fontsize=6)
@@ -418,7 +418,7 @@ def importance(treffen):
         importance_df = get_importance_score_df(data_frame, title)
 
         importance_df.plot(kind='bar', figsize=(10, 6), color=['turquoise', 'magenta'])
-        plt.title(title)
+        #plt.title(title)
         plt.ylabel('Importance Score')
         plt.xlabel('Feature')
         plt.xticks(rotation=270, fontsize=6)
@@ -465,7 +465,7 @@ def time_save(scip_default_original_data, fico_original_data):
         # Create the plot
         plt.figure(figsize=(8, 5))
         plt.bar(['SCIP Default', 'SCIP No Pseudocosts', 'FICO Xpress'], values, color=bar_colors)
-        plt.title(title)
+        #plt.title(title)
         plt.ylim(0, max(values)*1.1)  # Set y-axis limits for visibility
         plt.xticks(rotation=45, fontsize=6)
         # Create custom legend entries with value annotations
@@ -495,10 +495,10 @@ def plot_label(scip_default_original_data, fico_9_5, fico_9_6, kick_outlier=Fals
         # plt.scatter([0] * len(label[0]), label[0], color='white', edgecolor='k', alpha=1)
         # plt.axhline(y=0, color='black', linestyle='-', alpha=0.2)  # Reference line at y=0
         plt.hist(label[0], color='red', alpha=1, bins=100)
-        if scaling:
-            plt.title(f"Scaled Label {label[1]}")
-        else:
-            plt.title(f"Unscaled Label {label[1]}")
+        # if scaling:
+            #plt.title(f"Scaled Label {label[1]}")
+        # else:
+            #plt.title(f"Unscaled Label {label[1]}")
         plt.xlabel("Pred values")
         plt.ylabel("Actual Values")
         plt.show()
@@ -571,8 +571,8 @@ def feature_reduction_graph(base_set:str, feature_ranking:str, data_set:str, sav
         plt.plot(lin_sgm, color=colors[4])
         plt.plot(for_sgm, color=colors[5])
         plt.plot(for_sgm)
-        plt.title(label=f'{data_set.upper()} Combined {base_set}')
-        plt.axvline(x=15, color='red', linestyle='--', label='Threshold')
+        #plt.title(label=f'{data_set.upper()} Combined {base_set}')
+        #plt.axvline(x=15, color='red', linestyle='--', label='Threshold')
         plt.ylim(35, 115)
         plt.legend(['MidLabel Accuracy Linear', 'LargeLabel Accuracy Linear', 'MidLabel Accuracy Random Forest',
                     'LargeLabel Accuracy Random Forest', 'SGM Linear', 'SGM Random Forest'])
@@ -580,49 +580,66 @@ def feature_reduction_graph(base_set:str, feature_ranking:str, data_set:str, sav
         plt.show()
     elif feature_ranking.lower() == 'linear':
         # Linear
-        plt.figure(figsize=(8, 6))
-        plt.plot(lin_accuracy.iloc[:,0], color='green')
-        plt.plot(lin_accuracy.iloc[:,1], color='purple')
-        plt.plot(lin_accuracy.iloc[:,2], color='blue')
-        plt.plot(lin_sgm, color='red')
-        plt.plot(lin_vbs, color='lightcoral')
-        plt.title(label=f'{title_add_on}')
-        plt.xlabel('Number of Features')
+
         if data_set == 'scip':
+            plt.figure(figsize=(8, 6))
+            plt.plot(lin_accuracy.iloc[:, 0], color='green')
+            plt.plot(lin_accuracy.iloc[:, 1], color='purple')
+            plt.plot(lin_sgm, color='red')
+            plt.plot(lin_vbs, color='lightcoral')
+            #plt.title(label=f'{title_add_on}')
+            plt.xlabel('Number of Features')
             plt.legend(['Accuracy', 'MidLabel Accuracy', 'Predicted Run Time', 'Virtual Best Run Time'])
-            plt.axvline(x=axvline_position, color='red', linestyle='--', label='Threshold')
+            #plt.axvline(x=axvline_position, color='red', linestyle='--', label='Threshold')
         else:
+            plt.figure(figsize=(8, 6))
+            plt.plot(lin_accuracy.iloc[:, 0], color='green')
+            plt.plot(lin_accuracy.iloc[:, 1], color='purple')
+            plt.plot(lin_accuracy.iloc[:, 2], color='blue')
+            plt.plot(lin_sgm, color='red')
+            plt.plot(lin_vbs, color='lightcoral')
+            #plt.title(label=f'{title_add_on}')
+            plt.xlabel('Number of Features')
             plt.legend(['Accuracy', 'MidLabel Accuracy', 'LargeLabel Accuracy', 'Predicted Run Time', 'Virtual Best Run Time'])
-            plt.axvline(x=axvline_position, color='red', linestyle='--', label='Threshold')
+            #plt.axvline(x=axvline_position, color='red', linestyle='--', label='Threshold')
         plt.xticks(ticks=range(len(lin_accuracy)), labels=x_labels)
-        plt.ylim(35, 115)
+        plt.ylim(45, 115)
         safe = title_add_on.replace(' ', '_')
         filename = f"{fico_or_scip}_{safe}_feat_reduction_linear.png"
+        print(f"{saving_directory}/{filename}")
         plt.savefig(f"{saving_directory}/{filename}")
         plt.show()
 
     elif feature_ranking.lower() == 'forest':
         # Forest
-        plt.figure(figsize=(8, 6))
-        plt.plot(for_accuracy.iloc[:, 0], color='green')
-        plt.plot(for_accuracy.iloc[:, 1], color='purple')
-        plt.plot(for_accuracy.iloc[:, 2], color='blue')
-        plt.plot(for_sgm, color='red')
-        plt.plot(for_vbs, color='lightcoral')
-        plt.title(label=f'{title_add_on}')
-        plt.xlabel('Number of Features')
+
         if data_set == 'scip':
+            plt.figure(figsize=(8, 6))
+            plt.plot(for_accuracy.iloc[:, 0], color='green')
+            plt.plot(for_accuracy.iloc[:, 1], color='purple')
+            plt.plot(for_sgm, color='red')
+            plt.plot(for_vbs, color='lightcoral')
+            #plt.title(label=f'{title_add_on}')
+            plt.xlabel('Number of Features')
             plt.legend(['Accuracy', 'MidLabel Accuracy', 'Predicted Run Time', 'Virtual Best Run Time'])
-            plt.axvline(x=axvline_position, color='red', linestyle='--', label='Threshold')
+            #plt.axvline(x=axvline_position, color='red', linestyle='--', label='Threshold')
         else:
+            plt.figure(figsize=(8, 6))
+            plt.plot(for_accuracy.iloc[:, 0], color='green')
+            plt.plot(for_accuracy.iloc[:, 1], color='purple')
+            plt.plot(for_accuracy.iloc[:, 2], color='blue')
+            plt.plot(for_sgm, color='red')
+            plt.plot(for_vbs, color='lightcoral')
+            #plt.title(label=f'{title_add_on}')
+            plt.xlabel('Number of Features')
             plt.legend(['Accuracy', 'MidLabel Accuracy', 'LargeLabel Accuracy', 'Predicted Run Time', 'Virtual Best Run Time'])
-            # plt.axvline(x=13, color='red', linestyle='--', label='Threshold')
-            plt.axvline(x=axvline_position, color='red', linestyle='--', label='Threshold')
+            # #plt.axvline(x=13, color='red', linestyle='--', label='Threshold')
+            #plt.axvline(x=axvline_position, color='red', linestyle='--', label='Threshold')
         plt.xticks(ticks=range(len(for_accuracy)), labels=x_labels)
         safe = title_add_on.replace(' ', '_')
         filename = f"{saving_directory}/{fico_or_scip}_{safe}_feat_reduction_forest.png"
+        plt.ylim(45, 115)
         plt.savefig(filename)
-        plt.ylim(35, 115)
         plt.show()
         plt.close()
     else:
@@ -720,7 +737,7 @@ def plot_feats_distribution(features, directory, scaler_name):
                         plt.annotate(f'{int(count)}', xy=(center, count), ha='center', va='bottom', fontsize=8,
                                      color='black')
 
-            plt.title(f'{feat_name}')
+            #plt.title(f'{feat_name}')
             plt.xlabel('Value')
             plt.ylabel('Frequency')
             feat_name = feat_name.replace("Avg relative bound change for solving strong branching LPs\n",
@@ -744,7 +761,7 @@ def plot_feats_distribution(features, directory, scaler_name):
                 if count > 0:
                     plt.annotate(f'{int(count)}', xy=(center, count), ha='center', va='bottom', fontsize=8, color='black')
 
-            plt.title(f'{feat_name}')
+            #plt.title(f'{feat_name}')
             plt.xlabel('Value')
             plt.ylabel('Frequency')
             feat_name = feat_name.replace("Avg relative bound change for solving strong branching LPs\n", "Avg relative bound change for solving strong branching LPs")
@@ -757,12 +774,12 @@ def plotten_motten(title_add_one, title_add_two, performance_drop_5on6_lin, perf
                    performance_drop_6on5_lin, performance_drop_6on5_for, sub_directory_one="", sub_directory_two="",
                    distri=True, feat_red=True, shares=True, fico=True, scip=True):
     if fico:
-        fico_5 = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_5_ready_to_ml.csv")
+        fico_5 = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Cleaned/9_5_ready_to_ml.csv")
         fico_5_feats = pd.read_csv(
-            "/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_5_ready_to_ml_features.csv")
-        fico_6 = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_6_ready_to_ml.csv")
+            "/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Cleaned/9_5_ready_to_ml_features.csv")
+        fico_6 = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Cleaned/9_6_ready_to_ml.csv")
         fico_6_feats = pd.read_csv(
-            "/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_6_ready_to_ml_features.csv")
+            "/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Cleaned/9_6_ready_to_ml_features.csv")
 
         if distri:
             plot_feats_distribution(fico_5_feats, "/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FICO/95_normal/CompleteSet",
@@ -774,13 +791,13 @@ def plotten_motten(title_add_one, title_add_two, performance_drop_5on6_lin, perf
             plot_feats_distribution(fico_6_feats, "/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FICO/96_normal/CompleteSet",
                                 scaler_name="unscaled")
         if feat_red:
-            plot_feature_reduction(f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/{sub_directory_one}/FeatureReduction/fico', 'fico', base_data="", feature_ranking='linear', title_add_on=title_add_one, threshold=performance_drop_5on6_lin,
+            plot_feature_reduction(f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/{sub_directory_one}/FeatureReduction/fico', 'fico', base_data="", feature_ranking='linear', title_add_on=title_add_one, threshold=performance_drop_5on6_lin,
                                    save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/95auf96/FeatureReduction")
-            plot_feature_reduction(f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/{sub_directory_one}/FeatureReduction/fico', 'fico',base_data="", feature_ranking= 'forest', title_add_on=title_add_one, threshold=performance_drop_5on6_for,
+            plot_feature_reduction(f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/{sub_directory_one}/FeatureReduction/fico', 'fico',base_data="", feature_ranking= 'forest', title_add_on=title_add_one, threshold=performance_drop_5on6_for,
                                    save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/95auf96/FeatureReduction")
-            plot_feature_reduction(f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/{sub_directory_two}/FeatureReduction/fico', 'fico', base_data="", feature_ranking='linear', title_add_on=title_add_two, threshold=performance_drop_6on5_lin,
+            plot_feature_reduction(f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/{sub_directory_two}/FeatureReduction/fico', 'fico', base_data="", feature_ranking='linear', title_add_on=title_add_two, threshold=performance_drop_6on5_lin,
                                    save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/96auf95/FeatureReduction")
-            plot_feature_reduction(f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/{sub_directory_two}/FeatureReduction/fico', 'fico', base_data="", feature_ranking= 'forest', title_add_on=title_add_two, threshold=performance_drop_6on5_for,
+            plot_feature_reduction(f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/{sub_directory_two}/FeatureReduction/fico', 'fico', base_data="", feature_ranking= 'forest', title_add_on=title_add_two, threshold=performance_drop_6on5_for,
                                    save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/96auf95/FeatureReduction")
         if shares:
             show_shares(fico_original_data=fico_5, dataset_name='FICO XPress 9.5', subdirectory="/FICO5/NoOutlier/logged")
@@ -807,7 +824,72 @@ def plotten_motten_plotten():
                        performance_drop_5on6_lin=drop_lin_5on6, performance_drop_5on6_for=drop_for_5on6, performance_drop_6on5_lin=drop_lin_6on5, performance_drop_6on5_for=drop_for_6on5)
 # plotten_motten_plotten()
 
-fico_5 = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_5_ready_to_ml.csv")
-fico_6 = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_6_ready_to_ml.csv")
-scip_normal = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/SCIP/Cleaned/scip_data_for_ml.csv")
+fico_5 = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Cleaned/9_5_ready_to_ml.csv")
+fico_5_feats = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Cleaned/9_5_ready_to_ml_features.csv")
+fico_6 = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Cleaned/9_6_ready_to_ml.csv")
+scip_normal = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/October/Bases/SCIP/Cleaned/scip_data_for_ml.csv")
 
+# plot_feature_reduction(directory="/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/SCIP/depth5/FeatureReduction/scip", fico_or_scip='scip',
+#                        base_data="SCIP10 depth=5", save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/SaveOfTheCentury/SCIP10/FeatureReduction",
+#                        feature_ranking='forest', threshold=12, title_add_on="SCIP10 Forest depth=5")
+# plot_feature_reduction(directory="/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/SCIP/depth5/FeatureReduction/scip", fico_or_scip='scip',
+#                        base_data="SCIP10  depth=5", save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/SaveOfTheCentury/SCIP10/FeatureReduction",
+#                        feature_ranking='linear', threshold=12, title_add_on="SCIP10 Linear depth=5")
+# plot_feature_reduction(directory="/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/SCIP/depth10/FeatureReduction/scip", fico_or_scip='scip',
+#                        base_data="SCIP10 depth=10", save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/SaveOfTheCentury/SCIP10/FeatureReduction",
+#                        feature_ranking='forest', threshold=12, title_add_on="SCIP10 Forest depth=10")
+# plot_feature_reduction(directory="/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/SCIP/depth10/FeatureReduction/scip", fico_or_scip='scip',
+#                        base_data="SCIP10  depth=10", save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/SaveOfTheCentury/SCIP10/FeatureReduction",
+#                        feature_ranking='linear', threshold=12, title_add_on="SCIP10 Linear depth=10")
+#
+#
+#
+#
+#
+#
+# plot_feature_reduction(directory="/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO5/depthNone/FeatureReduction/fico", fico_or_scip='fico',
+#                        base_data="FICO Xpress 95 depth=None", save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/SaveOfTheCentury/FICO95/FeatureReduction",
+#                        feature_ranking='forest', threshold=14, title_add_on="95 Forest, depth=None")
+# plot_feature_reduction(directory="/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO5/depthNone/FeatureReduction/fico", fico_or_scip='fico',
+#                        base_data="FICO Xpress 95  depth=None", save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/SaveOfTheCentury/FICO95/FeatureReduction",
+#                        feature_ranking='linear', threshold=15, title_add_on="95 Lineardepth=None")
+#
+#
+# plot_feature_reduction(directory="/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO5/depth5/FeatureReduction/fico", fico_or_scip='fico',
+#                        base_data="FICO Xpress 95 depth=5", save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/SaveOfTheCentury/FICO95/FeatureReduction",
+#                        feature_ranking='forest', threshold=14, title_add_on="95 Forest, depth=5")
+# plot_feature_reduction(directory="/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO5/depth5/FeatureReduction/fico", fico_or_scip='fico',
+#                        base_data="FICO Xpress 95  depth=5", save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/SaveOfTheCentury/FICO95/FeatureReduction",
+#                        feature_ranking='linear', threshold=15, title_add_on="95 Lineardepth=5")
+# plot_feature_reduction(directory="/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO5/depth10/FeatureReduction/fico", fico_or_scip='fico',
+#                        base_data="FICO Xpress 95 depth=10", save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/SaveOfTheCentury/FICO95/FeatureReduction",
+#                        feature_ranking='forest', threshold=14, title_add_on="95 Forest, depth=10")
+# plot_feature_reduction(directory="/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO5/depth10/FeatureReduction/fico", fico_or_scip='fico',
+#                        base_data="FICO Xpress 95  depth=10", save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/SaveOfTheCentury/FICO95/FeatureReduction",
+#                        feature_ranking='linear', threshold=15, title_add_on="95 Lineardepth=10")
+# plot_feature_reduction(directory="/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO5/depthNone/FeatureReduction/fico", fico_or_scip='fico',
+#                        base_data="FICO Xpress 95 depth=None", save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/SaveOfTheCentury/FICO95/FeatureReduction",
+#                        feature_ranking='forest', threshold=14, title_add_on="95 Forest, depth=None")
+# plot_feature_reduction(directory="/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO5/depthNone/FeatureReduction/fico", fico_or_scip='fico',
+#                        base_data="FICO Xpress 95  depth=None", save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/SaveOfTheCentury/FICO95/FeatureReduction",
+#                        feature_ranking='linear', threshold=15, title_add_on="95 Lineardepth=None")
+#
+#
+# plot_feature_reduction(directory="/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO6/depth5/FeatureReduction/fico", fico_or_scip='fico',
+#                        base_data="FICO Xpress 96 depth=5", save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/SaveOfTheCentury/FICO96/FeatureReduction",
+#                        feature_ranking='forest', threshold=14, title_add_on="96 Forest, depth=5")
+# plot_feature_reduction(directory="/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO6/depth5/FeatureReduction/fico", fico_or_scip='fico',
+#                        base_data="FICO Xpress 96  depth=5", save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/SaveOfTheCentury/FICO96/FeatureReduction",
+#                        feature_ranking='linear', threshold=15, title_add_on="96 Lineardepth=5")
+# plot_feature_reduction(directory="/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO6/depth10/FeatureReduction/fico", fico_or_scip='fico',
+#                        base_data="FICO Xpress 96 depth=10", save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/SaveOfTheCentury/FICO96/FeatureReduction",
+#                        feature_ranking='forest', threshold=14, title_add_on="96 Forest, depth=10")
+# plot_feature_reduction(directory="/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO6/depth10/FeatureReduction/fico", fico_or_scip='fico',
+#                        base_data="FICO Xpress 96  depth=10", save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/SaveOfTheCentury/FICO96/FeatureReduction",
+#                        feature_ranking='linear', threshold=15, title_add_on="96 Lineardepth=10")
+# plot_feature_reduction(directory="/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO6/depthNone/FeatureReduction/fico", fico_or_scip='fico',
+#                        base_data="FICO Xpress 96 depth=None", save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/SaveOfTheCentury/FICO96/FeatureReduction",
+#                        feature_ranking='forest', threshold=14, title_add_on="96 Forestdepth=None")
+# plot_feature_reduction(directory="/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO6/depthNone/FeatureReduction/fico", fico_or_scip='fico',
+#                        base_data="FICO Xpress 96  depth=None", save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/SaveOfTheCentury/FICO96/FeatureReduction",
+#                        feature_ranking='linear', threshold=15, title_add_on="96 Lineardepth=None")

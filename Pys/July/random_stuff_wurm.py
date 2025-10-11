@@ -2,11 +2,11 @@ import pandas as pd
 from sklearn.preprocessing import QuantileTransformer
 
 
-fico_logged = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Scaled/logged_fico_clean_data.csv')
-fico_basic = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/fico_clean_data_753.csv')
+fico_logged = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Scaled/logged_fico_clean_data.csv')
+fico_basic = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Cleaned/fico_clean_data_753.csv')
 
-feats_logged = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Scaled/logged_fico_feats.csv')
-feats_basic = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/fico_features_753.csv')
+feats_logged = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Scaled/logged_fico_feats.csv')
+feats_basic = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Cleaned/fico_features_753.csv')
 
 
 # Initialize the transformer

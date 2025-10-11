@@ -38,7 +38,7 @@ def create_directory(path:str):
 def plot_histo(data, number_bins, title):
 
     plt.hist(data, bins=number_bins, color='purple', alpha=1)
-    plt.title(title)
+    #plt.title(title)
 
     # Adjust layout
     plt.tight_layout()

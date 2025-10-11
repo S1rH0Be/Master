@@ -64,7 +64,7 @@ def create_log_scaled_df(df, imputer):
 def plot_histo(data, color, number_bins, title):
 
     plt.hist(data, bins=number_bins, color=color, alpha=1)
-    plt.title(title)
+    #plt.title(title)
 
     # Adjust layout
     plt.tight_layout()

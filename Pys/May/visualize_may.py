@@ -11,7 +11,7 @@ Ich inputte TreffenMasVeinte, dann sucht es sich alles von dort aus wie accuracy
 1. Add functions to find best imputer/scaling kombi
 '''
 
-global_path = '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs'
+global_path = '/Users/fritz/Downloads/ZIB/Master/October/Runs'
 
 def get_files(directory_path:str, index_col=False):
     """
@@ -120,7 +120,7 @@ def sgm(scaled_label=True):
         # Create the plot
         plt.figure(figsize=(8, 5))
         plt.bar(labels, values, color=bar_colors)
-        plt.title(title)
+        #plt.title(title)
         if data_set.lower() == 'fico':
             plt.ylim(0.5, 1.35)  # Set y-axis limits for visibility
         else:
@@ -169,7 +169,7 @@ def shares(scip_default_original_data, fico_original_data, scaledlabel=True, com
         # Create the plot
         plt.figure(figsize=(8, 5))
         plt.bar(['Mixed', 'Prefer Int'], values, color=bar_colors)
-        plt.title(title)
+        #plt.title(title)
         plt.ylim(0, 105)  # Set y-axis limits for visibility
         plt.xticks(rotation=45, fontsize=6)
         # Create custom legend entries with value annotations
@@ -242,7 +242,7 @@ def accuracy_visualize(scaled_label=True, title_add_on='', plot=True):
             bar_colors = (['turquoise', 'turquoise', 'magenta', 'magenta'])
             plt.figure(figsize=(8, 5))
             plt.bar(['LinAcc', 'LinExAcc', 'ForAcc', 'ForExAcc'], values, color=bar_colors)
-            plt.title(title)
+            #plt.title(title)
             plt.ylim(0, 105)  # Set y-axis limits for visibility
             plt.xticks(rotation=45, fontsize=6)
             # Create custom legend entries with value annotations
@@ -289,7 +289,7 @@ def importance(treffen):
         bar_colors = (['turquoise', 'magenta'])
         plt.figure(figsize=(8, 5))
         plt.bar([i for i in range(len(values))], values, color=bar_colors)
-        plt.title(title)
+        #plt.title(title)
         # plt.ylim(min(0.5, min(values) * 0.9), max(values) * 1.1)  # Set y-axis limits for visibility
         # plt.ylim(0, 100)
         plt.xticks(rotation=45, fontsize=6)
@@ -359,7 +359,7 @@ def importance(treffen):
         importance_df = get_importance_score_df(data_frame, title)
 
         importance_df.plot(kind='bar', figsize=(10, 6), color=['turquoise', 'magenta'])
-        plt.title(title)
+        #plt.title(title)
         plt.ylabel('Importance Score')
         plt.xlabel('Feature')
         plt.xticks(rotation=270, fontsize=6)
@@ -406,7 +406,7 @@ def time_save(scip_default_original_data, fico_original_data):
         # Create the plot
         plt.figure(figsize=(8, 5))
         plt.bar(['SCIP Default', 'SCIP No Pseudocosts', 'FICO Xpress'], values, color=bar_colors)
-        plt.title(title)
+        #plt.title(title)
         plt.ylim(0, max(values)*1.1)  # Set y-axis limits for visibility
         plt.xticks(rotation=45, fontsize=6)
         # Create custom legend entries with value annotations
@@ -427,9 +427,9 @@ def label(scip_default_original_data, fico_original_data, scaled=False):
         plt.scatter([0] * len(label[0]), label[0], color='white', edgecolor='k', alpha=1)
         plt.axhline(y=0, color='black', linestyle='-', alpha=0.2)  # Reference line at y=0
         if scaled:
-            plt.title(f"Scaled Label {label[1]}")
+            #plt.title(f"Scaled Label {label[1]}")
         else:
-            plt.title(f"Unscaled Label {label[1]}")
+            #plt.title(f"Unscaled Label {label[1]}")
         plt.xlabel("Pred values")
         plt.ylabel("Actual Values")
         plt.show()
@@ -493,8 +493,8 @@ def feature_reduction_graph(base_set:str, feature_ranking:str, data_set:str, lin
         plt.plot(lin_sgm, color=colors[4])
         plt.plot(for_sgm, color=colors[5])
         plt.plot(for_sgm)
-        plt.title(label=f'{data_set.upper()} Combined {base_set}')
-        plt.axvline(x=15, color='red', linestyle='--', label='Threshold')
+        #plt.title(label=f'{data_set.upper()} Combined {base_set}')
+        #plt.axvline(x=15, color='red', linestyle='--', label='Threshold')
         plt.ylim(35, 115)
         plt.legend(['Mid Accuracy Linear', 'Extreme Accuracy Linear', 'Mid Accuracy Random Forest',
                     'Extreme Accuracy Random Forest', 'SGM Linear', 'SGM Random Forest'])
@@ -505,10 +505,10 @@ def feature_reduction_graph(base_set:str, feature_ranking:str, data_set:str, lin
         plt.figure(figsize=(8, 6))
         plt.plot(lin_accuracy)
         plt.plot(lin_sgm)
-        plt.title(label=f'{data_set.upper()} Linear {base_set}')
-        plt.axvline(x=13, color='red', linestyle='--', label='Threshold')
-        plt.axvline(x=14, color='orange', linestyle='--', label='Threshold')
-        plt.axvline(x=15, color='gold', linestyle='--', label='Threshold')
+        #plt.title(label=f'{data_set.upper()} Linear {base_set}')
+        #plt.axvline(x=13, color='red', linestyle='--', label='Threshold')
+        #plt.axvline(x=14, color='orange', linestyle='--', label='Threshold')
+        #plt.axvline(x=15, color='gold', linestyle='--', label='Threshold')
         plt.legend(['Accuracy', 'Mid Accuracy', 'Extreme Accuracy', 'SGM'])
         plt.xticks(ticks=range(len(lin_accuracy)), labels=x_labels)
         plt.ylim(35, 115)
@@ -518,10 +518,10 @@ def feature_reduction_graph(base_set:str, feature_ranking:str, data_set:str, lin
         plt.figure(figsize=(8, 6))
         plt.plot(for_accuracy)
         plt.plot(for_sgm)
-        plt.title(label=f'{data_set.upper()} Forest {base_set}')
+        #plt.title(label=f'{data_set.upper()} Forest {base_set}')
         plt.legend(['Accuracy', 'Mid Accuracy', 'Extreme Accuracy', 'SGM'])
         plt.xticks(ticks=range(len(for_accuracy)), labels=x_labels)
-        plt.axvline(x=13, color='red', linestyle='--', label='Threshold')
+        #plt.axvline(x=13, color='red', linestyle='--', label='Threshold')
         plt.ylim(35, 115)
         plt.show()
         plt.close()

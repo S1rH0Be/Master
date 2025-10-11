@@ -6,12 +6,22 @@ from visualize_july import shifted_geometric_mean
 import matplotlib.pyplot as plt
 import numpy as np
 
-base_data_directory = '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/FinalScip'
+base_data_directory = '/Users/fritz/Downloads/ZIB/Master/October/Runs/FinalScip'
 
 
 def setup_directory(new_directory):
     # Setup directory
     os.makedirs(os.path.join(f'{new_directory}'), exist_ok=True)
+
+def get_sgm_of_cols(df, shift):
+    col_names = df.columns.tolist()
+    # Frage: SGM of relative SGMs oder von total SGMs?
+    # Ich mach erstaml total sgms
+    sgm_sgm_df = pd.DataFrame(columns=col_names, index=['Value'])
+    for col in col_names:
+        sgm_sgm_df.loc[:, col] = shifted_geometric_mean(df[col], shift)
+    return sgm_sgm_df
+
 
 def sgm(data_frame, title:str):
 
@@ -53,7 +63,7 @@ def sgm(data_frame, title:str):
         # Create the plot
         plt.figure(figsize=(8, 5))
         bars = plt.bar(labels, values_relative, color=bar_colors)
-        plt.title(plot_title)
+        #plt.title(plot_title)
         plt.ylim(0.5, max(values_relative)*1.05)  # Set y-axis limits for visibility
         plt.xticks(rotation=45, fontsize=6)
         for bar in bars:
@@ -66,7 +76,9 @@ def sgm(data_frame, title:str):
         plt.close()
         return values_relative
     sgms = visualize_sgm(data_frame, title)
+
     return sgms
+
 
 def split_df_by_data_set(data_frame, col_or_row:str):
 
@@ -217,9 +229,8 @@ def train_vs_test_sgm(data_frame_path, version: str, fico_or_scip, save_to):
             for_runs = [index for index in pred_df.index if 'RandomForest' in index]
             lin_pred_df = pred_df.loc[lin_runs, :]
             for_pred_df = pred_df.loc[for_runs, :]
-            sgm_lin_df = get_sgm_of_sgm(lin_pred_df, lin_pred_df.mean().mean())
-            sgm_for_df = get_sgm_of_sgm(for_pred_df, for_pred_df.mean().mean())
-
+            sgm_lin_df = get_sgm_of_sgm(lin_pred_df,10)# lin_pred_df.mean().mean())
+            sgm_for_df = get_sgm_of_sgm(for_pred_df, 10)#for_pred_df.mean().mean())
             if fico_or_scip=='fico':
                 values_relative_lin = relative_to_mixed(sgm_lin_df)
                 values_relative_for = relative_to_mixed(sgm_for_df)
@@ -230,6 +241,12 @@ def train_vs_test_sgm(data_frame_path, version: str, fico_or_scip, save_to):
                 values_relative_for = relative_to_int(sgm_for_df)
                 values_relative = [values_relative_lin[2], values_relative_lin[0], values_relative_for[0],
                                    values_relative_for[3]]
+
+            # if last_minute_line:
+            #     labels = ['Int', 'Linear', 'VBS']
+            # if last_minute_for:
+            #     labels = ['Int', 'Forest', 'VBS']
+
             # print("SGM: ", values_relative)
             bars = plt.bar(x + i * bar_width, values_relative, width=bar_width, label=f'{dfs[i].name}', color=colors[i%2])
             for bar in bars:
@@ -239,7 +256,7 @@ def train_vs_test_sgm(data_frame_path, version: str, fico_or_scip, save_to):
                          ha='center', va='bottom')
 
         plt.xticks(x + bar_width * (n_dfs - 1) / 2, labels)
-        plt.title(f"{plot_title} {version}")
+        #plt.title(f"{plot_title} {version}")
         plt.ylim(0, 1.1)  # Ensure scale visibility
         plt.ylabel('Relative SGM (to Mixed)')
 
@@ -262,23 +279,23 @@ def train_vs_test_sgm(data_frame_path, version: str, fico_or_scip, save_to):
             f'{data_frame_path}/SGM/scip_sgm_trainset.csv',
             index_col=0)
         scip_trainset.name = f'Trainingset'
-        visualize_sgm([scip_testset, scip_trainset], fico_or_scip=fico_or_scip, plot_title="SCIP",
+        visualize_sgm([scip_testset, scip_trainset], fico_or_scip=fico_or_scip, plot_title=f'SCIP {version}',
                       saving_directory=save_to)
 
     if fico_or_scip == "fico":
+        print(data_frame_path)
         fico_testset = pd.read_csv(
             f'{data_frame_path}/SGM/fico_sgm_runtime.csv',
             index_col=0)
-        chosen_seed = [ind for ind in fico_testset.index if "3094311947" in ind]
-        fico_testset = fico_testset.loc[chosen_seed]
+        # chosen_seed = [ind for ind in fico_testset.index if "3094311947" in ind]
+        # fico_testset = fico_testset.loc[chosen_seed]
         fico_testset.name = f'Testset'
 
         fico_trainset = pd.read_csv(
             f'{data_frame_path}/SGM/fico_sgm_trainset.csv',
             index_col=0)
-        fico_trainset = fico_trainset.loc[chosen_seed]
+        # fico_trainset = fico_trainset.loc[chosen_seed]
         fico_trainset.name = f'Trainingset'
-        print(len(fico_trainset))
         visualize_sgm([fico_testset, fico_trainset], fico_or_scip=fico_or_scip, plot_title="FICO Xpress",
                       saving_directory=save_to, version=version)
 # checked
@@ -296,20 +313,21 @@ def train_vs_test_acuracy(data_frame_path, version: str, fico_or_scip, save_to):
         if fico_or_scip == 'fico':
             data_frame['Extreme Accuracy'] = pd.to_numeric(data_frame['Extreme Accuracy'], errors='coerce')
 
-        sgm_accuracy = get_sgm_series(data_frame['Accuracy'], data_frame['Accuracy'].mean() + 0.1)
-        sgm_mid_accuracy = get_sgm_series(data_frame['Mid Accuracy'], data_frame['Mid Accuracy'].mean() + 0.1)
+        sgm_accuracy = get_sgm_series(data_frame['Accuracy'], shift=10)#data_frame['Accuracy'].mean() + 0.1)
+        sgm_mid_accuracy = get_sgm_series(data_frame['Mid Accuracy'], shift=10)#data_frame['Mid Accuracy'].mean() + 0.1)
         return_list = [sgm_accuracy, sgm_mid_accuracy]
         if fico_or_scip == 'fico':
             if len(data_frame['Extreme Accuracy'])==0:
                 return_list.append(0)
             else:
                 sgm_extreme_accuracy = get_sgm_series(data_frame['Extreme Accuracy'].dropna(),
-                                                  data_frame['Extreme Accuracy'].dropna().mean() + 0.1)
+                                                 shift=10)# data_frame['Extreme Accuracy'].dropna().mean() + 0.1)
                 return_list.append(sgm_extreme_accuracy)
 
         return return_list
 
-    def visualize_acc(dfs, fico_or_scip, plot_title:str, saving_directory:str):
+    def visualize_acc(dfs, fico_or_scip, plot_title:str, saving_directory:str, last_minute_lin=False, last_minute_for=True):
+
         if fico_or_scip == 'fico':
             categories = ['Linear', 'Linear MidLabel', 'Linear LargeLabel', 'Forest', 'Forest MidLabel', 'Forest LargeLabel']
         else:
@@ -340,16 +358,30 @@ def train_vs_test_acuracy(data_frame_path, version: str, fico_or_scip, save_to):
                 values = [lin_acc[0], lin_acc[1], for_acc[0], for_acc[1]]
             else:
                 values = [lin_acc[0], lin_acc[1], lin_acc[2], for_acc[0], for_acc[1], for_acc[2]]
+            if last_minute_lin:
+                values = [lin_acc[0], lin_acc[1], lin_acc[2]]
+                x=np.arange(3)
+            elif last_minute_for:
+                values= [for_acc[0], for_acc[1], for_acc[2]]
+                x=np.arange(3)
             bar_colors = ["purple", "deeppink"]
+
+            if last_minute_lin:
+                categories = ['Linear', 'Linear MidLabel', 'Linear LargeLabel']  # , 'Forest', 'Forest MidLabel',
+                # 'Forest LargeLabel']
+            if last_minute_for:
+                categories = ['Forest', 'Forest MidLabel', 'Forest LargeLabel']
+            print(len(values))
+            print(x, i * bar_width)
             bars = plt.bar(x + i * bar_width, values, width=bar_width, label=f'{dfs[i].name}', color=bar_colors[i%2])
             for bar in bars:
                 height = bar.get_height()
                 plt.text(bar.get_x() + bar.get_width() / 2., height,
                          f'{height:.1f}',
                          ha='center', va='bottom')
-
+        print(x + bar_width * (n_dfs - 1) / 2, categories)
         plt.xticks(x + bar_width * (n_dfs - 1) / 2, categories)
-        plt.title(plot_title)
+        #plt.title(plot_title)
         plt.ylim(0, 105)
         plt.ylabel('Accuracy')
         plt.legend()
@@ -368,7 +400,7 @@ def train_vs_test_acuracy(data_frame_path, version: str, fico_or_scip, save_to):
             f'{data_frame_path}/Accuracy/scip_acc_trainset.csv',
             index_col=0)
         scip_trainset.name = f'Trainingset'
-        visualize_acc([scip_testset, scip_trainset], fico_or_scip=fico_or_scip, plot_title=scip_trainset.name, saving_directory=save_to)
+        visualize_acc([scip_testset, scip_trainset], fico_or_scip=fico_or_scip, plot_title=f'SCIP {version}', saving_directory=save_to)
 
     if fico_or_scip == "fico":
         fico_testset = pd.read_csv(
@@ -411,13 +443,13 @@ def visualisiere_sgm(treffen:str, version:str, scaler_name:str, unscaled=True, s
     if scaled:
         darter = []
         if scip:
-            scip_default = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/{scaler_name}/ScaledLabel/SGM/scip_sgm_runtime.csv',
+            scip_default = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/{scaler_name}/ScaledLabel/SGM/scip_sgm_runtime.csv',
                                        index_col=0)
             scip_default.name = f'SCIP Default SGM Only {scaler_name} Scaled Label'
             darter.append(scip_default)
 
         if fico:
-            fico_default = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/{scaler_name}/ScaledLabel/SGM/fico_sgm_runtime.csv',
+            fico_default = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/{scaler_name}/ScaledLabel/SGM/fico_sgm_runtime.csv',
                                        index_col=0)
             fico_default.name = f'FICO Xpress SGM Only {scaler_name} Scaled Label'
             darter.append(fico_default)
@@ -479,7 +511,7 @@ def visualisiere_accuracy(treffen: str, directory_for_saving_plot, version:str, 
             bars = plt.bar(x + i * bar_width, values, width=bar_width, label=f'{dfs[i].name}', color=bar_colors)
 
         plt.xticks(x + bar_width * (n_dfs - 1) / 2, categories)
-        plt.title(plot_title)
+        #plt.title(plot_title)
         plt.ylim(0, 105)
         plt.ylabel('Accuracy')
         for bar in bars:
@@ -520,60 +552,224 @@ def visualisiere_accuracy(treffen: str, directory_for_saving_plot, version:str, 
         fico_trainset.name = f'FICO Xpress 9.{version} Accuracy on Trainingset'
         visualize_acc([fico_trainset], save_to=directory_for_saving_plot, scip_or_fico=scip_or_fico, plot_title=fico_trainset.name)
 # checked
-def compare_scalers_accuracy(scaled_or_unscaled:str, treffen, scip=True, fico=True):
+
+def get_sgm_list(df, shift):
+    sgms = []
+    for col in df.columns:
+        wumr_gore = shifted_geometric_mean(df[col], shift)
+        sgms.append(wumr_gore)
+    return sgms
+
+def compare_scalers_accuracy(version, deep, scip=True, fico=True, linear=True, forest=True):
+    def plotter(value_list, title, fico=True, scip=False):
+
+        columns = ['Accuracy', 'Mid Accuracy', 'Extreme Accuracy']
+        values = [[value[0] for value in value_list], [value[1] for value in value_list],
+                  [value[2] for value in value_list]]
+        if scip:
+            columns = ['Accuracy', 'Mid Accuracy']
+            values = [[value[0] for value in value_list], [value[1] for value in value_list]]
+        print(f'{version} {title} ACC')
+        print(values)
+        # print('---------------------------------------------------------------------------------------------------')
+        # print(values[0], values[1], values[2])
+        scalers = ['Quantile', 'Power', 'Robust', 'None']
+        # Bar position setup
+
+        x = np.arange(3)
+
+        if scip:
+            x=np.arange(2)
+        width = 0.2  # Width of the bars
+        colors = ['purple', 'pink', 'mediumpurple', 'teal']
+        # Plotting
+        fig, ax = plt.subplots()
+
+        # Create bars for each set of values
+        for i in range(4):
+            ax.bar(x + i * width, [value[i] for value in values], width, label=f'{scalers[i]}',
+                   color=colors[i])
+
+        # Formatting
+        #ax.set_title(title)
+        ax.set_xticks(x + width * 1.5)
+        ax.set_xticklabels(columns)
+        ax.set_ylim([20, 100])
+        ax.legend()
+
+        plt.tight_layout()
+
+        # Display the plot
+        title = title.replace(" ", "_")
+        if fico:
+            fig.savefig(
+                f'/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/FindingBestCombi/9{version}/Accuracy/BestCombi_depth{title}_accuracy.png')
+        elif scip:
+            print("SCCCIIIIP")
+            fig.savefig(
+                f'/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/FindingBestCombi/{version}/Accuracy/{title}_accuracy.png')
+        plt.show()
+
     if scip:
-        scip_quantile = pd.read_csv(
-                    f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/Scip/Quantile/{scaled_or_unscaled}Label/Accuracy/scip_acc_df.csv',
-                    index_col=0)
-        scip_quantile.name = f'SCIP Default Accuracy Only Quantile {scaled_or_unscaled} Label'
-
-        scip_yeo = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/Scip/YeoJohnson/{scaled_or_unscaled}Label/Accuracy/scip_acc_df.csv',
+        print("SCCCIIIIP")
+        scip_complete = pd.read_csv(
+            f'/Users/fritz/Downloads/ZIB/Master/Octesty/BestCombiSearch/SCIP/FindingBestCombi/depth{deep}/Accuracy/scip_acc_df.csv',
             index_col=0)
-        scip_yeo.name = f'SCIP Default Accuracy Only YeoJohnson {scaled_or_unscaled} Label'
+        scip_complete.name = f'SCIP {version} Accuracy On Testset all Combinations'
 
-        scip_robust = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/Scip/Robust/{scaled_or_unscaled}Label/Accuracy/scip_acc_df.csv',
-            index_col=0)
-        scip_robust.name = f'SCIP Default Accuracy Only Robust {scaled_or_unscaled} Label'
-
-        scip_none = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/Scip/NoScaling/{scaled_or_unscaled}Label/Accuracy/scip_acc_df.csv',
-            index_col=0)
-        scip_none.name = f'SCIP Default Accuracy NoScaling {scaled_or_unscaled} Label'
-
-        scippies = [scip_quantile, scip_yeo, scip_robust, scip_none]
-
-        multiple_accuracy_plot(scippies, title='SCIP Comparison Accuracy Scaled')
+        imputer = ['median', 'mean']
+        scaler_names = ['Quantile', 'Power', 'Robust', 'None']
+        ficos_lin = []
+        ficos_for = []
+        for imputation in imputer:
+            for scaler_name in scaler_names:
+                indices_lin = [ind for ind in scip_complete.index if
+                               f'LinearRegression_{imputation}_{scaler_name}' in ind]
+                indices_for = [ind for ind in scip_complete.index if
+                               f'RandomForest_{imputation}_{scaler_name}' in ind]
+                ficos_lin.append(
+                    get_sgm_list(scip_complete.loc[indices_lin, ['Accuracy', 'Mid Accuracy', 'Extreme Accuracy']],
+                                 10))
+                ficos_for.append(
+                    get_sgm_list(scip_complete.loc[indices_for, ['Accuracy', 'Mid Accuracy', 'Extreme Accuracy']],
+                                 10))
+        if linear:
+            plotter(ficos_lin[:4], f'SCIP {version} depth={deep} LinearRegressor Median Imputed', fico=False, scip=True)
+            plotter(ficos_lin[4:], f'SCIP {version} depth={deep} LinearRegressor Mean Imputed', fico=False, scip=True)
+        if forest:
+            plotter(ficos_for[:4], f'SCIP{version} depth={deep} RandomForest Median Imputed', fico=False, scip=True)
+            plotter(ficos_for[4:], f'SCIP{version} depth={deep} RandomForest Mean Imputed', fico=False, scip=True)
 
     if fico:
-        fico_quantile = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/Fico/Quantile/{scaled_or_unscaled}Label/Accuracy/fico_acc_df.csv',
+        fico_complete = pd.read_csv(
+            f'/Users/fritz/Downloads/ZIB/Master/Octesty/BestCombiSearch/FICO{version}/FindingBestCombi/depth{deep}/Accuracy/fico_acc_df.csv',
             index_col=0)
-        fico_quantile.name = f'FICO Xpress Accuracy Only Quantile {scaled_or_unscaled} Label'
+        fico_complete.name = f'FICO Xpress 9.{version} Accuracy On Testset all Combinations'
 
-        fico_yeo = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/Fico/YeoJohnson/{scaled_or_unscaled}Label/Accuracy/fico_acc_df.csv',
+        imputer = ['median', 'mean']
+        scaler_names = ['Quantile', 'Power', 'Robust', 'None']
+        ficos_lin = []
+        ficos_for = []
+        for imputation in imputer:
+            for scaler_name in scaler_names:
+                indices_lin = [ind for ind in fico_complete.index if f'LinearRegression_{imputation}_{scaler_name}' in ind]
+                indices_for = [ind for ind in fico_complete.index if f'RandomForest_{imputation}_{scaler_name}' in ind]
+                ficos_lin.append(
+                    get_sgm_list(fico_complete.loc[indices_lin, ['Accuracy', 'Mid Accuracy', 'Extreme Accuracy']], 10))
+                ficos_for.append(
+                    get_sgm_list(fico_complete.loc[indices_for, ['Accuracy', 'Mid Accuracy', 'Extreme Accuracy']], 10))
+
+        if linear:
+            plotter(ficos_lin[:4], f'FICO 9.{version} depth={deep} LinearRegressor Median Imputed')
+            plotter(ficos_lin[4:], f'FICO 9.{version} depth={deep} LinearRegressor Mean Imputed')
+        if forest:
+            plotter(ficos_for[:4], f'FICO 9.{version} depth={deep} RandomForest Median Imputed')
+            plotter(ficos_for[4:], f'FICO 9.{version} depth={deep} RandomForest Mean Imputed')
+
+
+def compare_scalers_runtime(version, deep, scip=True, fico=True, linear=True, forest=True):
+    def relative_to_mixed(values):
+        mixed = values[1]
+        return [(value / mixed) for value in values]
+
+    def relative_to_int(values):
+        int = values[2]
+        return [(value / int) for value in values]
+
+    def plotter(value_list, title, fico=True, scip=False):
+        columns = ['Mixed', 'Int',	'Predicted', 'VBS']
+        values = [[value[1] for value in value_list],
+                  [value[2] for value in value_list], [value[0] for value in value_list], [value[3] for value in value_list]]
+        print(f'9{version}/BestCombi_depth{title}_sgm.')
+        print(values[2])
+        # print('---------------------------------------------------------------------------------------------------')
+        # print(values[0], values[1], values[2])
+        scalers = ['Quantile', 'Power', 'Robust', 'None']
+        # Bar position setup
+        x = np.arange(4)
+        width = 0.2  # Width of the bars
+        colors = ['purple', 'pink', 'mediumpurple', 'teal']
+        # Plotting
+        fig, ax = plt.subplots()
+
+        # Create bars for each set of values
+        for i in range(4):
+            ax.bar(x + i * width, [value[i] for value in values], width, label=f'{scalers[i]}',
+                   color=colors[i])
+
+        # Formatting
+        #ax.set_title(title)
+        ax.set_xticks(x + width * 1.5)
+        ax.set_xticklabels(columns)
+        ax.set_ylim([0, 1.2])
+        ax.legend()
+
+        plt.tight_layout()
+
+        # Display the plot
+        title = title.replace(" ", "_")
+        if fico:
+            fig.savefig(f'/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/FindingBestCombi/9{version}/SGM/BestCombi_depth{title}_sgm.png')
+        if scip:
+            fig.savefig(
+                f'/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/FindingBestCombi/{version}/SGM/{title}_runtime.png')
+        plt.show()
+
+    if scip:
+        scip_complete = pd.read_csv(
+            f'/Users/fritz/Downloads/ZIB/Master/Octesty/BestCombiSearch/SCIP/FindingBestCombi/depth{deep}/SGM/scip_sgm_runtime.csv',
             index_col=0)
-        fico_yeo.name = f'FICO Xpress Accuracy Only Yeo-Johnson {scaled_or_unscaled} Label'
+        scip_complete.name = f'SCIP {version} Accuracy On Testset all Combinations'
 
-        fico_robust = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/Fico/Robust/{scaled_or_unscaled}Label/Accuracy/fico_acc_df.csv',
+        imputer = ['median', 'mean']
+        scaler_names = ['Quantile', 'Power', 'Robust', 'None']
+        ficos_lin = []
+        ficos_for = []
+        for imputation in imputer:
+            for scaler_name in scaler_names:
+                indices_lin = [ind for ind in scip_complete.index if
+                               f'LinearRegression_{imputation}_{scaler_name}' in ind]
+                indices_for = [ind for ind in scip_complete.index if f'RandomForest_{imputation}_{scaler_name}' in ind]
+                lin_sgm = get_sgm_list(scip_complete.loc[indices_lin, ['Predicted', 'Mixed', 'Int', 'VBS']], 10)
+                for_sgm = get_sgm_list(scip_complete.loc[indices_for, ['Predicted', 'Mixed', 'Int', 'VBS']], 10)
+                ficos_lin.append(relative_to_int(lin_sgm))
+                ficos_for.append(relative_to_int(for_sgm))
+
+        if linear:
+            plotter(ficos_lin[:4], f'SCIP {version} depth={deep} LinearRegressor Median Imputed', fico=False, scip=True)
+            plotter(ficos_lin[4:], f'SCIP {version} depth={deep} LinearRegressor Mean Imputed', fico=False, scip=True)
+        if forest:
+            plotter(ficos_for[:4], f'SCIP {version} depth={deep} RandomForest Median Imputed', fico=False, scip=True)
+            plotter(ficos_for[4:], f'SCIP {version} depth={deep} RandomForest Mean Imputed', fico=False, scip=True)
+
+    if fico:
+        fico_complete = pd.read_csv(
+            f'/Users/fritz/Downloads/ZIB/Master/Octesty/BestCombiSearch/FICO{version}/FindingBestCombi/depth{deep}/SGM/fico_sgm_runtime.csv',
             index_col=0)
-        fico_robust.name = f'FICO Xpress Accuracy Only Robust {scaled_or_unscaled} Label'
+        fico_complete.name = f'FICO Xpress 9.{version} Accuracy On Testset all Combinations'
 
-        # fico_minmax = pd.read_csv(
-        #     f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/Fico/MinMax/{scaled_or_unscaled}Label/Accuracy/fico_acc_df.csv',
-        #     index_col=0)
-        # fico_minmax.name = f'FICO Xpress Accuracy Only MinMax {scaled_or_unscaled} Label'
+        imputer = ['median', 'mean']
+        scaler_names = ['Quantile', 'Power', 'Robust', 'None']
+        ficos_lin = []
+        ficos_for = []
 
-        fico_none = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/Fico/NoScaling/{scaled_or_unscaled}Label/Accuracy/fico_acc_df.csv',
-            index_col=0)
-        fico_none.name = f'FICO Xpress Accuracy NoScaling {scaled_or_unscaled} Label'
+        for imputation in imputer:
+            for scaler_name in scaler_names:
+                indices_lin = [ind for ind in fico_complete.index if f'LinearRegression_{imputation}_{scaler_name}' in ind]
+                indices_for = [ind for ind in fico_complete.index if f'RandomForest_{imputation}_{scaler_name}' in ind]
+                lin_sgm  = get_sgm_list(fico_complete.loc[indices_lin, ['Predicted', 'Mixed', 'Int',	'VBS']], 10)
+                for_sgm = get_sgm_list(fico_complete.loc[indices_for, ['Predicted',	'Mixed', 'Int',	'VBS']], 10)
+                ficos_lin.append(relative_to_mixed(lin_sgm))
+                ficos_for.append(relative_to_mixed(for_sgm))
 
-        ficos = [fico_quantile, fico_yeo, fico_robust, fico_none]
-        multiple_accuracy_plot(ficos, title='FICO Comparison Accuracy Scaled')
+        if linear:
+            plotter(ficos_lin[:4], f'FICO 9.{version} depth={deep} LinearRegressor Median Imputed', fico=True, scip=False)
+            plotter(ficos_lin[4:], f'FICO 9.{version} depth={deep} LinearRegressor Mean Imputed', fico=True, scip=False)
+        if forest:
+            plotter(ficos_for[:4], f'FICO 9.{version} depth={deep} RandomForest Median Imputed', fico=True, scip=False)
+            plotter(ficos_for[4:], f'FICO 9.{version} depth={deep} RandomForest Mean Imputed', fico=True, scip=False)
+
+
 # checked
 def get_scaler_runs(df:pd.DataFrame, scaler_name:str):
     scaler_runs = [scaler_run for scaler_run in df.index if scaler_name in scaler_run]
@@ -595,22 +791,19 @@ def compare_scalers(path_to_csv:str):
         lin_scaler_sgm_acc = []
         forest_scaler_sgm_acc = []
         for acc in acc_df.columns:
-            lin_scaler_sgm_acc.append(shifted_geometric_mean(linear_scaler_run_df[acc], linear_scaler_run_df[acc].mean()))
-            forest_scaler_sgm_acc.append(shifted_geometric_mean(forest_scaler_run_df[acc], forest_scaler_run_df[acc].mean()))
-        print(scaler_name)
-        print('Lin', lin_scaler_sgm_acc)
-        print('For', forest_scaler_sgm_acc)
+            lin_scaler_sgm_acc.append(shifted_geometric_mean(linear_scaler_run_df[acc], shift=10))# linear_scaler_run_df[acc].mean()))
+            forest_scaler_sgm_acc.append(shifted_geometric_mean(forest_scaler_run_df[acc], shift=10))# forest_scaler_run_df[acc].mean()))
 # checking....
 def compare_train_vs_test(scaled_or_unscaled:str, scaler_name:str, treffen, scip=True, fico=True):
     # Accuracy
     if scip:
         scip_test = pd.read_csv(
-                    f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/SCIP/{scaler_name}/{scaled_or_unscaled}Label/Accuracy/scip_acc_df.csv',
+                    f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/SCIP/{scaler_name}/{scaled_or_unscaled}Label/Accuracy/scip_acc_df.csv',
                     index_col=0)
         scip_test.name = f'SCIP Default Accuracy Testset {scaler_name} {scaled_or_unscaled} Label'
 
         scip_train = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/SCIP/{scaler_name}/{scaled_or_unscaled}Label/Accuracy/scip_acc_trainset.csv',
+            f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/SCIP/{scaler_name}/{scaled_or_unscaled}Label/Accuracy/scip_acc_trainset.csv',
             index_col=0)
         scip_train.name = f'SCIP Default Accuracy Trainingset {scaler_name} {scaled_or_unscaled} Label'
 
@@ -619,12 +812,12 @@ def compare_train_vs_test(scaled_or_unscaled:str, scaler_name:str, treffen, scip
 
     if fico:
         fico_test = pd.read_csv(
-                    f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/FICO/{scaler_name}/{scaled_or_unscaled}Label/Accuracy/fico_acc_df.csv',
+                    f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/FICO/{scaler_name}/{scaled_or_unscaled}Label/Accuracy/fico_acc_df.csv',
                     index_col=0)
         fico_test.name = f'FICO Xpress Accuracy Testset {scaler_name} {scaled_or_unscaled} Label'
 
         fico_train = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/FICO/{scaler_name}/{scaled_or_unscaled}Label/Accuracy/fico_acc_trainset.csv',
+            f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/FICO/{scaler_name}/{scaled_or_unscaled}Label/Accuracy/fico_acc_trainset.csv',
             index_col=0)
         fico_train.name = f'FICO Xpress Accuracy Trainingset {scaler_name} {scaled_or_unscaled} Label'
 
@@ -635,12 +828,12 @@ def compare_train_vs_test(scaled_or_unscaled:str, scaler_name:str, treffen, scip
     # RunTime
     if scip:
         scip_test = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/SCIP/{scaler_name}/{scaled_or_unscaled}Label/SGM/scip_sgm_runtime.csv',
+            f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/SCIP/{scaler_name}/{scaled_or_unscaled}Label/SGM/scip_sgm_runtime.csv',
             index_col=0)
         scip_test.name = f'FICO Xpress SGM Testset {scaler_name} {scaled_or_unscaled} Label'
 
         scip_train = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/SCIP/{scaler_name}/{scaled_or_unscaled}Label/SGM/scip_sgm_trainset.csv',
+            f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/SCIP/{scaler_name}/{scaled_or_unscaled}Label/SGM/scip_sgm_trainset.csv',
             index_col=0)
         scip_train.name = f'FICO Xpress SGM Trainset {scaler_name} {scaled_or_unscaled} Label'
 
@@ -649,12 +842,12 @@ def compare_train_vs_test(scaled_or_unscaled:str, scaler_name:str, treffen, scip
 
     if fico:
         fico_test = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/FICO/{scaler_name}/{scaled_or_unscaled}Label/SGM/fico_sgm_runtime.csv',
+            f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/FICO/{scaler_name}/{scaled_or_unscaled}Label/SGM/fico_sgm_runtime.csv',
             index_col=0)
         fico_test.name = f'FICO Xpress SGM Testset {scaler_name} {scaled_or_unscaled} Label'
 
         fico_train = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/FICO/{scaler_name}/{scaled_or_unscaled}Label/SGM/fico_sgm_trainset.csv',
+            f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/FICO/{scaler_name}/{scaled_or_unscaled}Label/SGM/fico_sgm_trainset.csv',
             index_col=0)
         fico_train.name = f'FICO Xpress SGM Trainset {scaler_name} {scaled_or_unscaled} Label'
 
@@ -664,12 +857,12 @@ def compare_train_vs_test(scaled_or_unscaled:str, scaler_name:str, treffen, scip
 def visualize_fico_on_scip(scaled_or_unscaled:str, scaler_name:str, treffen):
     # Accuracy
     scip_acc = pd.read_csv(
-        f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/TreffenMasDoce/{scaler_name}/{scaled_or_unscaled}Label/Accuracy/scip_acc_df.csv',
+        f'/Users/fritz/Downloads/ZIB/Master/October/Runs/TreffenMasDoce/{scaler_name}/{scaled_or_unscaled}Label/Accuracy/scip_acc_df.csv',
         index_col=0)
     scip_acc.name = f'SCIP Default Accuracy {scaler_name} {scaled_or_unscaled} Label'
 
     fico_on_scip_acc = pd.read_csv(
-        f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/FICOonSCIP/{scaler_name}/{scaled_or_unscaled}Label/Accuracy/fico_on_scip_acc_df.csv',
+        f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/FICOonSCIP/{scaler_name}/{scaled_or_unscaled}Label/Accuracy/fico_on_scip_acc_df.csv',
         index_col=0)
     fico_on_scip_acc.name = f'FICO XPRESS On SCIP Accuracy {scaler_name} {scaled_or_unscaled} Label'
 
@@ -678,12 +871,12 @@ def visualize_fico_on_scip(scaled_or_unscaled:str, scaler_name:str, treffen):
 
     # RunTime
     scip_sgm = pd.read_csv(
-        f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/TreffenMasDoce/{scaler_name}/{scaled_or_unscaled}Label/SGM/scip_sgm_runtime.csv',
+        f'/Users/fritz/Downloads/ZIB/Master/October/Runs/TreffenMasDoce/{scaler_name}/{scaled_or_unscaled}Label/SGM/scip_sgm_runtime.csv',
         index_col=0)
     scip_sgm.name = f'SCIP SGM {scaler_name} {scaled_or_unscaled} Label'
 
     fico_on_scip_sgm = pd.read_csv(
-        f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/FICOonSCIP/{scaler_name}/{scaled_or_unscaled}Label/SGM/fico_on_scip_sgm_runtime.csv',
+        f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/FICOonSCIP/{scaler_name}/{scaled_or_unscaled}Label/SGM/fico_on_scip_sgm_runtime.csv',
         index_col=0)
     fico_on_scip_sgm.name = f'FICO Xpress on SCIP SGM {scaler_name} {scaled_or_unscaled} Label'
 
@@ -732,7 +925,7 @@ def importance(treffen, scaler_name:str, scaled_or_unscaled:str, scip=False, fic
         for feature in feature_names:
             minimum = min(data_frame.loc[feature,:])
             mean = data_frame.loc[feature,:].mean()
-            importance_dict[feature] = shifted_geometric_mean(data_frame.loc[feature,:], abs(minimum)+abs(mean))
+            importance_dict[feature] = shifted_geometric_mean(data_frame.loc[feature,:], shift=10)# abs(minimum)+abs(mean))
 
         sgm_importance_df = pd.DataFrame.from_dict(importance_dict, orient='index' )
 
@@ -745,7 +938,7 @@ def importance(treffen, scaler_name:str, scaled_or_unscaled:str, scip=False, fic
         bar_colors = (['turquoise', 'magenta'])
         plt.figure(figsize=(8, 5))
         plt.bar([i for i in range(len(values))], values, color=bar_colors)
-        plt.title(title)
+        #plt.title(title)
         # plt.ylim(min(0.5, min(values) * 0.9), max(values) * 1.1)  # Set y-axis limits for visibility
         # plt.ylim(0, 100)
         plt.xticks(rotation=45, fontsize=6)
@@ -800,7 +993,7 @@ def importance(treffen, scaler_name:str, scaled_or_unscaled:str, scip=False, fic
     def plot_importance_score(data_frame, title):
         importance_df = get_importance_score_df(data_frame)
         importance_df.plot(kind='bar', figsize=(10, 6), color=['turquoise', 'magenta'])
-        plt.title(title)
+        #plt.title(title)
         plt.ylabel('Importance Score')
         plt.xlabel('Feature')
         plt.xticks(rotation=270, fontsize=6)
@@ -808,23 +1001,23 @@ def importance(treffen, scaler_name:str, scaled_or_unscaled:str, scip=False, fic
         plt.close()
 
     if fico:
-        fico_impo = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/Fico/{scaler_name}/{scaled_or_unscaled}Label/Importance/fico_importance_df.csv',
+        fico_impo = pd.read_csv(f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/Fico/{scaler_name}/{scaled_or_unscaled}Label/Importance/fico_importance_df.csv',
                                 index_col=0)
         plot_importance_score(fico_impo, f'FICO Importance {scaler_name} Scaled Label')
         plot_importances_by_regressor(fico_impo, f'FICO Importance {scaler_name} Scaled Label')
 
     if scip:
         scip_impo = pd.read_csv(
-            f'/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/{treffen}/Scip/{scaler_name}/{scaled_or_unscaled}Label/Importance/scip_importance_df.csv',
+            f'/Users/fritz/Downloads/ZIB/Master/October/Runs/{treffen}/Scip/{scaler_name}/{scaled_or_unscaled}Label/Importance/scip_importance_df.csv',
             index_col=0)
 
         plot_importance_score(scip_impo, f'SCIP Importance {scaler_name} Scaled Label')
         plot_importances_by_regressor(scip_impo, f'SCIP Importance {scaler_name} Scaled Label')
 
     # scip_impo_all_runs_scaled = pd.read_csv(
-    #     '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/TreffenMasDiez/ScaledLabel/Importance/scip_importance_df.csv')
+    #     '/Users/fritz/Downloads/ZIB/Master/October/Runs/TreffenMasDiez/ScaledLabel/Importance/scip_importance_df.csv')
     # scip_impo_all_runs_unscaled = pd.read_csv(
-    #     '/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/TreffenMasDiez/UnscaledLabel/Importance/scip_importance_df.csv')
+    #     '/Users/fritz/Downloads/ZIB/Master/October/Runs/TreffenMasDiez/UnscaledLabel/Importance/scip_importance_df.csv')
 
     # plot_importances_by_regressor(scip_impo_all_runs_unscaled, 'Feature Importance Unscaled Label')
     # plot_importances_by_regressor(scip_impo_all_runs_scaled, 'Feature Importance Scaled Label')
@@ -851,18 +1044,18 @@ def sgm_by_combination(df, title, def_rule:str):
     pass
 
 def scip_train_test():
-    scip_acc = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Treffen_13_8/SCIP/WithOutlier/ScaledLabel/Accuracy/scip_acc_df.csv',
+    scip_acc = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/October/Runs/Treffen_13_8/SCIP/WithOutlier/ScaledLabel/Accuracy/scip_acc_df.csv',
                            index_col=0)
-    scip_acc_train = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Treffen_13_8/SCIP/WithOutlier/ScaledLabel/Accuracy/scip_acc_trainset.csv',
+    scip_acc_train = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/October/Runs/Treffen_13_8/SCIP/WithOutlier/ScaledLabel/Accuracy/scip_acc_trainset.csv',
                                  index_col=0)
-    scip_sgm = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Treffen_13_8/SCIP/WithOutlier/ScaledLabel/SGM/scip_sgm_runtime.csv', index_col=0)
-    scip_sgm_train = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Treffen_13_8/SCIP/WithOutlier/ScaledLabel/SGM/scip_sgm_trainset.csv', index_col=0)
+    scip_sgm = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/October/Runs/Treffen_13_8/SCIP/WithOutlier/ScaledLabel/SGM/scip_sgm_runtime.csv', index_col=0)
+    scip_sgm_train = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/October/Runs/Treffen_13_8/SCIP/WithOutlier/ScaledLabel/SGM/scip_sgm_trainset.csv', index_col=0)
 
-    fico_acc = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Treffen_6_8/FICO/NoOutlier/BestCombi/ScaledLabel/Accuracy/fico_acc_df.csv', index_col=0)
-    fico_acc_train = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Treffen_6_8/FICO/NoOutlier/BestCombi/ScaledLabel/Accuracy/fico_acc_trainset.csv', index_col=0)
+    fico_acc = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/October/Runs/Treffen_6_8/FICO/NoOutlier/BestCombi/ScaledLabel/Accuracy/fico_acc_df.csv', index_col=0)
+    fico_acc_train = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/October/Runs/Treffen_6_8/FICO/NoOutlier/BestCombi/ScaledLabel/Accuracy/fico_acc_trainset.csv', index_col=0)
 
-    fico_sgm = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Treffen_6_8/FICO/NoOutlier/BestCombi/ScaledLabel/SGM/fico_sgm_runtime.csv', index_col=0)
-    fico_sgm_train = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Treffen_6_8/FICO/NoOutlier/BestCombi/ScaledLabel/SGM/fico_sgm_trainset.csv', index_col=0)
+    fico_sgm = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/October/Runs/Treffen_6_8/FICO/NoOutlier/BestCombi/ScaledLabel/SGM/fico_sgm_runtime.csv', index_col=0)
+    fico_sgm_train = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/October/Runs/Treffen_6_8/FICO/NoOutlier/BestCombi/ScaledLabel/SGM/fico_sgm_trainset.csv', index_col=0)
 
     scip_acc.name = 'SCIP ACC Testset'
     scip_acc_train.name = 'SCIP ACC Trainset'
@@ -884,7 +1077,7 @@ def plot_sumtime(file_name, move_by, title):
         # Create the plot
         plt.figure(figsize=(8, 5))
         bars = plt.bar(labels, values, color=bar_colors)
-        plt.title(plot_title)
+        #plt.title(plot_title)
         plt.ylim(min(values)*0.9, max(values) * 1.05)  # Set y-axis limits for visibility
         plt.xticks(rotation=45, fontsize=6)
         for bar in bars:
@@ -906,9 +1099,9 @@ def plot_sumtime(file_name, move_by, title):
     lin_df = sum_time_df.loc[lin_indices]
     for_df = sum_time_df.loc[for_indices]
     for col in sum_time_df.columns[:4]:
-        values_sgm_lin.append(np.round(get_sgm_column(lin_df[col], shift=move_by), 2))
+        values_sgm_lin.append(np.round(get_sgm_column(lin_df[col], shift=10), 2))
         values_total_lin.append(np.round(lin_df[col].sum(), 2))
-        values_sgm_for.append(np.round(get_sgm_column(for_df[col], shift=move_by), 2))
+        values_sgm_for.append(np.round(get_sgm_column(for_df[col], shift=10), 2))
         values_total_for.append(np.round(for_df[col].sum(), 2))
     # int, mixed, linear, forest, vbs
     values_sgm = [values_sgm_lin[2], values_sgm_lin[1], values_sgm_lin[0], values_sgm_for[0], values_sgm_lin[3]]
@@ -949,7 +1142,7 @@ def sgm_base_set(dataframe, only_relevant, title, shift_name):
     time_df = rel_df[['Final solution time (cumulative) Int', 'Final solution time (cumulative)', 'Virtual Best']].copy()
     time_df.columns = ['Int', 'Mixed', 'VBS']
 
-    values = get_sgm_of_sgm(time_df, shift=shifter)
+    values = get_sgm_of_sgm(time_df, shift=10)
     values_relative = relative_to_mixed(values)
 
     labels = ['Int', 'Mixed', 'VBS']
@@ -959,7 +1152,7 @@ def sgm_base_set(dataframe, only_relevant, title, shift_name):
     # Create the plot
     plt.figure(figsize=(8, 5))
     bars = plt.bar(labels, values_relative, color=bar_colors)
-    plt.title(title)
+    #plt.title(title)
     plt.ylim(0.5, max(values_relative) * 1.05)  # Set y-axis limits for visibility
     plt.xticks(rotation=45, fontsize=6)
     for bar in bars:
@@ -974,132 +1167,57 @@ def sgm_base_set(dataframe, only_relevant, title, shift_name):
 
 
 
-fico_5 = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_5_ready_to_ml.csv")
-fico_6 = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/9_6_ready_to_ml.csv")
+fico_5 = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Cleaned/9_5_ready_to_ml.csv")
+fico_6 = pd.read_csv("/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Cleaned/9_6_ready_to_ml.csv")
 
+fico_5_path = "/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO5/depth5"
+fico_5_path_10 = "/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO5/depth10"
+fico_5_path_none = "/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO5/depthNone"
 
-# I WANT RandSeed: 3094311947 FICO 6
-# train_vs_test_sgm("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/FICO6/BestCombi/depth5outlier350/NoOutlier/Logged/ScaledLabel",
-#                   version="9.6 RandSeed:=", fico_or_scip='fico', save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/96/BestCombi/Overfitting")
+fico_5_top_forest = "/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO/Top2Forest965/depth5"
+fico_5_top_forest_10 = "/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO/Top2Forest965/depth10"
+fico_5_top_forest_none = "/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO/Top2Forest965/depthNone"
+fico_5_top_lin = "/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO/Top4Linear965/depth5"
+fico_5_top_lin_10 = "/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO/Top4Linear965/depth10"
+fico_5_top_lin_none = "/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO/Top4Linear965/depthNone"
 
-
-# print(fico_5['Virtual Best'].mean())
-# print(fico_5['Virtual Best'].median())
-# sgm_base_set(fico_5, only_relevant=False, title="FICO Xpress 9.5 shift=Mean", shift_name='mean')
-# sgm_base_set(fico_6, only_relevant=False, title="FICO Xpress 9.6 shift=Mean", shift_name='mean')
-# sgm_base_set(fico_5, only_relevant=False, title="FICO Xpress 9.5 shift=Median", shift_name='median')
-# sgm_base_set(fico_6, only_relevant=False, title="FICO Xpress 9.6 shift=Median", shift_name='median')
-# sgm_base_set(fico_5, only_relevant=True, title="FICO Xpress 9.5 Only Relevant shift=10", shift_name=10)
-# sgm_base_set(fico_5, only_relevant=False, title="FICO Xpress 9.5 shift=10", shift_name=10)
-# sgm_base_set(fico_6, only_relevant=True, title="FICO Xpress 9.6 shift=10", shift_name=10)
-# sgm_base_set(fico_6, only_relevant=False, title="FICO Xpress 9.6 shift=10", shift_name=10)
-
-# sgm_base_set(fico_5, only_relevant=True, title="FICO Xpress 9.5 only relevant, shift=mean", shift_name='mean')
-# sgm_base_set(fico_5, only_relevant=True, title="FICO Xpress 9.5 only relevant, shift=median", shift_name='median')
-# sgm_base_set(fico_5, only_relevant=True, title="FICO Xpress 9.5 only relevant, shift=50", shift_name=50)
-# sgm_base_set(fico_5, "FICO Xpress 9.5", 50)
-# print(fico_6['Virtual Best'].mean())
-# print(fico_6['Virtual Best'].median())
-
-# sgm_base_set(fico_6, only_relevant=False, title="FICO Xpress 9.6", shift=fico_6['Virtual Best'].mean())
-# sgm_base_set(fico_6, "FICO Xpress 9.6", fico_6['Virtual Best'].median())
-# sgm_base_set(fico_6, only_relevant=True, title="FICO Xpress 9.6 only relevant, shift=mean", shift_name='mean')
-# sgm_base_set(fico_6, only_relevant=True, title="FICO Xpress 9.6 only relevant, shift=median", shift_name='median')
-# sgm_base_set(fico_6, only_relevant=True, title="FICO Xpress 9.6 only relevant, shift=50", shift_name=50)
-# sgm_base_set(fico_6, "FICO Xpress 9.6", 50)
+fico_6_top_forest = "/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO/Top2Forest966/depth5"
+fico_6_top_forest_10 = "/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO/Top2Forest966/depth10"
+fico_6_top_forest_none = "/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO/Top2Forest966/depthNone"
+fico_6_top_lin = "/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO/Top4Linear966/depth5"
+fico_6_top_lin_10 = "/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO/Top4Linear966/depth10"
+fico_6_top_lin_none = "/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO/Top4Linear966/depthNone"
 
 
 
+scip_top_forest = ""
+scip_top_lin = ""
+
+fico_6_path = "/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO6/depth5"
+fico_6_path_10 = "/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO6/depth10"
+fico_6_path_none = "/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/FICO6/depthNone"
+
+scip_path = '/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/SCIP/depth5'
+scip_path_10 = '/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/SCIP/depth10'
+scip_path_none = '/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/SCIP/depthNone'
+
+
+# /Users/fritz/Downloads/ZIB/Master/Octesty/BestCombiSearch/SCIP
 
 
 
-
-
-# ---------------------------------------------- FIGHT OVERFITTING -----------------------------------------------------
-# train_vs_test_acuracy("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/6on5/NoOutlier/Logged/ScaledLabel",
-#                       version="6on9.5", fico_or_scip='fico',
-#                       save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/96auf95/Overfitting")
-# train_vs_test_sgm("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/6on5/NoOutlier/Logged/ScaledLabel",
-#                       version="6on9.5", fico_or_scip='fico',
-#                       save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/96auf95/Overfitting")
+# compare_scalers_accuracy(version="5", deep="None", scip=False, fico=True)#, forest=False)
+# compare_scalers_runtime(version="5", deep="None", scip=False, fico=True)#, forest=False)
 #
-# train_vs_test_acuracy("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/5on6/NoOutlier/Logged/ScaledLabel",
-#                       version="5on9.6", fico_or_scip='fico',
-#                       save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/95auf96/Overfitting")
-# train_vs_test_sgm("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FightOverfitting/5on6/NoOutlier/Logged/ScaledLabel",
-#                       version="5on9.6", fico_or_scip='fico',
-#                       save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/95auf96/Overfitting")
-
-
-
-
-
-
-
-
-# ------------------------------------------------- 5on6 or 6on5 -------------------------------------------------------
-# train_vs_test_acuracy("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/SixOnFive/NoOutlier/Logged/ScaledLabel",
-#                       version="6on9.5", fico_or_scip='fico',
-#                       save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/Overfitted/96auf95/Overfitting")
-# train_vs_test_sgm("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/SixOnFive/NoOutlier/Logged/ScaledLabel",
-#                       version="6on9.5", fico_or_scip='fico',
-#                       save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/Overfitted/96auf95/Overfitting")
-# train_vs_test_acuracy("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FiveOnSix/NoOutlier/Logged/ScaledLabel",
-#                       version="5on9.6", fico_or_scip='fico',
-#                       save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/Overfitted/95auf96/Overfitting")
-# train_vs_test_sgm("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FiveOnSix/NoOutlier/Logged/ScaledLabel",
-#                       version="5on9.6", fico_or_scip='fico',
-#                       save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/Overfitted/95auf96/Overfitting")
-
-
-
-# visualisiere_accuracy("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FiveOnSix/NoOutlier/Logged/ScaledLabel",
-#                       version="5on9.6", scip_or_fico='fico', fico=True,
-#                       directory_for_saving_plot="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/95auf96/Accuracy")
-
-# visualisiere_accuracy("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/SixOnFive/NoOutlier/Logged/ScaledLabel",
-#                       version="6on9.5", scip_or_fico='fico', fico=True,
-#                       directory_for_saving_plot="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/96auf95/Accuracy")
-
-
-
-
-# TRAIN vs TEST SGM FICO5, FICO6, SCIP
-# train_vs_test_sgm("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FICO5/NoOutlier/Logged/ScaledLabel",
-#                       version="5", fico_or_scip="fico", save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/Bilder/FICO/95_normal/Overfitting")
-# train_vs_test_sgm("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FICO6/NoOutlier/Logged/ScaledLabel",
-#                       version="6", fico_or_scip="fico", save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/Bilder/FICO/96_normal/Overfitting")
-# train_vs_test_sgm("/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/FinalScipFinal/SCIP/ScaledLabel","",
-#                       "scip", "/Users/fritz/Downloads/ZIB/Master/Writing/Tex/Bilder/SCIP/Overfitting")
-
-
-# TRAIN vs TEST ACC FICO5, FICO6, SCIP
-# train_vs_test_acuracy("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FICO5/NoOutlier/Logged/ScaledLabel",
-#                       version="5", fico_or_scip="fico", save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/Bilder/FICO/95_normal/Overfitting")
+# compare_scalers_accuracy(version="6", deep="None", scip=False, fico=True)#, forest=False)
+# compare_scalers_runtime(version="6", deep="None", scip=False, fico=True)#, forest=False)
+# #
+# compare_scalers_accuracy(version="10", deep="None", scip=True, fico=False)#, forest=False)
+# compare_scalers_runtime(version="10", deep="None", scip=True, fico=False)#, forest=False)
 #
-# train_vs_test_acuracy("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FICO6/NoOutlier/Logged/ScaledLabel",
-#                       version="6", fico_or_scip="fico", save_to="/Users/fritz/Downloads/ZIB/Master/Writing/Tex/Bilder/FICO/96_normal/Overfitting")
+# #
+# train_vs_test_acuracy(data_frame_path="/Users/fritz/Downloads/ZIB/Master/Octesty/Train5Test6/Top3ForFICO5/ScaledLabel", fico_or_scip='fico', version="Train5Test6Forest", save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train5Test6")
+# train_vs_test_sgm(data_frame_path="/Users/fritz/Downloads/ZIB/Master/Octesty/Train5Test6/Top3ForFICO5/ScaledLabel", fico_or_scip='fico', version="Train5Test6Forest", save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train5Test6")
 #
-# train_vs_test_acuracy("/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/FinalScipFinal/SCIP/ScaledLabel","",
-#                       "scip", "/Users/fritz/Downloads/ZIB/Master/Writing/Tex/Bilder/SCIP/Overfitting")
-
-
-
-# FIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIICO
-
-# visualisiere_sgm("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FICO5/NoOutlier/Logged/ScaledLabel",
-#                  version= "5", scaler_name="Quantile", scaled=False, fico=True)
-# visualisiere_sgm("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FICO6/NoOutlier/Logged/ScaledLabel",
-#                  version= "6", scaler_name="Quantile", scaled=False, fico=True)
-# visualisiere_accuracy("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FICO5/NoOutlier/Logged/ScaledLabel",
-#                       version="5", scip_or_fico='fico', fico=True)
-# visualisiere_accuracy("/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Runs/Final/FICO6/NoOutlier/Logged/ScaledLabel",
-#                       version="6", scip_or_fico='fico', fico=True)
-
-
-# SCIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIP
-
-# visualisiere_accuracy("/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/FinalScipFinal/SCIP/ScaledLabel", version="",
-#                       scip_or_fico="scip", scip=True)
-# visualisiere_sgm("/Users/fritz/Downloads/ZIB/Master/JulyTry/Runs/FinalScipFinal/SCIP/ScaledLabel", version="",
-#                       scaler_name="Yeo", scaled=False, scip=True)
+# train_vs_test_acuracy(data_frame_path="/Users/fritz/Downloads/ZIB/Master/Octesty/Train6Test5/Top4ForFICO6/ScaledLabel", fico_or_scip='fico', version="Train6Test5Forest", save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train6Test5")
+# train_vs_test_sgm(data_frame_path="/Users/fritz/Downloads/ZIB/Master/Octesty/Train6Test5/Top4ForFICO6/ScaledLabel", fico_or_scip='fico', version="Train6Test5Forest", save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train6Test5")

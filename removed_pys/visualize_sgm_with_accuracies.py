@@ -26,7 +26,7 @@ def plot_sgms(df, labels, title: str) -> None:
     # Create the plot
     plt.figure(figsize=(8, 5))
     plt.bar(labels, values, color=bar_colors)
-    plt.title(title)
+    #plt.title(title)
     plt.ylim(min(0.5, min(values)*0.9), max(values)*1.01)  # Set y-axis limits for visibility
     plt.xticks(rotation=45, fontsize=6)
     # Create custom legend entries with value annotations

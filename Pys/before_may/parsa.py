@@ -24,7 +24,7 @@ box = plt.boxplot(
     flierprops=dict(marker="o", color="black", markersize=6, alpha=1)  # Outliers
 )
 # Labeling
-plt.title("Goals Scored in each match of the 2023/2024 Bundesliga Season")
+#plt.title("Goals Scored in each match of the 2023/2024 Bundesliga Season")
 plt.ylabel("Number of Goals Scored")
 # plt.show()
 

@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 def plot_histo(data, color, number_bins, title):
 
     plt.hist(data, bins=number_bins, color=color, alpha=1)
-    plt.title(title)
+    #plt.title(title)
 
     # Adjust layout
     plt.tight_layout()
@@ -27,13 +27,13 @@ def log_data(data_frame:pd.DataFrame):
                             '#spatial branching entities fixed (at the root) Mixed',
                             '#spatial branching entities fixed (at the root) Int',
                             '#non-spatial branch entities fixed (at the root)',
-                            '#nodes in DAG',
+                            'NodesInDAG',
                             '#integer violations at root',
                             '#nonlinear violations at root',
                             ]
     fico_feats = ['Matrix Equality Constraints', 'Matrix Quadratic Elements',
                   'Matrix NLP Formula', 'Presolve Columns', 'Presolve Global Entities',
-                  '#nodes in DAG', '#integer violations at root',
+                  'NodesInDAG', '#integer violations at root',
                   '#nonlinear violations at root', '% vars in DAG (out of all vars)',
                   '% vars in DAG unbounded (out of vars in DAG)',
                   '% vars in DAG integer (out of vars in DAG)',
@@ -46,13 +46,13 @@ def log_data(data_frame:pd.DataFrame):
                   'Avg coefficient spread for convexification cuts Mixed']
 
     data[columns_to_be_logged] = data[columns_to_be_logged].apply(lambda entry: np.log10(1 + entry))
-    data.to_csv('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Scaled/logged_fico_clean_data.csv', index=False)
+    data.to_csv('/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Scaled/logged_fico_clean_data.csv', index=False)
     features = data[fico_feats]
-    features.to_csv('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Scaled/logged_fico_feats.csv', index=False)
+    features.to_csv('/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Scaled/logged_fico_feats.csv', index=False)
     return data, columns_to_be_logged
 
 
-fico_data_clean = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/SeptemberFinal/Bases/FICO/Cleaned/fico_clean_data_753.csv')
+fico_data_clean = pd.read_csv('/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Cleaned/fico_clean_data_753.csv')
 
 fico_logged, cols = log_data(fico_data_clean)
 
