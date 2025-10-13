@@ -4,7 +4,6 @@ import numpy as np
 import os
 import sys
 
-from stats_per_combi_july import ranking_feature_importance
 
 from matplotlib import pyplot as plt
 
@@ -15,7 +14,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import QuantileTransformer, PowerTransformer
 
 import logging
-from stats_per_combi_july import ranking_feature_importance, train_vs_test_acuracy, train_vs_test_sgm
+from stats_per_combi_july import ranking_feature_importance
 def setup_directory(new_directory):
     # Setup directory
     os.makedirs(os.path.join(f'{new_directory}'), exist_ok=True)
@@ -50,7 +49,6 @@ def shifted_geometric_mean(values, shift):
 
     log_mean = np.mean(shifted_values_log)  # Step 2: Compute the mean of the log values
     geo_mean = np.exp(log_mean) - shift
-    # geo_mean = np.round(geo_mean, 6)
     return geo_mean
 
 def print_accuracy(acc_df):
@@ -162,7 +160,6 @@ def get_features_label(data_frame, feature_df, chosen_features):
     return features, label
 
 def label_scaling(label):
-    print("LABEL SCALING")
     y_pos = label[label >= 0]
     y_neg = label[label < 0]
     # log1p calculates log(1+x) numerically stable
@@ -182,7 +179,6 @@ def get_accuracy(prediction, actual, mid_threshold, extreme_threshold):
 
         # Calculate percentage of correctly predicted signs
         correct_signs = np.sum(np.sign(y_test_nonzero) == np.sign(y_pred_nonzero))
-        print(correct_signs)
         percent_correct_signs = correct_signs / len(y_test_nonzero) * 100 if len(y_test_nonzero) > 0 else np.nan
         return percent_correct_signs
 
@@ -203,16 +199,7 @@ def get_accuracy(prediction, actual, mid_threshold, extreme_threshold):
     overall_acc = overall_accuracy()
     mid_acc, number_mid_instances = threshold_accuracy(mid_threshold)
     extreme_acc, number_extreme_instances = threshold_accuracy(extreme_threshold)
-    print('Accuracy:',  overall_acc, mid_acc, number_mid_instances, extreme_acc, number_extreme_instances)
     return overall_acc, mid_acc, number_mid_instances, extreme_acc, number_extreme_instances
-# TODO Delete get_sgm_comparison if it runs without it
-# def get_sgm_comparison(y_pred, y_test):
-#     pred_df = pd.DataFrame({'Prediction': y_pred, 'Actual': y_test},
-#                            index=y_pred.index)
-#     pred_df['Right or Wrong'] = (np.sign(pred_df['Prediction']) == np.sign(pred_df['Actual'])).astype(int)
-#     # add column containing the absolute difference in prediction and actual
-#     pred_df['Abs Time Diff'] = abs(pred_df['Prediction'] - pred_df['Actual'])
-#     return pred_df
 
 def get_predicted_run_time_sgm(y_pred, data, shift):
     predicted_time = pd.Series(index=y_pred.index, name='Predicted Run Time')
@@ -306,9 +293,7 @@ def feature_reduction(train_data_path, test_data_path, train_feature_path, test_
         for reduce_by in range(len(feature_list)):
             treff = f'{treffmas}/FeatureReduction/forest/{reduce_by}'
             feature_set = feature_list[:(number_features - reduce_by)]
-            print("#Features in ForesReduction:", len(feature_set))
             treffmas = treffmas.replace('/FICO', '')
-            print('SCALING:', scaling)
             acc, sgm = main(path_to_trainset_data=data_path_train, path_to_testset_data=data_path_test,
                             path_to_trainset_feat=feature_path_train, path_to_testset_feat=feature_path_test,
                             scip_or_fico=scip_or_fico, treffplusx=treff,
@@ -346,7 +331,6 @@ def feature_reduction(train_data_path, test_data_path, train_feature_path, test_
             sgm_lin.append(sgm)
 
     if fico_or_scip.lower() == 'fico':
-        # TODO: change path to be interactive
         import_df = pd.read_csv(
             f'{treffen}/NoOutlier/Logged/ScaledLabel/Importance/fico_importance_ranking.csv')
         num_features = len(import_df)
@@ -429,12 +413,6 @@ def predict(pipeline, X_test, y_test):
 def regression(data_train, data_test, data_set_name, label_train, label_test, features_train, features_test, feature_names, models, scalers, imputer, random_seeds,
                label_scale=False, mid_threshold=0.1, extreme_threshold=4.0):
 
-    """
-    Gets a csv file as input
-    trains a ml model
-    outputs csv files: Accuracy, Time save/loss, Feature Importance
-    """
-    start_time = time.time()
     training_time = 0
     prediction_time = 0
 
@@ -460,13 +438,10 @@ def regression(data_train, data_test, data_set_name, label_train, label_test, fe
         randos = random_seeds
         # print(f'Training {model_name}')
         if model_name not in ['LinearRegression', 'RandomForest']:
-            logging.info(f'AHHHHHHHHHHHHHHHHHHHHHHHH. {model_name} is not a valid regressor!')
             continue
         if model_name == 'LinearRegression':
-            print("LINEAR")
-            randos = [random_seeds[0]] #for linear regressor its no difference what random seed
-        elif model_name == 'RandomForest':
-            print("RANDOMFOREST")
+            # for linear regressor its no difference what random seed
+            randos = [random_seeds[0]]
         for imputation in imputer:
             for scaler in scalers:
                 for seed in randos:
@@ -512,9 +487,6 @@ def regression(data_train, data_test, data_set_name, label_train, label_test, fe
         for i in range(len(dictionaries)):
             if len(dictionaries[i]) == 0:
                 empty_dicts.append(dict_names[i])
-        print(f'Error while creating: {empty_dicts}')
-        end_time = time.time()
-        print(f'Final time: {end_time - start_time}')
         return None
 
     else:
@@ -543,19 +515,14 @@ def regression(data_train, data_test, data_set_name, label_train, label_test, fe
     accuracy_df_trainset.loc[:, ['Accuracy', 'Mid Accuracy','Extreme Accuracy']] = accuracy_df_trainset.loc[:, ['Accuracy', 'Mid Accuracy','Extreme Accuracy']].astype(
         float)
 
-    end_time = time.time()
-    logging.info(f'Training time: {training_time}')
-    logging.info(f'Prediction time: {prediction_time}')
-    logging.info(f'Final time: {end_time - start_time}')
-
     return accuracy_df, run_time_df, sum_time_df, prediction_df, feature_importance_df,  impo_ranking, accuracy_df_trainset, run_time_df_trainset, prediction_dictionary_train_df
 
-def run_regression_pipeline(data_name, trainset_data, testset_data, trainset_feat, testset_feat, prefix, treffplusx, models, imputer,
-                            hundred_seeds:list, feature_subset:list, label_scale=False, outlier_threshold=None,remove_outlier=False):
+def run_regression_pipeline(data_name, trainset_data, testset_data, trainset_feat, testset_feat, prefix, base_path, models, imputer,
+                            hundred_seeds:list, feature_subset:list, label_scale=False, outlier_threshold=None,remove_outlier=False,
+                            save_csv=False):
     train_data = pd.read_csv(trainset_data)
     test_data = pd.read_csv(testset_data)
-    print("Train Features", trainset_feat)
-    print("Test Features", testset_feat)
+
     train_features = pd.read_csv(trainset_feat)
     test_features = pd.read_csv(testset_feat)
 
@@ -569,29 +536,17 @@ def run_regression_pipeline(data_name, trainset_data, testset_data, trainset_fea
     test_label = test_data['Cmp Final solution time (cumulative)']
 
     if remove_outlier:
-        if data_name == 'fico':
-            if outlier_threshold is None:
-                train_features, train_label = kick_outlier(train_features, train_label, threshold=350)
-                test_features, test_label = kick_outlier(test_features, test_label, threshold=350)
-            else:
-                train_features, train_label = kick_outlier(train_features, train_label, threshold=outlier_threshold)
-                test_features, test_label = kick_outlier(test_features, test_label, threshold=outlier_threshold)
-        elif data_name == 'scip_default':
-            if outlier_threshold is None:
-                train_features, train_label = kick_outlier(train_features, train_label, threshold=40)
-                test_features, test_label = kick_outlier(test_features, test_label, threshold=40)
-            else:
-                train_features, train_label = kick_outlier(train_features, train_label, threshold=outlier_threshold)
-                test_features, test_label = kick_outlier(test_features, test_label, threshold=outlier_threshold)
+        if outlier_threshold is None:
+            train_features, train_label = kick_outlier(train_features, train_label, threshold=350)
+            test_features, test_label = kick_outlier(test_features, test_label, threshold=350)
         else:
-            sys.exit(f'Invalid data_name: {data_name}')
+            train_features, train_label = kick_outlier(train_features, train_label, threshold=outlier_threshold)
+            test_features, test_label = kick_outlier(test_features, test_label, threshold=outlier_threshold)
 
     # if feature_subset is None, it means that we use all features
-
     if feature_subset is not None:
         train_features = train_features[feature_subset]
         test_features = test_features[feature_subset]
-    print("In Regression: Train Features:", len(train_features.columns), "Test Features:", len(test_features.columns))
     # Set scalers
     def scale_feats(df, scaler):
         if scaler == 'Quantile':
@@ -622,27 +577,27 @@ def run_regression_pipeline(data_name, trainset_data, testset_data, trainset_fea
                    feature_names=test_features.columns, models=models, imputer=imputer, random_seeds=hundred_seeds,
                    label_scale=label_scale, scalers=[scaler_for_data]))
 
-    # Save results
-    base_path = f'{treffplusx}'
-    print('BASE PATH', base_path)
-    create_directory(f'{treffplusx}')
-    # TestSet
-    acc_df.to_csv(f'{base_path}/Accuracy/{prefix}_acc_df.csv', index=True)
-    runtime_df.to_csv(f'{base_path}/SGM/{prefix}_sgm_runtime.csv', index=True)
-    sumtime_df.to_csv(f'{base_path}/SGM/sumtime.csv', index=True)
-    prediction_df.to_csv(f'{base_path}/Prediction/{prefix}_prediction_df.csv')
-    importance_df.to_csv(f'{base_path}/Importance/{prefix}_importance_df.csv', index=True)
-    impo_ranking.to_csv(f'{base_path}/Importance/{data_name}_importance_ranking.csv', index=False)
-    # TrainSet
-    acc_train.to_csv(f'{base_path}/Accuracy/{prefix}_acc_trainset.csv', index=True)
-    sgm_train.to_csv(f'{base_path}/SGM/{prefix}_sgm_trainset.csv', index=True)
-    pred_train.to_csv(f'{base_path}/Prediction/{prefix}_prediction_trainset.csv')
+    if save_csv:
+        # Save results
+        create_directory(f'{base_path}')
+        # TestSet
+        acc_df.to_csv(f'{base_path}/Accuracy/{prefix}_acc_df.csv', index=True)
+        runtime_df.to_csv(f'{base_path}/SGM/{prefix}_sgm_runtime.csv', index=True)
+        sumtime_df.to_csv(f'{base_path}/SGM/sumtime.csv', index=True)
+        prediction_df.to_csv(f'{base_path}/Prediction/{prefix}_prediction_df.csv')
+        importance_df.to_csv(f'{base_path}/Importance/{prefix}_importance_df.csv', index=True)
+        impo_ranking.to_csv(f'{base_path}/Importance/{data_name}_importance_ranking.csv', index=False)
+        # TrainSet
+        acc_train.to_csv(f'{base_path}/Accuracy/{prefix}_acc_trainset.csv', index=True)
+        sgm_train.to_csv(f'{base_path}/SGM/{prefix}_sgm_trainset.csv', index=True)
+        pred_train.to_csv(f'{base_path}/Prediction/{prefix}_prediction_trainset.csv')
 
     return print_accuracy(acc_df), print_sgm(runtime_df, data_name, len(train_features.columns))
 
 def main(path_to_trainset_data:str, path_to_testset_data:str, path_to_trainset_feat:str, path_to_testset_feat:str,
-         scip_or_fico:str, treffplusx='Wurm', label_scalen=True, feature_subset=None, models=None,
-         outlier_value = None, kick_outliers=False, max_depth=200, estimatoren=100, max_feature_number=None):
+         scip_or_fico:str, treffplusx:str, label_scalen=True, feature_subset=None, models=None,
+         outlier_value = None, kick_outliers=False, max_depth=200, estimatoren=100, max_feature_number=None,
+         save_csvs=False):
     setup_directory(treffplusx)
 
 
@@ -655,8 +610,8 @@ def main(path_to_trainset_data:str, path_to_testset_data:str, path_to_trainset_f
     if models is None:
         models = {
             'LinearRegression': LinearRegression(),
-            'RandomForest': RandomForestRegressor(n_estimators=estimatoren, max_depth=5,
-                                                  max_features=max_feature_number, random_state=0, n_jobs=-1)
+            'RandomForest': RandomForestRegressor(n_estimators=estimatoren, max_depth=max_depth,
+                                                  max_features=max_feature_number, random_state=0)
         }
 
     imputer = ['median']
@@ -684,239 +639,14 @@ def main(path_to_trainset_data:str, path_to_testset_data:str, path_to_trainset_f
         trainset_feat=f'{path_to_trainset_feat}',
         testset_feat=f'{path_to_testset_feat}',
         prefix=scip_or_fico,
-        treffplusx=treffplusx,
+        base_path=treffplusx,
         models=models,
         imputer=imputer,
         hundred_seeds=hundred_seeds,
         label_scale=label_scalen,
         feature_subset=feature_subset,
         outlier_threshold=outlier_value,
-        remove_outlier=kick_outliers
+        remove_outlier=kick_outliers,
+        save_csv=save_csvs
     )
     return akk, ess_geh_ehm
-
-
-# TODO OUTLIER IGNORED => DONT IGNORE ANYMORE
-# I do until now: Instead of kicking outlier scale whole label down, but maybe both even better:)
-
-def get_number_of_runs(path_to_runs):
-    folders = [f for f in os.listdir(path_to_runs) if os.path.isdir(os.path.join(path_to_runs, f))]
-    return len(folders)
-
-base_data_directory = '/Users/fritz/Downloads/ZIB/Master/October/Bases'
-
-fico_data_5 = '/Users/fritz/Downloads/ZIB/Master/Testy/Bases/FICO/Cleaned/9_5_ready_to_ml.csv'
-fico_feats_5 = '/Users/fritz/Downloads/ZIB/Master/Testy/Bases/FICO/Cleaned/9_5_ready_to_ml_features.csv'
-
-fico_data_6 = '/Users/fritz/Downloads/ZIB/Master/Testy/Bases/FICO/Cleaned/9_6_ready_to_ml.csv'
-fico_feats_6 = '/Users/fritz/Downloads/ZIB/Master/Testy/Bases/FICO/Cleaned/9_6_ready_to_ml_features.csv'
-
-scip_data_10 = '/Users/fritz/Downloads/ZIB/Master/Octesty/Bases/SCIP/Cleaned/scip_data_for_ml.csv'
-scip_feats_10 = '/Users/fritz/Downloads/ZIB/Master/Octesty/Bases/SCIP/Cleaned/scip_featurs_for_ml.csv'
-scip_linear = ['EqCons', '#IntViols']
-scip_forest = ['AvgCoeffSpreadConvCuts', 'AvgRelBndChngSBLPInt', 'NonlinCons','%QuadrNodesDAG']
-
-# scip train 6 test linear
-# main(path_to_trainset_data=scip_data_10, path_to_testset_data=fico_data_6, path_to_trainset_feat=scip_feats_10,
-#      path_to_testset_feat=fico_feats_6, scip_or_fico='fico', treffplusx='/Users/fritz/Downloads/ZIB/Master/Octesty/TrainSCIPTest96/Top2LinSCIP',
-#      feature_subset=scip_linear)
-# train_vs_test_acuracy('/Users/fritz/Downloads/ZIB/Master/Octesty/TrainSCIPTest96/Top2LinSCIP/ScaledLabel',version='TrainSCIPTest6Linear',fico_or_scip='fico',
-#                       save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/TrainSCIPTest96/")
-# train_vs_test_sgm('/Users/fritz/Downloads/ZIB/Master/Octesty/TrainSCIPTest96/Top2LinSCIP/ScaledLabel',version='TrainSCIPTest6Linear',fico_or_scip='fico',
-#                     save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/TrainSCIPTest96/")
-# # scip train 96 test forest
-# main(path_to_trainset_data=scip_data_10, path_to_testset_data=fico_data_6, path_to_trainset_feat=scip_feats_10,
-#      path_to_testset_feat=fico_feats_6, scip_or_fico='fico', treffplusx='/Users/fritz/Downloads/ZIB/Master/Octesty/TrainSCIPTest96/Top4ForSCIP',
-#      feature_subset=scip_forest)
-# train_vs_test_acuracy('/Users/fritz/Downloads/ZIB/Master/Octesty/TrainSCIPTest96/Top4ForSCIP/ScaledLabel',version='TrainSCIPTest6Forest',fico_or_scip='fico',
-#                       save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/TrainSCIPTest96/")
-# train_vs_test_sgm('/Users/fritz/Downloads/ZIB/Master/Octesty/TrainSCIPTest96/Top4ForSCIP/ScaledLabel',version='TrainSCIPTest6Forest',fico_or_scip='fico',
-#                     save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/TrainSCIPTest96/")
-
-# 96 trained scip tested linear
-# main(path_to_trainset_data=scip_data_10, path_to_testset_data=fico_data_6, path_to_trainset_feat=scip_feats_10,
-#      path_to_testset_feat=fico_feats_6, scip_or_fico='fico', treffplusx='/Users/fritz/Downloads/ZIB/Master/Octesty/Train96TestSCIP/Top4Lin96',
-#      feature_subset=["SpatBranchEntFixed", 'IntVarsPostPre', 'NonlinCons', '%VarsDAGInt'])
-# train_vs_test_acuracy('/Users/fritz/Downloads/ZIB/Master/Octesty/Train96TestSCIP/Top4Lin96/ScaledLabel',version='Train96TestSCIPLinear',fico_or_scip='fico',
-#                       save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train96TestSCIP/")
-# train_vs_test_sgm('/Users/fritz/Downloads/ZIB/Master/Octesty/Train96TestSCIP/Top4Lin96/ScaledLabel',version='Train96TestSCIPLinear',fico_or_scip='fico',
-#                     save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train96TestSCIP/")
-#
-# # 96 trained scip tested forest
-# main(path_to_trainset_data=scip_data_10, path_to_testset_data=fico_data_6, path_to_trainset_feat=scip_feats_10,
-#      path_to_testset_feat=fico_feats_6, scip_or_fico='fico', treffplusx='/Users/fritz/Downloads/ZIB/Master/Octesty/Train96TestSCIP/Top4For96',
-#      feature_subset=['AvgCoeffSpreadConvCuts', 'SpatBranchEntFixed', '#NonlinViols', 'EqCons'])
-# train_vs_test_acuracy('/Users/fritz/Downloads/ZIB/Master/Octesty/Train96TestSCIP/Top4For96/ScaledLabel',version='Train96TestSCIPForest',fico_or_scip='fico',
-#                       save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train96TestSCIP/")
-# train_vs_test_sgm('/Users/fritz/Downloads/ZIB/Master/Octesty/Train96TestSCIP/Top4For96/ScaledLabel',version='Train96TestSCIPForest',fico_or_scip='fico',
-#                     save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train96TestSCIP/")
-
-
-# #train 5 test 6 Linear
-# main(path_to_trainset_data=fico_data_5, path_to_testset_data=fico_data_6, path_to_trainset_feat=fico_feats_5,
-#      path_to_testset_feat=fico_feats_6, scip_or_fico='fico', treffplusx='/Users/fritz/Downloads/ZIB/Master/Octesty/Train5Test6/Top3LinFICO5',
-#      feature_subset=['IntVarsPostPre', 'AvgWorkSBLPSpat','AvgRelBndChngSBLPSpat'])
-# train_vs_test_acuracy('/Users/fritz/Downloads/ZIB/Master/Octesty/Train5Test6/Top3LinFICO5/ScaledLabel',version='Train5Test6Linear',fico_or_scip='fico',
-#                       save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train5Test6/")
-train_vs_test_sgm('/Users/fritz/Downloads/ZIB/Master/Octesty/Train5Test6/Top3LinFICO5/ScaledLabel',version='Train5Test6Linear',fico_or_scip='fico',
-                    save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train5Test6/")
-# #train 5 test 6 Forest
-# main(path_to_trainset_data=fico_data_5, path_to_testset_data=fico_data_6, path_to_trainset_feat=fico_feats_5,
-#      path_to_testset_feat=fico_feats_6, scip_or_fico='fico', treffplusx='/Users/fritz/Downloads/ZIB/Master/Octesty/Train5Test6/Top3ForFICO5',
-#      feature_subset=['SpatBranchEntFixed', 'AvgCoeffSpreadConvCuts', '%VarsDAG'])
-#
-# train_vs_test_acuracy('/Users/fritz/Downloads/ZIB/Master/Octesty/Train5Test6/Top3ForFICO5/ScaledLabel',version='Train5Test6Forest',fico_or_scip='fico',
-#                       save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train5Test6/")
-train_vs_test_sgm('/Users/fritz/Downloads/ZIB/Master/Octesty/Train5Test6/Top3ForFICO5/ScaledLabel',version='Train5Test6Forest',fico_or_scip='fico',
-                    save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train5Test6/")
-# #train 6 test 5 Linear
-# main(path_to_trainset_data=fico_data_6, path_to_testset_data=fico_data_5, path_to_trainset_feat=fico_feats_6,
-#      path_to_testset_feat=fico_feats_5, scip_or_fico='fico', treffplusx='/Users/fritz/Downloads/ZIB/Master/Octesty/Train6Test5/Top4LinFICO6',
-#      feature_subset=["AvgRelBndChngSBLPSpat", 'IntVarsPostPre', 'NonlinCons', '%VarsDAGInt'])
-# train_vs_test_acuracy('/User+s/fritz/Downloads/ZIB/Master/Octesty/Train6Test5/Top4LinFICO6/ScaledLabel',version='Train6Test5Linear',fico_or_scip='fico',
-#                       save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train6Test5/")
-train_vs_test_sgm('/Users/fritz/Downloads/ZIB/Master/Octesty/Train6Test5/Top4LinFICO6/ScaledLabel',version='Train6Test5Linear',fico_or_scip='fico',
-                    save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train6Test5/")
-# # train 6 test 5
-# main(path_to_trainset_data=fico_data_6, path_to_testset_data=fico_data_5, path_to_trainset_feat=fico_feats_6,
-#      path_to_testset_feat=fico_feats_5, scip_or_fico='fico', treffplusx='/Users/fritz/Downloads/ZIB/Master/Octesty/Train6Test5/Top4ForFICO6',
-#      feature_subset=['AvgCoeffSpreadConvCuts', 'AvgRelBndChngSBLPSpat', '#NonlinViols', 'EqCons'])
-#
-# train_vs_test_acuracy('/Users/fritz/Downloads/ZIB/Master/Octesty/Train6Test5/Top4ForFICO6/ScaledLabel',version='Train6Test5Forest',fico_or_scip='fico',
-#                       save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train6Test5/")
-train_vs_test_sgm('/Users/fritz/Downloads/ZIB/Master/Octesty/Train6Test5/Top4ForFICO6/ScaledLabel',version='Train6Test5Forest',fico_or_scip='fico',
-                    save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train6Test5/")
-
-
-#
-
-
-
-
-
-
-
-
-
-fiveonsix_5_17 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/5on6/depth5feats17/NoOutlier/Logged'
-sixonfive_5_17 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/6on5/depth5feats17/NoOutlier/Logged'
-fiveonsix_feat_reduction_5_17 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/5on6/depth5feats17'
-sixonfive_feat_reduction_5_17 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/6on5/depth5feats17'
-
-fiveonsix_5_2 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/5on6/depth5feats2/NoOutlier/Logged'
-sixonfive_5_2 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/6on5/depth5feats2/NoOutlier/Logged'
-fiveonsix_feat_reduction_5_2 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/5on6/depth5feats2'
-sixonfive_feat_reduction_5_2 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/6on5/depth5feats2'
-
-fiveonsix_10_2 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/5on6/depth10feats2/NoOutlier/Logged'
-sixonfive_10_2 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/6on5/depth10feats2/NoOutlier/Logged'
-fiveonsix_feat_reduction_10_2 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/5on6/depth10feats2'
-sixonfive_feat_reduction_10_2 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/6on5/depth10feats2'
-
-fiveonsix_10_17 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/5on6/depth10feats17/NoOutlier/Logged'
-sixonfive_10_17 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/6on5/depth10feats17/NoOutlier/Logged'
-fiveonsix_feat_reduction_10_17 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/5on6/depth10feats17'
-sixonfive_feat_reduction_10_17 = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/6on5/depth10feats17'
-
-
-def feat_reduction_hyperparameter_tuning():
-    combinations = [(5, 2,   fiveonsix_5_2,   sixonfive_5_2,   fiveonsix_feat_reduction_5_2,   sixonfive_feat_reduction_5_2),
-            (5, 17,  fiveonsix_5_17,  sixonfive_5_17,  fiveonsix_feat_reduction_5_17,  sixonfive_feat_reduction_5_17),
-            (10, 2,  fiveonsix_10_2,  sixonfive_10_2,  fiveonsix_feat_reduction_10_2,  sixonfive_feat_reduction_10_2),
-            (10, 17, fiveonsix_10_17, sixonfive_10_17, fiveonsix_feat_reduction_10_17, sixonfive_feat_reduction_10_17)]
-
-    for combination in combinations:
-        depth = combination[0]
-        feats = combination[1]
-        fiveonsix = combination[2]
-        sixonfive = combination[3]
-        fiveonsix_feat_reduction = combination[4]
-        sixonfive_feat_reduction = combination[5]
-        estis = 100
-        main(path_to_trainset_data=fico_data_5, path_to_testset_data=fico_data_6,
-                             path_to_trainset_feat=fico_feats_5, path_to_testset_feat=fico_feats_6,
-                             scip_or_fico='fico', treffplusx=sixonfive, label_scalen=True,
-                             kick_outliers=True, max_depth=depth, estimatoren=estis, max_feature_number=feats)
-
-        main(path_to_trainset_data=fico_data_6, path_to_testset_data=fico_data_5,
-                             path_to_trainset_feat=fico_feats_6, path_to_testset_feat=fico_feats_5,
-                             scip_or_fico='fico', treffplusx=fiveonsix, label_scalen=True,
-                             kick_outliers=True, max_depth=depth, estimatoren=estis, max_feature_number=feats)
-
-
-
-        feature_reduction(train_data_path=fico_data_6, test_data_path=fico_data_5, train_feature_path=fico_feats_6,
-                          test_feature_path=fico_feats_5, fico_or_scip='fico', model='linear',
-                          treffen=fiveonsix_feat_reduction, scaling='Quantile', wie_tief=depth,
-                          anzahl_estimators=estis, feats_per_tree=feats, remove_outlier=True)
-
-        feature_reduction(train_data_path=fico_data_6, test_data_path=fico_data_5, train_feature_path=fico_feats_6,
-                          test_feature_path=fico_feats_5, fico_or_scip='fico', model='forest',
-                          treffen=fiveonsix_feat_reduction, scaling='Quantile', wie_tief=depth,
-                          anzahl_estimators=estis, feats_per_tree=feats, remove_outlier=True)
-
-        feature_reduction(train_data_path=fico_data_5, test_data_path=fico_data_6, train_feature_path=fico_feats_5,
-                          test_feature_path=fico_feats_6, fico_or_scip='fico', model='linear',
-                          treffen=sixonfive_feat_reduction, scaling='Quantile', wie_tief=depth,
-                          anzahl_estimators=estis, feats_per_tree=feats, remove_outlier=True)
-
-        feature_reduction(train_data_path=fico_data_5, test_data_path=fico_data_6, train_feature_path=fico_feats_5,
-                          test_feature_path=fico_feats_6, fico_or_scip='fico', model='forest',
-                          treffen=sixonfive_feat_reduction, scaling='Quantile', wie_tief=depth,
-                          anzahl_estimators=estis, feats_per_tree=feats, remove_outlier=True)
-
-
-import stats_per_combi_july
-def plot_hyperparameter_tuning(regress=True, acc=True, sgm=False):
-    tiefen = [5, 10, None] # 5
-    number_estimators = [100]
-    maximum_features = [None]#,4,6,8,10,12,14,16,17]
-    print("------6on5------")
-    for depth in tiefen:
-        for estimator in number_estimators:
-            for feat_num in maximum_features:
-                print(depth, estimator, feat_num)
-                maximum_depth = depth
-
-                sixonfive = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/6on5/BesteCombi/6on5_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/'
-                if regress:
-                    main(path_to_trainset_data=fico_data_5, path_to_testset_data=fico_data_6,
-                         path_to_trainset_feat=fico_feats_5, path_to_testset_feat=fico_feats_6,
-                         scip_or_fico='fico', treffplusx=sixonfive, label_scalen=True, kick_outliers=True,
-                         max_depth=maximum_depth, estimatoren=estimator, max_feature_number=feat_num)
-
-                print("PLOTTING")
-                if acc:
-                    stats_per_combi_july.train_vs_test_acuracy(f"/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/6on5/BesteCombi/6on5_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/ScaledLabel",
-                                          version=f"Trainingset: 9.5, Testset 9.6, Depth: {depth}, #Feats: {feat_num}", fico_or_scip='fico',
-                                          save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/96auf95/96auf95_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/Overfitting")
-                if sgm:
-                    stats_per_combi_july.train_vs_test_sgm(f"/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/6on5/BesteCombi/6on5_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/ScaledLabel",
-                                          version=f"Trainingset: 9.5, Testset 9.6, Depth: {depth}, #Feats: {feat_num}", fico_or_scip='fico',
-                                          save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/96auf95/96auf95_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/Overfitting")
-    print("------5on6------")
-    for depth in tiefen:
-        for estimator in number_estimators:
-            for feat_num in maximum_features:
-                print(depth, estimator, feat_num)
-                maximum_depth = depth
-
-                fiveonsix = f'/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/5on6/BesteCombi/5on6_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/'
-                if regress:
-                    main(path_to_trainset_data=fico_data_6, path_to_testset_data=fico_data_5,
-                         path_to_trainset_feat=fico_feats_6, path_to_testset_feat=fico_feats_5,
-                         scip_or_fico='fico', treffplusx=fiveonsix, label_scalen=True, kick_outliers=True,
-                         max_depth=maximum_depth, estimatoren=estimator, max_feature_number=feat_num)
-                print("PLOTTING")
-                if acc:
-                    stats_per_combi_july.train_vs_test_acuracy(
-                        f"/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/5on6/BesteCombi/5on6_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/ScaledLabel",
-                        version=f"Trainingset: 9.6, Testset 9.5, Depth: {depth}, #Feats: {feat_num}", fico_or_scip='fico',
-                        save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/95auf96/95auf96_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/Overfitting")
-                if sgm:
-                    stats_per_combi_july.train_vs_test_sgm(
-                        f"/Users/fritz/Downloads/ZIB/Master/October/Runs/Final/FightOverfitting/5on6/BesteCombi/5on6_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/NoOutlier/Logged/ScaledLabel",
-                        version=f"Trainingset: 9.6, Testset 9.5, Depth: {depth}, #Feats: {feat_num}", fico_or_scip='fico',
-                        save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/FinaleBilder/FightOverfitting/95auf96/95auf96_depth{maximum_depth}_estimators{estimator}_numfeats{feat_num}/Overfitting")
-
-# plot_hyperparameter_tuning(regress=True, acc=True, sgm=True)
