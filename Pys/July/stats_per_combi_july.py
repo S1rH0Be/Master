@@ -213,7 +213,7 @@ def train_vs_test_sgm(data_frame_path, version: str, fico_or_scip, save_to):
         return [value / int for value in values]
 
 
-    def visualize_sgm(dfs, fico_or_scip, version="", plot_title: str = 'SGMs', saving_directory=""):
+    def visualize_sgm(dfs, fico_or_scip, version="", plot_title: str = 'SGMs', saving_directory="", last_minute_lin=True, last_minute_for=False):
         if fico_or_scip == 'scip':
             labels = ['Int', 'Linear', 'Forest', 'VBS']
         else:
@@ -242,11 +242,21 @@ def train_vs_test_sgm(data_frame_path, version: str, fico_or_scip, save_to):
                 values_relative = [values_relative_lin[2], values_relative_lin[0], values_relative_for[0],
                                    values_relative_for[3]]
 
-            # if last_minute_line:
-            #     labels = ['Int', 'Linear', 'VBS']
-            # if last_minute_for:
-            #     labels = ['Int', 'Forest', 'VBS']
-
+            if last_minute_lin:
+                labels = ['Int', 'Linear', 'VBS']
+                x=np.arange(3)
+                values_relative_lin = relative_to_mixed(sgm_lin_df)
+                values_relative_for = relative_to_mixed(sgm_for_df)
+                values_relative = [values_relative_lin[1], values_relative_lin[0],
+                                   values_relative_for[3]]
+            if last_minute_for:
+                labels = ['Int', 'Forest', 'VBS']
+                values_relative_lin = relative_to_mixed(sgm_lin_df)
+                values_relative_for = relative_to_mixed(sgm_for_df)
+                values_relative = [values_relative_lin[1], values_relative_for[0],
+                                   values_relative_for[3]]
+                x = np.arange(3)
+            print(x + i * bar_width, values_relative)
             # print("SGM: ", values_relative)
             bars = plt.bar(x + i * bar_width, values_relative, width=bar_width, label=f'{dfs[i].name}', color=colors[i%2])
             for bar in bars:

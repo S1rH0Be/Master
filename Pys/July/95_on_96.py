@@ -756,8 +756,8 @@ scip_forest = ['AvgCoeffSpreadConvCuts', 'AvgRelBndChngSBLPInt', 'NonlinCons','%
 # main(path_to_trainset_data=fico_data_5, path_to_testset_data=fico_data_6, path_to_trainset_feat=fico_feats_5,
 #      path_to_testset_feat=fico_feats_6, scip_or_fico='fico', treffplusx='/Users/fritz/Downloads/ZIB/Master/Octesty/Train5Test6/Top3LinFICO5',
 #      feature_subset=['IntVarsPostPre', 'AvgWorkSBLPSpat','AvgRelBndChngSBLPSpat'])
-train_vs_test_acuracy('/Users/fritz/Downloads/ZIB/Master/Octesty/Train5Test6/Top3LinFICO5/ScaledLabel',version='Train5Test6Linear',fico_or_scip='fico',
-                      save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train5Test6/")
+# train_vs_test_acuracy('/Users/fritz/Downloads/ZIB/Master/Octesty/Train5Test6/Top3LinFICO5/ScaledLabel',version='Train5Test6Linear',fico_or_scip='fico',
+#                       save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train5Test6/")
 train_vs_test_sgm('/Users/fritz/Downloads/ZIB/Master/Octesty/Train5Test6/Top3LinFICO5/ScaledLabel',version='Train5Test6Linear',fico_or_scip='fico',
                     save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train5Test6/")
 # #train 5 test 6 Forest
@@ -765,16 +765,16 @@ train_vs_test_sgm('/Users/fritz/Downloads/ZIB/Master/Octesty/Train5Test6/Top3Lin
 #      path_to_testset_feat=fico_feats_6, scip_or_fico='fico', treffplusx='/Users/fritz/Downloads/ZIB/Master/Octesty/Train5Test6/Top3ForFICO5',
 #      feature_subset=['SpatBranchEntFixed', 'AvgCoeffSpreadConvCuts', '%VarsDAG'])
 #
-train_vs_test_acuracy('/Users/fritz/Downloads/ZIB/Master/Octesty/Train5Test6/Top3ForFICO5/ScaledLabel',version='Train5Test6Forest',fico_or_scip='fico',
-                      save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train5Test6/")
+# train_vs_test_acuracy('/Users/fritz/Downloads/ZIB/Master/Octesty/Train5Test6/Top3ForFICO5/ScaledLabel',version='Train5Test6Forest',fico_or_scip='fico',
+#                       save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train5Test6/")
 train_vs_test_sgm('/Users/fritz/Downloads/ZIB/Master/Octesty/Train5Test6/Top3ForFICO5/ScaledLabel',version='Train5Test6Forest',fico_or_scip='fico',
                     save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train5Test6/")
 # #train 6 test 5 Linear
 # main(path_to_trainset_data=fico_data_6, path_to_testset_data=fico_data_5, path_to_trainset_feat=fico_feats_6,
 #      path_to_testset_feat=fico_feats_5, scip_or_fico='fico', treffplusx='/Users/fritz/Downloads/ZIB/Master/Octesty/Train6Test5/Top4LinFICO6',
 #      feature_subset=["AvgRelBndChngSBLPSpat", 'IntVarsPostPre', 'NonlinCons', '%VarsDAGInt'])
-train_vs_test_acuracy('/Users/fritz/Downloads/ZIB/Master/Octesty/Train6Test5/Top4LinFICO6/ScaledLabel',version='Train6Test5Linear',fico_or_scip='fico',
-                      save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train6Test5/")
+# train_vs_test_acuracy('/User+s/fritz/Downloads/ZIB/Master/Octesty/Train6Test5/Top4LinFICO6/ScaledLabel',version='Train6Test5Linear',fico_or_scip='fico',
+#                       save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train6Test5/")
 train_vs_test_sgm('/Users/fritz/Downloads/ZIB/Master/Octesty/Train6Test5/Top4LinFICO6/ScaledLabel',version='Train6Test5Linear',fico_or_scip='fico',
                     save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train6Test5/")
 # # train 6 test 5
@@ -782,8 +782,8 @@ train_vs_test_sgm('/Users/fritz/Downloads/ZIB/Master/Octesty/Train6Test5/Top4Lin
 #      path_to_testset_feat=fico_feats_5, scip_or_fico='fico', treffplusx='/Users/fritz/Downloads/ZIB/Master/Octesty/Train6Test5/Top4ForFICO6',
 #      feature_subset=['AvgCoeffSpreadConvCuts', 'AvgRelBndChngSBLPSpat', '#NonlinViols', 'EqCons'])
 #
-train_vs_test_acuracy('/Users/fritz/Downloads/ZIB/Master/Octesty/Train6Test5/Top4ForFICO6/ScaledLabel',version='Train6Test5Forest',fico_or_scip='fico',
-                      save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train6Test5/")
+# train_vs_test_acuracy('/Users/fritz/Downloads/ZIB/Master/Octesty/Train6Test5/Top4ForFICO6/ScaledLabel',version='Train6Test5Forest',fico_or_scip='fico',
+#                       save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train6Test5/")
 train_vs_test_sgm('/Users/fritz/Downloads/ZIB/Master/Octesty/Train6Test5/Top4ForFICO6/ScaledLabel',version='Train6Test5Forest',fico_or_scip='fico',
                     save_to=f"/Users/fritz/Downloads/ZIB/Master/Writing/Tex/LastMinute/Train6Test5/")
 
