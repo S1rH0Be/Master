@@ -700,15 +700,4 @@ def hyper_hyper_tuner_tuner(main_regression=False, feat_reduction=False, plot_ma
 
 
 
-fico_96_linear_subset = ['AvgRelBndChngSBLPInt', 'IntVarsPostPre', '%VarsDAGInt', 'NonlinCons']
-hyper_hyper_tuner_tuner(main_regression=True, plot_main=True, feat_reduction=False, plot_reduction=False,
-                             fico=True, scip=False, scalerz=['Quantile'],
-                             feat_subset=fico_96_linear_subset,
-                             directory='/Users/fritz/Downloads/ZIB/Master/October/Runs/Polishing/Top4Linear96FICO9.',
-                             picture_save='/Users/fritz/Downloads/ZIB/Master/Writing/Tex/OctestyBilder/ÜBERARBEITEN/Top4Linear96',
-                             title='9.6 Top4Linear',
-                             fico_data_5='/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Cleaned/9_5_ready_to_ml.csv',
-                             fico_feats_5='/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Cleaned/9_5_ready_to_ml_features.csv',
-                             fico_data_6='/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Cleaned/9_6_ready_to_ml.csv',
-                             fico_feats_6='/Users/fritz/Downloads/ZIB/Master/October/Bases/FICO/Cleaned/9_6_ready_to_ml_features.csv')
 
